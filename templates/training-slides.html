@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}WEnvision - Slides de Formation{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon proposal"></div>
+        <div>
+            <div class="card-title">Générateur de Slides de Formation</div>
+            <div class="card-subtitle">Importez un programme de formation pour générer les slides</div>
+        </div>
+    </div>
+
+    <form id="training-form">
+        <div class="form-group">
+            <label class="form-label">Programme de formation (texte/markdown)</label>
+            <textarea class="form-textarea" id="programme-text"
+                placeholder="Collez ici le contenu de votre programme de formation..."></textarea>
+        </div>
+
+        <div class="or-divider">OU</div>
+
+        <div class="form-group">
+            <label class="form-label">Uploader un fichier (.md, .txt, .docx, .pdf)</label>
+            <div class="file-upload" id="file-upload-zone">
+                <input type="file" id="programme-file" accept=".md,.txt,.docx,.pdf" style="display:none">
+                <p>Cliquez ou glissez un fichier ici</p>
+                <p style="font-size: 0.85rem; opacity: 0.7; margin-top: 0.25rem;">Formats supportés : Markdown, Texte, Word (DOCX), PDF</p>
+                <p id="file-name" style="color: var(--corail); font-weight: 500; margin-top: 0.5rem;"></p>
+            </div>
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary" style="flex: 1; padding: 1rem; font-size: 1.1rem;">
+                Générer toutes les slides
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="progress-container" id="progress" style="display:none;">
+    <div class="progress-bar-wrapper">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <ul class="progress-steps">
+        <li class="progress-step pending" data-step="parse">
+            <span class="step-icon">1</span>
+            <span>Parsing du programme</span>
+        </li>
+        <li class="progress-step pending" data-step="generate">
+            <span class="step-icon">2</span>
+            <span>Génération des slides</span>
+        </li>
+        <li class="progress-step pending" data-step="pptx">
+            <span class="step-icon">3</span>
+            <span>Création du PPTX</span>
+        </li>
+    </ul>
+</div>
+
+<div id="error-container"></div>
+
+<div class="result-container" id="result">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title" id="result-title">Slides générées</div>
+                <div class="card-subtitle" id="result-subtitle"></div>
+            </div>
+        </div>
+
+        <!-- Modules tabs / list -->
+        <div id="modules-list" style="padding: 1.5rem;">
+        </div>
+
+        <!-- Preview section -->
+        <div id="preview-section"
+            style="margin: 1.5rem 0; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px; display: none;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--noir-profond);">Prévisualisation des slides
+            </h3>
+            <div id="slides-preview-container"
+                style="display: flex; flex-direction: column; gap: 1rem; max-height: 600px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <div class="result-actions" id="result-actions">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    initTrainingSlidesPage();
+</script>
+{% endblock %}
