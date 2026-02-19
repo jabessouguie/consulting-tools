@@ -1,0 +1,142 @@
+{
+  "name": "consulting-tools",
+  "version": "1.0.0",
+  "description": "Agents intelligents pour Consulting Tools - Propositions commerciales et veille LinkedIn",
+  "agents": [
+    {
+      "id": "proposal-generator",
+      "name": "Générateur de Propositions Commerciales",
+      "description": "Génère automatiquement des propositions commerciales à partir d'appels d'offre",
+      "command": "python agents/proposal_generator.py {tender_file} -o {output_file}",
+      "type": "task",
+      "capabilities": [
+        "read_files",
+        "write_files",
+        "call_llm",
+        "google_api"
+      ],
+      "inputs": {
+        "tender_file": {
+          "type": "file",
+          "description": "Fichier contenant l'appel d'offre (txt, md, pdf)",
+          "required": true
+        },
+        "output_file": {
+          "type": "file",
+          "description": "Fichier de sortie pour la proposition",
+          "required": false,
+          "default": "output/proposal_{timestamp}.json"
+        }
+      },
+      "outputs": {
+        "proposal_json": {
+          "type": "file",
+          "format": "json",
+          "description": "Proposition commerciale complète"
+        },
+        "proposal_md": {
+          "type": "file",
+          "format": "markdown",
+          "description": "Proposition en format lisible"
+        }
+      },
+      "triggers": [
+        "new_tender",
+        "rfp_received",
+        "manual"
+      ],
+      "estimated_duration": "5-10 minutes",
+      "cost_estimate": "~$0.50-1.00 (tokens LLM)"
+    },
+    {
+      "id": "linkedin-monitor",
+      "name": "Agent de Veille LinkedIn",
+      "description": "Effectue une veille technologique et génère des posts LinkedIn",
+      "command": "python agents/linkedin_monitor.py --num-posts {num_posts}",
+      "type": "scheduled",
+      "capabilities": [
+        "web_scraping",
+        "rss_feeds",
+        "call_llm",
+        "write_files"
+      ],
+      "inputs": {
+        "num_posts": {
+          "type": "integer",
+          "description": "Nombre de posts à générer",
+          "required": false,
+          "default": 3,
+          "min": 1,
+          "max": 5
+        },
+        "post_type": {
+          "type": "string",
+          "description": "Type de post (insight, curation, opinion)",
+          "required": false,
+          "enum": ["insight", "curation", "opinion"]
+        }
+      },
+      "outputs": {
+        "cycle_data": {
+          "type": "file",
+          "format": "json",
+          "description": "Données complètes de veille"
+        },
+        "posts": {
+          "type": "array",
+          "format": "markdown",
+          "description": "Posts LinkedIn générés"
+        }
+      },
+      "schedule": "0 9 * * *",
+      "triggers": [
+        "daily_monitoring",
+        "scheduled",
+        "manual"
+      ],
+      "estimated_duration": "10-15 minutes",
+      "cost_estimate": "~$1.00-2.00 (tokens LLM)"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "tender-to-proposal",
+      "name": "Appel d'offre vers Proposition",
+      "description": "Workflow complet: réception d'appel d'offre → analyse → proposition",
+      "steps": [
+        {
+          "agent": "proposal-generator",
+          "inputs": {
+            "tender_file": "{{workflow.input.tender_file}}"
+          }
+        }
+      ],
+      "triggers": ["email_with_attachment", "drive_new_file"]
+    },
+    {
+      "id": "daily-linkedin-routine",
+      "name": "Routine quotidienne LinkedIn",
+      "description": "Veille quotidienne + génération de posts LinkedIn",
+      "steps": [
+        {
+          "agent": "linkedin-monitor",
+          "inputs": {
+            "num_posts": 3
+          }
+        }
+      ],
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "environment": {
+    "python_version": "3.9+",
+    "dependencies_file": "requirements.txt",
+    "env_file": ".env"
+  },
+  "settings": {
+    "auto_install_dependencies": true,
+    "virtual_env": true,
+    "log_level": "INFO",
+    "max_concurrent_agents": 2
+  }
+}
