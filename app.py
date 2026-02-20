@@ -90,7 +90,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 # Ajouter les middlewares dans l'ordre correct
 # L'ordre d'ajout est inversé : le dernier ajouté s'exécute en premier
-app.add_middleware(AuthMiddleware)  # S'exécute en second
+# app.add_middleware(AuthMiddleware)  # DESACTIVE - Pas de login requis
 app.add_middleware(SessionMiddleware, secret_key=get_session_secret())  # S'exécute en premier
 
 # Consultant info
@@ -5204,6 +5204,34 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
 
                 result["markdown"] = minutes
                 result["email"] = email_result
+
+            elif doc_type == "cv_reference":
+                job["steps"].append({"message": "Adaptation du CV/Reference..."})
+
+                from agents.cv_reference_adapter import CVReferenceAdapterAgent
+                agent = CVReferenceAdapterAgent()
+                if model:
+                    agent.llm = LLMClient(**llm_kwargs)
+
+                # Detecter automatiquement si c est un CV ou une reference
+                is_cv = any(kw in document_text.lower() for kw in [
+                    'experience', 'competences', 'formation', 'cv', 'consultant',
+                    'diplome', 'certification', 'parcours professionnel'
+                ])
+                type_label = "CV" if is_cv else "Reference"
+
+                job["steps"].append({"message": f"Generation des slides {type_label}..."})
+
+                gen_result = agent.run(
+                    document_text=document_text,
+                    mission_brief=topic,  # Le "topic" = l appel d offre
+                    doc_type=type_label
+                )
+
+                # Retourner slides au lieu de markdown
+                job["slides"] = gen_result.get("slides", [])
+                result["slides"] = gen_result.get("slides", [])
+                result["doc_type"] = type_label
 
             job["result"] = result
             job["status"] = "done"
