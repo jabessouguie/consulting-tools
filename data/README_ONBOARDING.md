@@ -29,38 +29,46 @@ Vos convictions, votre style d'écriture, vos thèmes de prédilection.
 - etc.
 ```
 
-### 2. **linkedin_profile.json** (OPTIONNEL)
-Vos informations LinkedIn de base.
+### 2. **Dossier linkedin_profile/** (RECOMMANDÉ - Structure organisée)
 
-**Structure** :
+**Créez un dossier** `data/linkedin_profile/` et mettez-y **tous vos fichiers LinkedIn** :
+
+```
+data/linkedin_profile/
+  ├── profile.json          # Infos de base (nom, titre, bio)
+  ├── persona.md            # Style, ton, thématiques
+  ├── posts/
+  │   ├── post_1.md         # Vos meilleurs posts LinkedIn
+  │   └── post_2.md
+  ├── experiences/
+  │   ├── mission_veolia.md # Détails de missions
+  │   └── projet_x.md
+  └── ...autres fichiers...
+```
+
+**Format `profile.json`** :
 ```json
 {
   "name": "Votre nom",
   "title": "Votre titre",
   "company": "Votre entreprise",
   "bio": "Votre bio courte",
-  "experiences": [
-    {
-      "title": "Poste",
-      "company": "Entreprise",
-      "description": "Description"
-    }
-  ],
-  "recent_posts": []
+  "experiences": [...],
+  "recent_posts": [...]
 }
 ```
 
-### 3. **linkedin_persona.md** (OPTIONNEL - AVANCÉ)
-Votre style de communication LinkedIn détaillé.
+**Format `persona.md`** : Style, ton, expressions, exemples de posts
 
-Définissez :
-- Ton et style (ex: "Parisien GenZ", "Expert corporate", etc.)
-- Expressions typiques
-- Structure de vos posts
-- Thématiques favorites
-- Exemples de posts
+**TOUT le contenu du dossier `linkedin_profile/` sera chargé et injecté dans le contexte !**
 
-**⚠️ Ces fichiers ne seront JAMAIS poussés sur Git** (protégés par `.gitignore`)
+### 3. **Fichiers racine** (ALTERNATIVE - Rétrocompatibilité)
+
+Si vous préférez ne pas créer de dossier :
+- `data/linkedin_profile.json` → Profil de base
+- `data/linkedin_persona.md` → Style et persona
+
+**⚠️ Tous ces fichiers ne seront JAMAIS poussés sur Git** (protégés par `.gitignore`)
 
 ## 🚀 Démarrage rapide
 
