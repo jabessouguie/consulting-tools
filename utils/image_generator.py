@@ -576,18 +576,30 @@ class ImageLibrary:
 
 
 class NanoBananaGenerator:
-    """Generateur d'images via Gemini Nano Banana Pro (gemini-3-pro-image-preview)"""
+    """Generateur d'images via Imagen 4 Fast avec SDK google-generativeai"""
 
     def __init__(self):
-        import google.generativeai as genai
-        self.genai = genai
-        api_key = os.getenv('GEMINI_API_KEY')
-        genai.configure(api_key=api_key)
-        self.model_name = "gemini-3-pro-image-preview"
+        try:
+            import google.generativeai as genai
+
+            # Configurer avec la cle API
+            api_key = os.getenv('GEMINI_API_KEY')
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY non trouvee dans .env")
+
+            genai.configure(api_key=api_key)
+            self.genai = genai
+            # Imagen 4 Fast - modele rapide et fiable pour generation d'images
+            self.model_name = "models/imagen-4.0-fast-generate-001"
+            print(f"  [NanoBanana] Initialise avec Imagen 4 Fast")
+
+        except Exception as e:
+            print(f"  [NanoBanana] Erreur initialisation: {e}")
+            self.genai = None
 
     def generate_image(self, prompt: str, output_path: str) -> Optional[str]:
         """
-        Genere une image a partir d'un prompt via Nano Banana Pro
+        Genere une image a partir d'un prompt via Imagen 4 Fast
 
         Args:
             prompt: Description de l'image a generer
@@ -596,36 +608,48 @@ class NanoBananaGenerator:
         Returns:
             Chemin du fichier image genere, ou None si echec
         """
+        if not self.genai:
+            print("  [NanoBanana] API non initialisee")
+            return None
+
         try:
+            # Generer l'image avec Imagen 4 Fast via google-generativeai
             model = self.genai.GenerativeModel(self.model_name)
+
+            # Configuration avec timeout etendu pour generation d'images
+            request_options = {
+                "timeout": 120.0  # 2 minutes timeout
+            }
+
             response = model.generate_content(
                 prompt,
                 generation_config=self.genai.GenerationConfig(
-                    response_mime_type="image/png"
-                )
+                    temperature=1.0,
+                ),
+                request_options=request_options
             )
 
-            # Extraire l'image de la reponse
-            if response.candidates and response.candidates[0].content.parts:
-                for part in response.candidates[0].content.parts:
+            # Extraire et sauvegarder l'image
+            if response.parts:
+                for part in response.parts:
                     if hasattr(part, 'inline_data') and part.inline_data:
-                        import base64
-                        image_data = part.inline_data.data
-                        # Sauvegarder l'image
                         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+                        # Ecrire les donnees de l'image
+                        image_data = part.inline_data.data
                         with open(output_path, 'wb') as f:
-                            if isinstance(image_data, str):
-                                f.write(base64.b64decode(image_data))
-                            else:
-                                f.write(image_data)
+                            f.write(image_data)
+
                         print(f"  [NanoBanana] Image generee: {output_path}")
                         return output_path
 
-            print(f"  [NanoBanana] Pas d'image dans la reponse")
+            print(f"  [NanoBanana] Aucune image dans la reponse")
             return None
 
         except Exception as e:
-            print(f"  [NanoBanana] Erreur: {e}")
+            print(f"  [NanoBanana] Erreur generation: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def generate_article_illustration(self, article_text: str, output_path: str) -> Optional[str]:

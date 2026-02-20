@@ -4251,6 +4251,98 @@ async def api_slide_editor_parse_document(file: UploadFile = File(...)):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
+    """Generate illustrations for relevant slides using Nano Banana Pro"""
+    try:
+        from utils.image_generator import NanoBananaGenerator
+        generator = NanoBananaGenerator()
+
+        output_dir = Path(BASE_DIR) / "output" / "images" / "slides"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Slide types that benefit from illustrations
+        visual_types = ["content", "highlight", "stat", "diagram", "image", "two_column"]
+
+        # Context adapte au type de generation
+        context_map = {
+            "formation": "training presentation",
+            "proposal": "business proposal",
+            "rex": "experience feedback presentation",
+            "presentation": "business presentation"
+        }
+        context = context_map.get(gen_type, "business presentation")
+
+        for idx, slide in enumerate(slides):
+            slide_type = slide.get("type", "")
+
+            # Skip non-visual slides
+            if slide_type not in visual_types:
+                continue
+
+            # Skip if already has an image
+            if slide.get("image"):
+                continue
+
+            # Generate prompt for the slide
+            title = slide.get("title", "")
+            content = slide.get("content", "")
+            bullets = slide.get("bullets", [])
+
+            # Prompt adapte au type
+            if gen_type == "formation":
+                prompt = f"""Create a premium, professional illustration for a training presentation slide.
+
+Topic: {topic}
+Slide Title: {title}
+Content: {content}
+Key Points: {', '.join(bullets[:3]) if bullets else ''}
+
+Style: Educational yet professional, Unreal Engine 5 render, engaging and clear.
+Colors: Cool blues, warm amber/gold accents, approachable palette.
+Mood: Pedagogical, inspiring, professional learning environment.
+Format: Wide format suitable for training slides."""
+            elif gen_type == "proposal":
+                prompt = f"""Create a premium, professional illustration for a business proposal slide.
+
+Topic: {topic}
+Slide Title: {title}
+Content: {content}
+Key Points: {', '.join(bullets[:3]) if bullets else ''}
+
+Style: High-end corporate, Unreal Engine 5 render, sophisticated and impactful.
+Colors: Premium blues, gold/amber accents, executive palette.
+Mood: Professional, trustworthy, results-oriented, winning proposal aesthetic.
+Format: Wide format suitable for executive presentation."""
+            else:
+                prompt = f"""Create a premium, professional illustration for a {context} slide.
+
+Topic: {topic}
+Slide Title: {title}
+Content: {content}
+Key Points: {', '.join(bullets[:3]) if bullets else ''}
+
+Style: Corporate tech aesthetic, Unreal Engine 5 render, clean and modern.
+Colors: Cool blues, warm amber/gold accents, professional palette.
+Mood: Sophisticated, futuristic but grounded, business presentation quality.
+Format: Wide format suitable for presentation slides."""
+
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_path = str(output_dir / f"slide_{idx}_{timestamp}.jpg")
+
+                image_path = generator.generate_image(prompt, output_path)
+                if image_path:
+                    slide["image"] = image_path
+                    job["steps"].append({"message": f"Illustration generee pour slide {idx+1}", "step": 4})
+            except Exception as e:
+                print(f"  Erreur generation image slide {idx}: {e}")
+                # Continue avec les autres slides
+
+    except Exception as e:
+        print(f"  Erreur generation illustrations: {e}")
+        # Non-blocking - continue sans images
+
+
 def _extract_slides_from_buffer(buffer, job):
     """Parse complete JSON slide objects from a partial LLM response buffer.
     Adds newly found slides to job['slides'] incrementally."""
@@ -4452,6 +4544,12 @@ Retourne TOUTES les slides (modifiees et non modifiees)."""
 
             if not job["slides"]:
                 raise ValueError("Aucune slide generee - reponse LLM invalide")
+
+            # Generate illustrations for relevant slides
+            # DESACTIVE: Imagen non disponible via google-generativeai SDK
+            # TODO: Integrer DALL-E (OpenAI) ou Replicate pour generation d'images
+            # job["steps"].append({"message": "Generation des illustrations...", "step": 4})
+            # _generate_slide_illustrations(job["slides"], job, topic, gen_type)
 
             job["result"] = {"slides": job["slides"], "total": len(job["slides"])}
             job["status"] = "done"
