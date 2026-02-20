@@ -81,49 +81,62 @@ Demandez des modifications simplement : "Simplifie le vocabulaire" ou "Ajoute un
 **Le texte s'affiche en direct** :
 Le contenu apparaît progressivement pendant sa création.
 
-## Installation et configuration
+## Installation et configuration (Guide pour débutants)
 
-### Prérequis
+Vous n'avez pas besoin d'être développeur pour utiliser cet outil. Suivez simplement ces étapes une par une :
 
-- Un ordinateur avec Python installé (version 3.12 ou plus récente)
-- Une connexion Internet
-- Une clé d'accès pour l'intelligence artificielle (fournie par Anthropic ou Google)
+### 1. Installer Python
+Python est le moteur qui fait tourner l'application.
+1. Allez sur le site officiel : https://www.python.org/downloads/
+2. Cliquez sur le bouton jaune "Download Python"
+3. Lancez le fichier téléchargé
+4. **TRÈS IMPORTANT** : Lors de l'installation, cochez bien la case "Add Python.exe to PATH" en bas de la fenêtre avant de cliquer sur "Install Now".
 
-### Étapes d'installation
+### 2. Télécharger le projet
+Pas besoin d'utiliser de lignes de commande complexes :
+1. Allez sur la page du projet (le dépôt où vous avez trouvé ce fichier)
+2. Cliquez sur le bouton vert **"Code"** en haut à droite
+3. Choisissez **"Download ZIP"**
+4. Une fois téléchargé, faites un clic droit sur le fichier ZIP et choisissez **"Extraire tout"** 
+5. Placez le dossier extrait où vous le souhaitez (par exemple, dans vos Documents).
 
-**1. Télécharger le projet**
-```bash
-cd consulting-tools
-```
+### 3. Obtenir une clé d'Intelligence Artificielle (Gratuit)
+L'outil a besoin du "cerveau" de Google (Gemini) pour fonctionner.
+1. Allez sur : https://aistudio.google.com/app/apikey
+2. Connectez-vous avec votre compte Google (Gmail)
+3. Cliquez sur le bouton **"Create API key"**
+4. Cliquez sur **"Create API key in a new project"**
+5. Copiez la longue suite de caractères qui s'affiche (c'est votre clé secrète).
 
-**2. Installer les composants nécessaires**
-```bash
-pip install -r requirements.txt
-```
+### 4. Configurer l'application
+1. Ouvrez le dossier fraîchement extrait sur votre ordinateur.
+2. Cherchez le fichier nommé `.env.example` (ou juste `.env` si votre ordinateur masque les extensions).
+3. Faites-en une copie et renommez cette copie en `.env` (exactement comme ça, avec un point au début).
+4. Ouvrez ce fichier `.env` avec le Bloc-notes (Windows) ou TextEdit (Mac).
+5. Modifiez le fichier pour y coller votre clé et activer Gemini :
+   ```text
+   GEMINI_API_KEY=collez-votre-clé-ici
+   USE_GEMINI=true
+   ```
+6. Enregistrez et fermez le fichier.
 
-**3. Configurer vos accès**
+### 5. Lancer l'application la première fois
+1. Ouvrez l'outil de commande de votre ordinateur :
+   - Sur Windows : Cherchez **"Invite de commandes"** ou **"cmd"** dans le menu Démarrer.
+   - Sur Mac : Cherchez **"Terminal"** avec Spotlight.
+2. Tapez `cd ` (avec un espace après le cd) puis glissez-déposez le dossier de l'application dans la fenêtre. Appuyez sur Entrée.
+3. Tapez la commande suivante pour installer les composants nécessaires, et appuyez sur Entrée :
+   ```bash
+   pip install -r requirements.txt
+   ```
+   *(Attendez que le texte défile et que l'installation se termine)*
+4. Une fois terminé, lancez l'application en tapant :
+   ```bash
+   python app.py
+   ```
+5. Ouvrez votre navigateur internet (Chrome, Safari, etc.) et tapez cette adresse : `http://localhost:8000`
 
-Copiez le fichier de configuration :
-```bash
-cp .env.example .env
-```
-
-Éditez le fichier `.env` avec vos informations :
-```bash
-# Intelligence artificielle (obligatoire)
-ANTHROPIC_API_KEY=votre-clé-anthropic
-
-# Informations consultant
-CONSULTANT_NAME=Votre Nom
-COMPANY_NAME=Votre Entreprise
-```
-
-**4. Lancer l'application**
-```bash
-python app.py
-```
-
-Ouvrez votre navigateur sur : `http://localhost:8000`
+L'application est prête à être utilisée !
 
 ## Configuration avancée
 
