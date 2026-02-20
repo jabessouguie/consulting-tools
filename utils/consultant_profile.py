@@ -109,37 +109,88 @@ class ConsultantProfile:
 
     def load_linkedin_profile(self) -> Dict[str, Any]:
         """
-        Charge le profil LinkedIn du consultant (JSON + persona markdown)
+        Charge le profil LinkedIn du consultant
+        Priorite : dossier linkedin_profile/ > fichiers racine data/
 
         Returns:
-            Dict avec bio, experiences, posts recents, persona
+            Dict avec bio, experiences, posts recents, persona, documents additionnels
         """
-        linkedin_json = self.data_dir / "linkedin_profile.json"
-        linkedin_persona = self.data_dir / "linkedin_persona.md"
+        linkedin_dir = self.data_dir / "linkedin_profile"
+        linkedin_json_root = self.data_dir / "linkedin_profile.json"
+        linkedin_persona_root = self.data_dir / "linkedin_persona.md"
 
-        profile = {}
+        profile = {
+            "name": os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
+            "title": os.getenv('CONSULTANT_TITLE', 'Consultant en strategie data et IA'),
+            "company": os.getenv('COMPANY_NAME', 'WEnvision'),
+            "bio": "",
+            "experiences": [],
+            "recent_posts": [],
+            "persona": "",
+            "additional_docs": []  # Documents additionnels du dossier
+        }
 
-        # 1. Charger linkedin_profile.json
-        if linkedin_json.exists():
-            with open(linkedin_json, 'r', encoding='utf-8') as f:
-                profile = json.load(f)
+        # OPTION 1: Charger depuis le dossier linkedin_profile/ (PRIORITAIRE)
+        if linkedin_dir.exists() and linkedin_dir.is_dir():
+            print(f"     → Chargement depuis dossier: {linkedin_dir}")
+
+            # Parcourir tous les fichiers du dossier
+            for file_path in sorted(linkedin_dir.rglob('*')):
+                if not file_path.is_file():
+                    continue
+
+                try:
+                    # Charger fichiers JSON
+                    if file_path.suffix.lower() == '.json':
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+
+                            # Si c est le profil principal, merger
+                            if 'name' in data or 'title' in data or 'bio' in data:
+                                profile.update({k: v for k, v in data.items() if v})
+                            else:
+                                # Sinon stocker comme doc additionnel
+                                profile["additional_docs"].append({
+                                    "filename": file_path.name,
+                                    "type": "json",
+                                    "content": data
+                                })
+
+                    # Charger fichiers Markdown
+                    elif file_path.suffix.lower() in ('.md', '.txt'):
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+
+                            # Si c est le persona, stocker separement
+                            if 'persona' in file_path.name.lower() or 'style' in file_path.name.lower():
+                                profile["persona"] += f"\n\n## {file_path.stem}\n\n{content}"
+                            else:
+                                # Sinon stocker comme doc additionnel
+                                profile["additional_docs"].append({
+                                    "filename": file_path.name,
+                                    "type": "markdown",
+                                    "content": content[:2000]  # Limiter pour ne pas surcharger
+                                })
+
+                except Exception as e:
+                    print(f"     ⚠️  Erreur lecture {file_path.name}: {e}")
+                    continue
+
+        # OPTION 2: Fallback sur fichiers racine (retrocompatibilite)
         else:
-            # Template par defaut
-            profile = {
-                "name": os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
-                "title": os.getenv('CONSULTANT_TITLE', 'Consultant en strategie data et IA'),
-                "company": os.getenv('COMPANY_NAME', 'WEnvision'),
-                "bio": "Consultant specialise en strategie data et IA.",
-                "experiences": [],
-                "recent_posts": []
-            }
+            # Charger linkedin_profile.json
+            if linkedin_json_root.exists():
+                with open(linkedin_json_root, 'r', encoding='utf-8') as f:
+                    root_data = json.load(f)
+                    profile.update({k: v for k, v in root_data.items() if v})
 
-        # 2. Charger linkedin_persona.md (style, ton, thematiques)
-        if linkedin_persona.exists():
-            with open(linkedin_persona, 'r', encoding='utf-8') as f:
-                profile["persona"] = f.read()
-        else:
-            profile["persona"] = ""
+            # Charger linkedin_persona.md
+            if linkedin_persona_root.exists():
+                with open(linkedin_persona_root, 'r', encoding='utf-8') as f:
+                    profile["persona"] = f.read()
+
+        # Nettoyer persona (enlever espaces multiples)
+        profile["persona"] = profile["persona"].strip()
 
         return profile
 
@@ -286,13 +337,30 @@ class ConsultantProfile:
 
         # 5. Profil LinkedIn
         linkedin = context.get("linkedin_profile", {})
-        if linkedin.get("bio"):
+        if linkedin.get("bio") or linkedin.get("persona"):
             linkedin_section = f"## TON PROFIL LINKEDIN\n\n**Titre** : {linkedin.get('title', '')}\n**Bio** : {linkedin.get('bio', '')[:500]}"
 
             # Ajouter persona si present (style, ton, thematiques)
             if linkedin.get("persona"):
-                persona_excerpt = linkedin["persona"][:1500]  # Limiter pour le prompt
+                persona_excerpt = linkedin["persona"][:2000]  # Augmente limite
                 linkedin_section += f"\n\n### Ton style et persona LinkedIn\n\n{persona_excerpt}"
+
+            # Ajouter documents additionnels (posts, experiences detaillees, etc.)
+            additional_docs = linkedin.get("additional_docs", [])
+            if additional_docs:
+                linkedin_section += f"\n\n### Documents complementaires LinkedIn"
+
+                for doc in additional_docs[:5]:  # Limiter a 5 docs max
+                    filename = doc.get("filename", "")
+                    doc_type = doc.get("type", "")
+                    content = doc.get("content", "")
+
+                    if doc_type == "markdown" and content:
+                        # Extrait titre ou utilise filename
+                        linkedin_section += f"\n\n**{filename}**:\n{content[:800]}"
+                    elif doc_type == "json" and content:
+                        # Resumer JSON
+                        linkedin_section += f"\n\n**{filename}**: {str(content)[:500]}"
 
             sections.append(linkedin_section)
 
