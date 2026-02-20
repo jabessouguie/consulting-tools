@@ -50,22 +50,23 @@ class ArticleGeneratorAgent:
 
 Tu rediges des articles de blog techniques et accessibles sur l'IA, la data et la transformation digitale.
 
-TON STYLE D'ECRITURE :
+TON STYLE D'ECRITURE ET REGLES STRICTES :
 - Ton expert mais accessible : tu vulgarises sans simplifier a l'exces
 - Concret et pragmatique : exemples reels, cas d'usage, retours d'experience
 - Critique constructif : tu poses les bonnes questions, tu challenges les idees recues
 - Pedagogue : tu expliques les concepts pas a pas
 - Engageant : tu interpelles le lecteur, tu poses des questions rhetoriques
-- Structure : introduction claire, developpement en sections, conclusion avec ouverture
+- INTERDICTION GRAMMATICALE : n'utilise absolument jamais le pronom "on" (privilegie "nous", "vous" ou la voix passive)
+- REGLE TYPOGRAPHIQUE : ne mets jamais de majuscule au premier mot qui suit les deux-points (:)
 
-STRUCTURE OBLIGATOIRE :
+STRUCTURE OBLIGATOIRE (CONCLUSION INVERSEE) :
 1. Titre accrocheur (H1)
-2. Chapeau (2-3 phrases resumant l'article)
+2. Chapeau et elements de conclusion : livre d'emblee les conclusions de l'article et les messages cles a retenir en 2 ou 3 phrases
 3. Introduction (contexte + problematique)
 4. Developpement en 3-4 sections (H2) avec sous-sections (H3) si besoin
 5. Exemples concrets et cas d'usage
 6. Points de vigilance / pieges a eviter
-7. Conclusion avec ouverture ou call-to-action
+7. Ouverture finale ou call-to-action (puisque la conclusion est au debut)
 
 FORMAT MARKDOWN :
 - Utilise # pour H1, ## pour H2, ### pour H3
@@ -83,7 +84,10 @@ L'article doit :
 - Apporter de la valeur et des insights concrets
 - Etre base sur des faits et ton expertise (pas d'invention)
 - Inclure des exemples pratiques et cas d'usage
-- Se terminer par une conclusion engageante
+- Livrer les conclusions et les takeaways des le debut de l'article
+- Respecter strictement l'interdiction d'utiliser le pronom "on"
+- Respecter strictement l'absence de majuscule apres les deux-points (:)
+- Se terminer par une ouverture engageante
 
 Retourne l'article directement en markdown, sans preambule."""
 
@@ -140,7 +144,7 @@ Genere le post LinkedIn."""
             output_dir.mkdir(parents=True, exist_ok=True)
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = str(output_dir / f"article_illustration_{timestamp}.png")
+            output_path = str(output_dir / f"article_illustration_{timestamp}.jpg")
 
             result = generator.generate_article_illustration(article, output_path)
             return result
@@ -226,9 +230,10 @@ Action: Generate the illustration now based on this analysis."""
         # 2. Generation du post LinkedIn
         linkedin_post = self.generate_linkedin_post(article, article_title=idea)
 
-        # 3. Generation de l'illustration
+        # 3. Generation de l'illustration (desactive - Imagen non disponible)
+        # TODO: Integrer DALL-E ou Replicate
         illustration_prompt = self.generate_illustration_prompt(article)
-        image_path = self.generate_illustration(article)
+        image_path = None  # self.generate_illustration(article)
 
         # 4. Recherche de sources web
         sources = self.research_web_sources(article)
