@@ -310,6 +310,35 @@
 let slides = [];
 let currentSlideIndex = 0;
 
+// Charger slides CV/Reference depuis localStorage si present
+(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const source = urlParams.get('source');
+    console.log(`📍 Slide Editor - source param: ${source}`);
+    if (source === 'cv_reference') {
+        console.log('📋 Mode CV/Reference detecte, chargement...');
+        const storedSlides = localStorage.getItem('cv_reference_slides');
+        const docType = localStorage.getItem('cv_reference_type') || 'CV';
+        if (storedSlides) {
+            try {
+                slides = JSON.parse(storedSlides);
+                console.log(`✓ CV/Reference Adapter: ${slides.length} slides chargees (${docType})`);
+                // Nettoyer localStorage
+                localStorage.removeItem('cv_reference_slides');
+                localStorage.removeItem('cv_reference_type');
+                // init() appellera renderAll() automatiquement
+                console.log('✓ Slides chargees, init() va les afficher');
+            } catch (e) {
+                console.error('✗ Erreur chargement slides CV/Reference:', e);
+                alert('Erreur chargement slides: ' + e.message);
+            }
+        } else {
+            console.warn('⚠ Aucune slide CV/Reference trouvee dans localStorage');
+            alert('Aucune slide trouvee. Verifiez que la generation est terminee.');
+        }
+    }
+})();
+
 // Demo data
 const DEMO_SLIDES = [
     {
@@ -391,7 +420,10 @@ const DEMO_SLIDES = [
 // INITIALIZATION
 // ====================================
 function init() {
-    slides = JSON.parse(JSON.stringify(DEMO_SLIDES));
+    // Ne pas ecraser les slides si elles viennent du CV/Reference Adapter
+    if (slides.length === 0) {
+        slides = JSON.parse(JSON.stringify(DEMO_SLIDES));
+    }
     initModelSelector();
     renderAll();
     showDownloadButtons();
@@ -565,10 +597,15 @@ function renderSlideHTML(slide, isThumbnail) {
             return `<div class="slide-image h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div class="grid grid-cols-2 h-full" style="grid-template-columns: 55% 1fr;">
-                    <div class="box-bg flex items-center justify-center overflow-hidden">
+                    <div class="box-bg flex items-center justify-center overflow-hidden ${slide.image_prompt ? 'p-4' : ''}">
                         ${slide.image_path
                             ? `<img src="${slide.image_path}" class="w-full h-full object-cover" alt="">`
-                            : `<div class="text-muted ${t ? 'text-[4px]' : 'text-sm'} text-center p-4">[Image]</div>`
+                            : slide.image_prompt
+                                ? `<div class="text-left ${t ? 'text-[3px]' : 'text-[10px]'} leading-relaxed">
+                                    <div class="font-chakra font-bold mb-1 accent ${t ? 'text-[4px]' : 'text-xs'}">📸 Image Prompt (DALL-E/Midjourney)</div>
+                                    <div class="text-secondary">${slide.image_prompt.substring(0, t ? 100 : 400)}${(slide.image_prompt.length > (t ? 100 : 400)) ? '...' : ''}</div>
+                                   </div>`
+                                : `<div class="text-muted ${t ? 'text-[4px]' : 'text-sm'} text-center">[Image]</div>`
                         }
                     </div>
                     <div class="${pad} flex flex-col">
@@ -633,6 +670,51 @@ function renderSlideHTML(slide, isThumbnail) {
                 <div class="divider h-0.5 ${t ? 'w-4' : 'w-16'} rounded-full my-${t ? '1' : '4'}"></div>
                 ${subLines.map(l => `<div class="text-secondary ${t ? 'text-[3px]' : 'text-sm'}">${l}</div>`).join('')}
             </div>`;
+
+        case 'cv': {
+            const skills = (slide.skills || []).map(s =>
+                `<span class="accent-bg text-white ${t ? 'text-[3px] px-1 py-0.5' : 'text-xs px-2 py-1'} rounded font-semibold">${s}</span>`
+            ).join('');
+            const experiences = (slide.experiences || []).map(exp =>
+                `<div class="${t ? 'mb-0.5' : 'mb-2'}">
+                    <div class="flex items-baseline gap-1">
+                        <span ${edit} class="text-primary font-semibold ${t ? 'text-[3px]' : 'text-sm'}">${exp.role || ''}</span>
+                        <span class="text-muted ${t ? 'text-[2px]' : 'text-xs'}">\u2022</span>
+                        <span ${edit} class="text-secondary ${t ? 'text-[3px]' : 'text-xs'}">${exp.company || ''}</span>
+                        <span class="text-muted ${t ? 'text-[2px]' : 'text-xs'}">\u2022</span>
+                        <span ${edit} class="text-muted ${t ? 'text-[2px]' : 'text-xs'}">${exp.period || ''}</span>
+                    </div>
+                    ${exp.description ? `<div ${edit} class="text-secondary ${t ? 'text-[2px]' : 'text-xs'} italic mt-0.5">${exp.description}</div>` : ''}
+                </div>`
+            ).join('');
+            return `<div class="slide-content ${pad} h-full relative grid grid-cols-3 gap-${t ? '1' : '4'}">
+                ${badge}${tagsHtml}${marker}
+                <div class="col-span-1 flex flex-col items-center ${t ? 'gap-0.5' : 'gap-2'}">
+                    <div class="box-bg rounded-lg ${t ? 'w-8 h-8' : 'w-32 h-32'} flex items-center justify-center overflow-hidden">
+                        ${slide.photo && slide.photo !== 'placeholder'
+                            ? `<img src="${slide.photo}" class="w-full h-full object-cover" alt="">`
+                            : `<div class="text-muted ${t ? 'text-[3px]' : 'text-xs'}">[Photo]</div>`
+                        }
+                    </div>
+                    <div ${edit} class="text-primary font-chakra font-bold ${t ? 'text-[4px]' : 'text-lg'} text-center">${slide.name || ''}</div>
+                    <div ${edit} class="accent font-semibold ${t ? 'text-[3px]' : 'text-sm'} text-center">${slide.title || ''}</div>
+                </div>
+                <div class="col-span-2 flex flex-col ${t ? 'gap-0.5' : 'gap-3'}">
+                    <div>
+                        <div class="font-chakra font-semibold ${t ? 'text-[3px]' : 'text-sm'} accent mb-1">Profil</div>
+                        <div ${edit} class="text-secondary ${t ? 'text-[2px]' : 'text-xs'} leading-relaxed">${slide.profile || ''}</div>
+                    </div>
+                    <div>
+                        <div class="font-chakra font-semibold ${t ? 'text-[3px]' : 'text-sm'} accent mb-1">Competences</div>
+                        <div class="flex flex-wrap gap-${t ? '0.5' : '1'}">${skills}</div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="font-chakra font-semibold ${t ? 'text-[3px]' : 'text-sm'} accent mb-1">Experiences</div>
+                        <div class="${t ? 'space-y-0.5' : 'space-y-2'}">${experiences}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
 
         default:
             return `<div class="slide-content ${pad} flex flex-col h-full relative">
@@ -735,7 +817,7 @@ function renderPropsPanel() {
         return;
     }
     const slide = slides[currentSlideIndex];
-    const types = ['cover','section','content','stat','quote','highlight','diagram','image','table','two_column','closing'];
+    const types = ['cover','section','content','stat','quote','highlight','diagram','image','table','two_column','cv','closing'];
 
     panel.innerHTML = `
         <div>
@@ -772,6 +854,7 @@ function changeSlideType(newType) {
         image: { title: slide.title || 'Image', bullets: ['Point 1'] },
         table: { title: slide.title || 'Tableau', headers: ['Col 1', 'Col 2'], rows: [['A', 'B'], ['C', 'D']] },
         two_column: { title: slide.title || '2 Colonnes', left_title: 'Gauche', left_points: ['A'], right_title: 'Droite', right_points: ['B'] },
+        cv: { name: 'Nom Consultant', title: 'Titre Professionnel', photo: 'placeholder', profile: 'Profil du consultant...', skills: ['Competence 1', 'Competence 2', 'Competence 3'], experiences: [{ role: 'Poste', company: 'Client', period: '2020-2024', description: 'Description' }] },
         closing: { title: 'Merci' }
     };
     slides[currentSlideIndex] = { type: newType, ...defaults[newType] };
@@ -1299,6 +1382,35 @@ function exportPPTX() {
                 s.addText(slide.right_title || '', { x: 6.8, y: 1.5, w: 5.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
                 (slide.right_points || []).forEach((b, i) => {
                     s.addText('\u2022 ' + b, { x: 6.8, y: 2.2 + i * 0.7, w: 5.5, fontSize: 13, color: secColor, fontFace: 'Inter' });
+                });
+                break;
+
+            case 'cv':
+                // Photo placeholder
+                s.addShape(pptx.ShapeType.roundRect, { x: 0.8, y: 0.8, w: 2.5, h: 2.5, fill: { color: c.boxBg }, rectRadius: 0.1 });
+                s.addText('[Photo]', { x: 0.8, y: 1.8, w: 2.5, h: 0.5, fontSize: 10, color: c.textMuted, fontFace: 'Inter', align: 'center', valign: 'middle' });
+                // Name and title
+                s.addText(slide.name || '', { x: 0.8, y: 3.5, w: 2.5, fontSize: 16, color: txtColor, fontFace: 'Chakra Petch', bold: true, align: 'center' });
+                s.addText(slide.title || '', { x: 0.8, y: 4, w: 2.5, fontSize: 12, color: c.accent, fontFace: 'Inter', bold: true, align: 'center' });
+                // Profile
+                s.addText('Profil', { x: 3.8, y: 0.8, w: 8.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
+                s.addText(slide.profile || '', { x: 3.8, y: 1.2, w: 8.5, fontSize: 11, color: secColor, fontFace: 'Inter' });
+                // Skills
+                s.addText('Competences', { x: 3.8, y: 2.4, w: 8.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
+                let skillY = 2.8;
+                (slide.skills || []).forEach((skill, i) => {
+                    if (i > 0 && i % 4 === 0) skillY += 0.4;
+                    s.addShape(pptx.ShapeType.roundRect, { x: 3.8 + (i % 4) * 2.1, y: skillY, w: 2, h: 0.35, fill: { color: c.accent }, rectRadius: 0.05 });
+                    s.addText(skill, { x: 3.8 + (i % 4) * 2.1, y: skillY, w: 2, h: 0.35, fontSize: 10, color: 'FFFFFF', fontFace: 'Inter', bold: true, align: 'center', valign: 'middle' });
+                });
+                // Experiences
+                s.addText('Experiences', { x: 3.8, y: 3.8, w: 8.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
+                (slide.experiences || []).forEach((exp, i) => {
+                    const expY = 4.2 + i * 0.9;
+                    s.addText(`${exp.role || ''} - ${exp.company || ''} (${exp.period || ''})`, { x: 3.8, y: expY, w: 8.5, fontSize: 11, color: txtColor, fontFace: 'Inter', bold: true });
+                    if (exp.description) {
+                        s.addText(exp.description, { x: 3.8, y: expY + 0.3, w: 8.5, fontSize: 9, color: secColor, fontFace: 'Inter', italic: true });
+                    }
                 });
                 break;
 
