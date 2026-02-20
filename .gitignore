@@ -29,6 +29,11 @@ Biographies*.pptx
 google_credentials.json
 config/google_credentials.json
 
+# Donnees personnelles LinkedIn - NE JAMAIS COMMITER
+data/linkedin_profile.json
+data/linkedin_persona.md
+data/linkedin_profile/
+
 # Python
 __pycache__/
 *.py[cod]

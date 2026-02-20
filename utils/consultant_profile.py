@@ -109,38 +109,39 @@ class ConsultantProfile:
 
     def load_linkedin_profile(self) -> Dict[str, Any]:
         """
-        Charge le profil LinkedIn du consultant
+        Charge le profil LinkedIn du consultant (JSON + persona markdown)
 
         Returns:
-            Dict avec bio, experiences, posts recents
+            Dict avec bio, experiences, posts recents, persona
         """
-        linkedin_path = self.data_dir / "linkedin_profile.json"
+        linkedin_json = self.data_dir / "linkedin_profile.json"
+        linkedin_persona = self.data_dir / "linkedin_persona.md"
 
-        if linkedin_path.exists():
-            with open(linkedin_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+        profile = {}
+
+        # 1. Charger linkedin_profile.json
+        if linkedin_json.exists():
+            with open(linkedin_json, 'r', encoding='utf-8') as f:
+                profile = json.load(f)
         else:
             # Template par defaut
-            default_profile = {
+            profile = {
                 "name": os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
                 "title": os.getenv('CONSULTANT_TITLE', 'Consultant en strategie data et IA'),
                 "company": os.getenv('COMPANY_NAME', 'WEnvision'),
-                "bio": "Consultant specialise en strategie data et IA, avec une expertise en gouvernance des donnees, adoption de l IA generative et transformation digitale.",
-                "experiences": [
-                    {
-                        "title": "Consultant Data & IA",
-                        "company": "WEnvision",
-                        "description": "Accompagnement des entreprises dans leur strategie data et IA"
-                    }
-                ],
+                "bio": "Consultant specialise en strategie data et IA.",
+                "experiences": [],
                 "recent_posts": []
             }
 
-            linkedin_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(linkedin_path, 'w', encoding='utf-8') as f:
-                json.dump(default_profile, f, indent=2, ensure_ascii=False)
+        # 2. Charger linkedin_persona.md (style, ton, thematiques)
+        if linkedin_persona.exists():
+            with open(linkedin_persona, 'r', encoding='utf-8') as f:
+                profile["persona"] = f.read()
+        else:
+            profile["persona"] = ""
 
-            return default_profile
+        return profile
 
     def load_tech_trends(self, days: int = 30, limit: int = 10) -> List[Dict[str, Any]]:
         """
@@ -286,7 +287,14 @@ class ConsultantProfile:
         # 5. Profil LinkedIn
         linkedin = context.get("linkedin_profile", {})
         if linkedin.get("bio"):
-            sections.append(f"## TON PROFIL LINKEDIN\n\n**Titre** : {linkedin.get('title', '')}\n**Bio** : {linkedin.get('bio', '')[:500]}")
+            linkedin_section = f"## TON PROFIL LINKEDIN\n\n**Titre** : {linkedin.get('title', '')}\n**Bio** : {linkedin.get('bio', '')[:500]}"
+
+            # Ajouter persona si present (style, ton, thematiques)
+            if linkedin.get("persona"):
+                persona_excerpt = linkedin["persona"][:1500]  # Limiter pour le prompt
+                linkedin_section += f"\n\n### Ton style et persona LinkedIn\n\n{persona_excerpt}"
+
+            sections.append(linkedin_section)
 
         return "\n\n".join(sections)
 
