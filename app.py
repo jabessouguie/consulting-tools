@@ -4224,7 +4224,7 @@ async def slide_editor_page(request: Request):
 
 @app.post("/api/slide-editor/parse-document")
 async def api_slide_editor_parse_document(file: UploadFile = File(...)):
-    """Parse un document uploade et retourne son contenu texte"""
+    """Parse un document uploade et retourne son contenu texte (ou chemin pour PPTX)"""
     try:
         content = await file.read()
         filename = file.filename or "document.txt"
@@ -4242,6 +4242,18 @@ async def api_slide_editor_parse_document(file: UploadFile = File(...)):
             import io
             doc = DocxDocument(io.BytesIO(content))
             text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        elif ext == '.pptx':
+            # Pour PPTX: sauvegarder temporairement le fichier et retourner le chemin
+            import tempfile
+            temp_dir = Path(tempfile.gettempdir()) / "consulting-tools_uploads"
+            temp_dir.mkdir(exist_ok=True)
+
+            temp_path = temp_dir / f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+            with open(temp_path, 'wb') as f:
+                f.write(content)
+
+            # Retourner le chemin au lieu du texte
+            return {"text": str(temp_path), "filename": filename, "length": len(content), "is_pptx": True}
         else:
             return JSONResponse({"error": f"Format non supporte: {ext}"}, status_code=400)
 
@@ -5226,6 +5238,30 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
                 job["slides"] = gen_result.get("slides", [])
                 result["slides"] = gen_result.get("slides", [])
                 result["doc_type"] = type_label
+
+            elif doc_type == "presentation_script":
+                job["steps"].append({"message": "Extraction du contenu PPTX..."})
+
+                # document_text contient le chemin vers le fichier PPTX temporaire
+                if not document_text or not document_text.endswith('.pptx'):
+                    raise ValueError("Fichier PPTX obligatoire pour generer un script de presentation")
+
+                from agents.presentation_script_generator import PresentationScriptGenerator
+                agent = PresentationScriptGenerator()
+                if model:
+                    agent.llm = LLMClient(**llm_kwargs)
+
+                job["steps"].append({"message": "Analyse des slides..."})
+
+                # Stream chunks si possible
+                gen_result = agent.run(
+                    pptx_path=document_text,
+                    presentation_context=topic or ""
+                )
+
+                result["markdown"] = gen_result.get("markdown", "")
+                result["num_slides"] = gen_result.get("num_slides", 0)
+                result["estimated_duration"] = gen_result.get("estimated_duration", "")
 
             job["result"] = result
             job["status"] = "done"
