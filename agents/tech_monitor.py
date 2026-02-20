@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 import html2text
 
 from utils.llm_client import LLMClient
+from utils.article_db import ArticleDatabase
 
 
 class TechMonitorAgent:
@@ -30,6 +31,9 @@ class TechMonitorAgent:
         self.html_converter.ignore_links = False
         self.html_converter.ignore_images = True
         self.html_converter.body_width = 0
+
+        # Base de données des articles
+        self.db = ArticleDatabase()
 
         self.consultant_info = {
             'name': os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha'),
@@ -112,6 +116,12 @@ class TechMonitorAgent:
                 continue
 
         print(f"   ✅ {len(articles)} articles collectés")
+
+        # Sauvegarder dans la base de données
+        if articles:
+            saved_count = self.db.save_articles(articles)
+            print(f"   💾 {saved_count} nouveaux articles sauvegardés en BDD")
+
         return articles
 
     def analyze_trends(self, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -295,10 +305,20 @@ Format : Markdown avec emojis."""
             f.write("---\n\n")
             f.write(result['content'])
 
+        # Sauvegarder le digest dans la base de données
+        digest_id = self.db.save_digest(
+            period=period,
+            content=result['content'],
+            num_articles=len(articles),
+            file_path=md_path
+        )
+
         result['md_path'] = md_path
+        result['digest_id'] = digest_id
         result['articles'] = articles[:10]  # Limiter pour la réponse
 
         print(f"\n✅ Digest sauvegardé: {md_path}")
+        print(f"   💾 Digest sauvegardé en BDD (ID: {digest_id})")
 
         return result
 

@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
 from utils.llm_client import LLMClient
+from utils.consultant_profile import ConsultantProfile
 
 
 class ArticleGeneratorAgent:
@@ -31,8 +32,17 @@ class ArticleGeneratorAgent:
             'company': os.getenv('COMPANY_NAME', 'Consulting Tools'),
         }
 
-    def generate_article(self, idea: str, target_length: str = "medium") -> str:
-        """Genere un article markdown a partir d'une idee"""
+        # Profil consultant pour contexte enrichi
+        self.profile = ConsultantProfile(base_dir=str(self.base_dir))
+
+    def generate_article(self, idea: str, target_length: str = "medium", use_context: bool = False) -> str:
+        """Genere un article markdown a partir d'une idee
+
+        Args:
+            idea: Sujet de l article
+            target_length: short, medium ou long
+            use_context: Utiliser le contexte enrichi (articles precedents, veille, personnalite)
+        """
         print("  [1/4] Generation de l'article...")
 
         length_map = {
@@ -44,9 +54,18 @@ class ArticleGeneratorAgent:
 
         writing_style = self._load_writing_style()
 
+        # Charger contexte enrichi si demande
+        context_section = ""
+        if use_context:
+            print("     📦 Chargement du contexte enrichi...")
+            context = self.profile.build_context()
+            context_section = "\n\n" + self.profile.format_context_for_prompt(context) + "\n"
+            print("     ✓ Contexte charge et formate")
+
         system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
 
 {writing_style}
+{context_section}
 
 Tu rediges des articles de blog techniques et accessibles sur l'IA, la data et la transformation digitale.
 
@@ -59,14 +78,37 @@ TON STYLE D'ECRITURE ET REGLES STRICTES :
 - INTERDICTION GRAMMATICALE : n'utilise absolument jamais le pronom "on" (privilegie "nous", "vous" ou la voix passive)
 - REGLE TYPOGRAPHIQUE : ne mets jamais de majuscule au premier mot qui suit les deux-points (:)
 
-STRUCTURE OBLIGATOIRE (CONCLUSION INVERSEE) :
-1. Titre accrocheur (H1)
-2. Chapeau et elements de conclusion : livre d'emblee les conclusions de l'article et les messages cles a retenir en 2 ou 3 phrases
-3. Introduction (contexte + problematique)
-4. Developpement en 3-4 sections (H2) avec sous-sections (H3) si besoin
-5. Exemples concrets et cas d'usage
-6. Points de vigilance / pieges a eviter
-7. Ouverture finale ou call-to-action (puisque la conclusion est au debut)
+FORMAT ARTICLE COMPLET :
+
+1. METADONNEES YAML (obligatoire) :
+---
+title: "[Titre percutant de l'article]"
+author: "Jean-Sebastien ABESSOUGUIE"
+universe: "[ai|data|cloud|transformation]"
+cluster: "[sous-theme, ex: ia-entreprise-roi, data-governance, cloud-migration]"
+type: "[focus|analyse|tutorial|opinion]"
+readTime: "[X min]" (estime selon longueur)
+publishDate: "{datetime.now().strftime('%Y-%m-%d')}"
+description: "[Description 1-2 phrases]"
+tags: ["[Tag1]", "[Tag2]", "[Tag3]"]
+---
+
+2. IMAGE PLACEHOLDER (obligatoire) :
+> **[IMAGE PLACEHOLDER]**
+>
+> **Prompt de generation (DALL-E / Midjourney)** :
+> [Genere ici un prompt detaille pour creer une illustration premium et cinematique adaptee au theme de l article. Style : Unreal Engine 5, corporate tech, palette bleu froid + ambre/or, format 1792x1024 (paysage)]
+>
+> **Dimensions recommandees** : 1792x1024px (format paysage pour blog header)
+
+3. STRUCTURE ARTICLE (CONCLUSION INVERSEE) :
+- Titre accrocheur (H1)
+- Chapeau et elements de conclusion : livre d emblee les conclusions de l article et les messages cles a retenir en 2 ou 3 phrases
+- Introduction (contexte + problematique)
+- Developpement en 3-4 sections (H2) avec sous-sections (H3) si besoin
+- Exemples concrets et cas d usage
+- Points de vigilance / pieges a eviter
+- Ouverture finale ou call-to-action (puisque la conclusion est au debut)
 
 FORMAT MARKDOWN :
 - Utilise # pour H1, ## pour H2, ### pour H3
@@ -84,14 +126,28 @@ L'article doit :
 - Apporter de la valeur et des insights concrets
 - Etre base sur des faits et ton expertise (pas d'invention)
 - Inclure des exemples pratiques et cas d'usage
-- Livrer les conclusions et les takeaways des le debut de l'article
-- Respecter strictement l'interdiction d'utiliser le pronom "on"
-- Respecter strictement l'absence de majuscule apres les deux-points (:)
+- Livrer les conclusions et les takeaways des le debut de l article
+- Respecter strictement l interdiction d utiliser le pronom on
+- Respecter strictement l absence de majuscule apres les deux-points (:)
 - Se terminer par une ouverture engageante
 
-Retourne l'article directement en markdown, sans preambule."""
+IMPORTANT : Commence l article par les metadonnees YAML, puis l image placeholder **![][image1]**, puis le contenu.
 
-        return self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
+Retourne l article complet avec metadonnees en markdown, sans preambule."""
+
+        result = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
+
+        # Nettoyer markdown fences si presentes
+        result = result.strip()
+        if result.startswith('```markdown'):
+            result = result[len('```markdown'):]
+        if result.startswith('```'):
+            result = result[3:]
+        if result.endswith('```'):
+            result = result[:-3]
+        result = result.strip()
+
+        return result
 
     def generate_linkedin_post(self, article: str, article_title: str = "", article_url: str = "") -> str:
         """Genere un post LinkedIn pour promouvoir l'article"""
@@ -195,47 +251,107 @@ Reponds au format JSON :
         style_path = self.base_dir / "data" / "writing_style.md"
         if style_path.exists():
             with open(style_path, 'r', encoding='utf-8') as f:
-                return f"STYLE D'ECRITURE SPECIFIQUE :\n{f.read()}"
+                return f"STYLE D ECRITURE SPECIFIQUE :\n{f.read()}"
         return ""
 
+    def _extract_metadata(self, markdown_text: str) -> Dict[str, Any]:
+        """Extrait les metadonnees YAML du front matter"""
+        import re
+
+        # Chercher le bloc YAML
+        match = re.search(r'^---\n(.*?)\n---', markdown_text, re.DOTALL)
+        if not match:
+            return {}
+
+        yaml_content = match.group(1)
+        metadata = {}
+
+        # Parser manuellement (eviter dependance PyYAML)
+        for line in yaml_content.split('\n'):
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+
+                # Tags = liste
+                if key == 'tags':
+                    try:
+                        metadata[key] = eval(value)  # Liste Python
+                    except:
+                        metadata[key] = []
+                else:
+                    metadata[key] = value
+
+        return metadata
+
     def generate_illustration_prompt(self, article: str) -> str:
-        """Genere un prompt pour Nano Banana Pro"""
-        return f"""Role & Objective: You are an expert Art Director for a high-end tech consultancy firm.
-Your task is to generate a premium, cinematic illustration based on the Blog Post provided below.
+        """Genere un prompt DALL-E/Midjourney ready base sur l article"""
 
-Analysis Instructions:
-1. Read the blog post below.
-2. Extract the core metaphor.
-3. Ignore literal elements. Focus on the concept of "Orchestrating Intelligence".
+        # Extraire le titre et les concepts cles de l article
+        system_prompt = """Tu es un expert en generation de prompts pour DALL-E et Midjourney.
+Ton role est de creer un prompt concis et efficace pour generer une illustration premium."""
 
-Visual Style Guidelines:
-* Aesthetic: Unreal Engine 5 render, isometric or wide-angle, 8k resolution.
-* Mood: Sophisticated, futuristic but grounded, "Corporate Tech".
-* Lighting: Dramatic contrast between cool electric blues (representing the AI data stream) and warm amber/gold (representing the human touch/value).
-* Composition: A central human figure (silhouette or back view) controlling or structuring a massive, complex digital structure.
+        user_prompt = f"""Extrait de l article :
+{article[:1500]}
 
-Input Text (The Blog Post):
-{article[:3000]}
+Genere un prompt DALL-E/Midjourney (max 300 caracteres) pour une illustration premium de blog tech.
 
-Action: Generate the illustration now based on this analysis."""
+CONTRAINTES :
+- Style : Unreal Engine 5 render, corporate tech aesthetic, isometric or wide-angle
+- Palette : Cool electric blues + warm amber/gold accents
+- Mood : Sophisticated, futuristic but grounded, professional
+- Format : Wide landscape 16:9, suitable for blog header
+- Contenu : Represente le concept central de l article de maniere metaphorique (PAS literal)
 
-    def run(self, idea: str, target_length: str = "medium") -> Dict[str, Any]:
-        """Pipeline complet : article + LinkedIn post + image + sources"""
+Retourne UNIQUEMENT le prompt, sans explication."""
+
+        try:
+            prompt = self.llm.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.7
+            )
+            return prompt.strip().strip('"')
+        except Exception as e:
+            # Fallback : prompt generique
+            return "A premium cinematic illustration for a tech consulting blog post. Unreal Engine 5 render, isometric view, 8k quality. Corporate tech aesthetic with cool electric blues and warm amber/gold accents. Sophisticated, futuristic but grounded mood. Wide landscape format, 16:9."
+
+    def run(self, idea: str, target_length: str = "medium", use_context: bool = False) -> Dict[str, Any]:
+        """Pipeline complet : article + LinkedIn post + image + sources
+
+        Args:
+            idea: Sujet de l article
+            target_length: short, medium ou long
+            use_context: Utiliser le contexte enrichi (articles precedents, veille, personnalite)
+        """
         print(f"\n  GENERATION D'ARTICLE")
         print(f"  Idee : {idea[:100]}...")
+        if use_context:
+            print(f"  Mode : Contexte enrichi active 🎯")
 
-        # 1. Generation de l'article
-        article = self.generate_article(idea, target_length)
+        # 1. Generation de l article
+        article = self.generate_article(idea, target_length, use_context=use_context)
+
+        # Extraire les metadonnees du front matter
+        metadata = self._extract_metadata(article)
+
+        # Generer le prompt d image detaille
+        illustration_prompt = self.generate_illustration_prompt(article)
+
+        # Remplacer le placeholder generique par le prompt detaille
+        placeholder_pattern = r'\[Genere ici un prompt detaille.*?\]'
+        import re
+        article = re.sub(
+            placeholder_pattern,
+            illustration_prompt.replace('\n', ' ').strip(),
+            article,
+            flags=re.DOTALL
+        )
 
         # 2. Generation du post LinkedIn
         linkedin_post = self.generate_linkedin_post(article, article_title=idea)
 
-        # 3. Generation de l'illustration (desactive - Imagen non disponible)
-        # TODO: Integrer DALL-E ou Replicate
-        illustration_prompt = self.generate_illustration_prompt(article)
-        image_path = None  # self.generate_illustration(article)
-
-        # 4. Recherche de sources web
+        # 3. Recherche de sources web
         sources = self.research_web_sources(article)
 
         # Sauvegarde
@@ -248,28 +364,17 @@ Action: Generate the illustration now based on this analysis."""
 
         article_path = output_dir / f"article_{slug}_{timestamp}.md"
 
-        full_article = f"""---
-title: {idea}
-author: {self.consultant_info['name']}
-company: {self.consultant_info['company']}
-date: {datetime.now().strftime('%Y-%m-%d')}
-illustration_prompt: |
-  {illustration_prompt[:200]}
----
-
-{article}
-"""
-
+        # L article contient deja les metadonnees YAML generees par le LLM
         with open(article_path, 'w', encoding='utf-8') as f:
-            f.write(full_article)
+            f.write(article)
 
         print(f"  Article sauvegarde : {article_path.relative_to(self.base_dir)}")
 
         result = {
             "article": article,
+            "metadata": metadata,
             "linkedin_post": linkedin_post,
             "illustration_prompt": illustration_prompt,
-            "image_path": str(Path(image_path).relative_to(self.base_dir)) if image_path else None,
             "sources": sources,
             "article_path": str(article_path.relative_to(self.base_dir)),
             "generated_at": datetime.now().isoformat()
