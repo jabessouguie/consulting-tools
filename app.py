@@ -2223,13 +2223,11 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
 
 # === PAGE & API: TECH WATCH ===
 
-@app.get("/techwatch", response_class=HTMLResponse)
-async def techwatch_page(request: Request):
-    return templates.TemplateResponse("techwatch.html", {
-        "request": request,
-        "active": "techwatch",
-        "consultant_name": CONSULTANT_NAME,
-    })
+@app.get("/techwatch")
+async def techwatch_page():
+    """Redirection vers la nouvelle page veille"""
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/veille", status_code=301)
 
 
 @app.post("/api/techwatch/generate")
@@ -3078,6 +3076,7 @@ async def article_generator_page(request: Request):
 async def api_article_generator_generate(
     request: Request,
     idea_text: str = Form(...),
+    use_context: bool = Form(False),
 ):
     """Lance la génération d'un article de blog"""
     if len(idea_text.strip()) < 20:
@@ -3094,7 +3093,7 @@ async def api_article_generator_generate(
 
     thread = threading.Thread(
         target=_run_article_generator,
-        args=(job_id, idea_text),
+        args=(job_id, idea_text, use_context),
         daemon=True,
     )
     thread.start()
@@ -3102,7 +3101,7 @@ async def api_article_generator_generate(
     return {"job_id": job_id}
 
 
-def _run_article_generator(job_id: str, idea: str):
+def _run_article_generator(job_id: str, idea: str, use_context: bool = False):
     """Execute la generation d'article en background (4 etapes)"""
     job = jobs[job_id]
 
@@ -3113,7 +3112,7 @@ def _run_article_generator(job_id: str, idea: str):
         job["steps"].append({"step": "article", "status": "active", "progress": 10})
 
         # Pipeline complet (article + linkedin + image + sources)
-        result = agent.run(idea, target_length="medium")
+        result = agent.run(idea, target_length="medium", use_context=use_context)
 
         job["steps"].append({"step": "article", "status": "done", "progress": 100})
 
@@ -4252,14 +4251,8 @@ async def api_slide_editor_parse_document(file: UploadFile = File(...)):
 
 
 def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
-    """Generate illustrations for relevant slides using Nano Banana Pro"""
+    """Add image generation prompts to relevant slides (no actual image generation)"""
     try:
-        from utils.image_generator import NanoBananaGenerator
-        generator = NanoBananaGenerator()
-
-        output_dir = Path(BASE_DIR) / "output" / "images" / "slides"
-        output_dir.mkdir(parents=True, exist_ok=True)
-
         # Slide types that benefit from illustrations
         visual_types = ["content", "highlight", "stat", "diagram", "image", "two_column"]
 
@@ -4279,14 +4272,15 @@ def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
             if slide_type not in visual_types:
                 continue
 
-            # Skip if already has an image
-            if slide.get("image"):
+            # Skip if already has an image or image_prompt
+            if slide.get("image") or slide.get("image_prompt"):
                 continue
 
             # Generate prompt for the slide
             title = slide.get("title", "")
             content = slide.get("content", "")
             bullets = slide.get("bullets", [])
+            key_points = slide.get("key_points", [])
 
             # Prompt adapte au type
             if gen_type == "formation":
@@ -4295,52 +4289,44 @@ def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
 Topic: {topic}
 Slide Title: {title}
 Content: {content}
-Key Points: {', '.join(bullets[:3]) if bullets else ''}
+Key Points: {', '.join(bullets[:3] if bullets else key_points[:3])}
 
 Style: Educational yet professional, Unreal Engine 5 render, engaging and clear.
 Colors: Cool blues, warm amber/gold accents, approachable palette.
 Mood: Pedagogical, inspiring, professional learning environment.
-Format: Wide format suitable for training slides."""
+Format: Wide 16:9, 1792x1024px."""
             elif gen_type == "proposal":
                 prompt = f"""Create a premium, professional illustration for a business proposal slide.
 
 Topic: {topic}
 Slide Title: {title}
 Content: {content}
-Key Points: {', '.join(bullets[:3]) if bullets else ''}
+Key Points: {', '.join(bullets[:3] if bullets else key_points[:3])}
 
 Style: High-end corporate, Unreal Engine 5 render, sophisticated and impactful.
 Colors: Premium blues, gold/amber accents, executive palette.
 Mood: Professional, trustworthy, results-oriented, winning proposal aesthetic.
-Format: Wide format suitable for executive presentation."""
+Format: Wide 16:9, 1792x1024px."""
             else:
                 prompt = f"""Create a premium, professional illustration for a {context} slide.
 
 Topic: {topic}
 Slide Title: {title}
 Content: {content}
-Key Points: {', '.join(bullets[:3]) if bullets else ''}
+Key Points: {', '.join(bullets[:3] if bullets else key_points[:3])}
 
 Style: Corporate tech aesthetic, Unreal Engine 5 render, clean and modern.
 Colors: Cool blues, warm amber/gold accents, professional palette.
 Mood: Sophisticated, futuristic but grounded, business presentation quality.
-Format: Wide format suitable for presentation slides."""
+Format: Wide 16:9, 1792x1024px."""
 
-            try:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_path = str(output_dir / f"slide_{idx}_{timestamp}.jpg")
-
-                image_path = generator.generate_image(prompt, output_path)
-                if image_path:
-                    slide["image"] = image_path
-                    job["steps"].append({"message": f"Illustration generee pour slide {idx+1}", "step": 4})
-            except Exception as e:
-                print(f"  Erreur generation image slide {idx}: {e}")
-                # Continue avec les autres slides
+            # Add prompt to slide (no actual generation)
+            slide["image_prompt"] = prompt.strip()
+            job["steps"].append({"message": f"Prompt image ajoute pour slide {idx+1}", "step": 4})
 
     except Exception as e:
-        print(f"  Erreur generation illustrations: {e}")
-        # Non-blocking - continue sans images
+        print(f"  Erreur ajout prompts illustrations: {e}")
+        # Non-blocking - continue sans prompts
 
 
 def _extract_slides_from_buffer(buffer, job):
@@ -4545,11 +4531,9 @@ Retourne TOUTES les slides (modifiees et non modifiees)."""
             if not job["slides"]:
                 raise ValueError("Aucune slide generee - reponse LLM invalide")
 
-            # Generate illustrations for relevant slides
-            # DESACTIVE: Imagen non disponible via google-generativeai SDK
-            # TODO: Integrer DALL-E (OpenAI) ou Replicate pour generation d'images
-            # job["steps"].append({"message": "Generation des illustrations...", "step": 4})
-            # _generate_slide_illustrations(job["slides"], job, topic, gen_type)
+            # Add image prompts for relevant slides (no actual generation)
+            job["steps"].append({"message": "Ajout des prompts d images...", "step": 4})
+            _generate_slide_illustrations(job["slides"], job, topic, gen_type)
 
             job["result"] = {"slides": job["slides"], "total": len(job["slides"])}
             job["status"] = "done"
@@ -4956,6 +4940,15 @@ async def document_editor_page(request: Request):
     })
 
 
+@app.get("/veille", response_class=HTMLResponse)
+async def veille_page(request: Request):
+    return templates.TemplateResponse("veille.html", {
+        "request": request,
+        "active": "veille",
+        "consultant_name": CONSULTANT_NAME,
+    })
+
+
 @app.post("/api/document-editor/start-generate")
 async def api_document_editor_start_generate(request: Request):
     """Demarre la generation de document en arriere-plan"""
@@ -4968,6 +4961,7 @@ async def api_document_editor_start_generate(request: Request):
     model = data.get("model", "")
     feedback = data.get("feedback", "")
     previous_content = data.get("previous_content", "")
+    use_context = data.get("use_context", False)
 
     job_id = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{id(data) % 10000}"
 
@@ -5062,7 +5056,7 @@ Modifie le document en tenant compte du feedback. Retourne UNIQUEMENT le documen
                 idea = topic
                 if document_text:
                     idea += f"\n\nDocument source :\n{document_text[:4000]}"
-                gen_result = agent.run(idea, target_length=length)
+                gen_result = agent.run(idea, target_length=length, use_context=use_context)
                 result["markdown"] = gen_result.get("article", "")
                 result["linkedin_post"] = gen_result.get("linkedin_post", "")
 
@@ -5306,6 +5300,122 @@ async def api_document_editor_export_gdocs(request: Request):
         return {"url": url}
     except Exception as e:
         print(f"Erreur export Google Docs: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ===== VEILLE TECHNOLOGIQUE =====
+
+@app.get("/api/veille/articles")
+async def api_veille_get_articles(
+    limit: int = 50,
+    offset: int = 0,
+    source: str = None,
+    keyword: str = None,
+    days: int = None
+):
+    """Liste les articles de veille avec filtres"""
+    try:
+        from utils.article_db import ArticleDatabase
+        db = ArticleDatabase()
+
+        articles = db.get_articles(
+            limit=limit,
+            offset=offset,
+            source=source,
+            keyword=keyword,
+            days=days
+        )
+
+        return {"articles": articles, "count": len(articles)}
+    except Exception as e:
+        print(f"Erreur lecture articles: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/veille/stats")
+async def api_veille_stats():
+    """Statistiques sur les articles stockes"""
+    try:
+        from utils.article_db import ArticleDatabase
+        db = ArticleDatabase()
+        stats = db.get_article_stats()
+        return stats
+    except Exception as e:
+        print(f"Erreur stats: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/veille/generate-digest")
+async def api_veille_generate_digest(request: Request):
+    """Genere un nouveau digest de veille"""
+    try:
+        data = await request.json()
+        period = data.get("period", "daily")
+        days = data.get("days", 1 if period == "daily" else 7)
+        keywords = data.get("keywords", [])
+
+        from agents.tech_monitor import TechMonitorAgent
+        agent = TechMonitorAgent()
+
+        result = agent.run(
+            keywords=keywords if keywords else None,
+            days=days,
+            period=period
+        )
+
+        return {
+            "success": True,
+            "digest": result["content"],
+            "num_articles": result["num_articles"],
+            "digest_id": result.get("digest_id"),
+            "md_path": result.get("md_path")
+        }
+    except Exception as e:
+        print(f"Erreur generation digest: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/veille/digests")
+async def api_veille_get_digests(period: str = "daily"):
+    """Liste les digests generes"""
+    try:
+        from utils.article_db import ArticleDatabase
+        db = ArticleDatabase()
+
+        # Recuperer le dernier digest de cette periode
+        latest = db.get_latest_digest(period=period)
+
+        return {"latest_digest": latest}
+    except Exception as e:
+        print(f"Erreur lecture digests: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/veille/articles/{article_id}/mark-read")
+async def api_veille_mark_read(article_id: int):
+    """Marque un article comme lu"""
+    try:
+        from utils.article_db import ArticleDatabase
+        db = ArticleDatabase()
+        db.mark_as_read(article_id)
+        return {"success": True}
+    except Exception as e:
+        print(f"Erreur mark read: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/veille/articles/{article_id}/toggle-favorite")
+async def api_veille_toggle_favorite(article_id: int):
+    """Toggle favori sur un article"""
+    try:
+        from utils.article_db import ArticleDatabase
+        db = ArticleDatabase()
+        db.toggle_favorite(article_id)
+        return {"success": True}
+    except Exception as e:
+        print(f"Erreur toggle favorite: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 

@@ -200,15 +200,32 @@
                             <option value="rex_text">REX Mission (Texte)</option>
                             <option value="linkedin">Post LinkedIn</option>
                             <option value="compte_rendu">Compte Rendu de Reunion</option>
+                            <option value="cv_reference">CV/Reference Adapter</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-xs text-gray-500 block mb-1">Sujet / Brief</label>
+                        <label id="topic-label" class="text-xs text-gray-500 block mb-1">Sujet / Brief</label>
                         <textarea id="doc-topic" rows="3" placeholder="Decrivez le sujet, le contexte, les objectifs..."
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-wv-corail focus:outline-none resize-none"></textarea>
                     </div>
-                    <div>
-                        <span class="text-xs text-gray-500 block mb-1">Document source (optionnel)</span>
+                    <!-- Champ upload pour appel d offre (CV/Reference uniquement) -->
+                    <div id="mission-file-field" class="hidden">
+                        <span class="text-xs text-gray-500 block mb-1">Appel d offre / Mission cible (PDF/Word/Texte)</span>
+                        <label for="mission-file"
+                            class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
+                            <input id="mission-file" type="file" accept=".txt,.md,.pdf,.docx,.doc" onchange="handleMissionFileUpload(this)"
+                                class="sr-only">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <span id="mission-file-label">Importer appel d offre</span>
+                        </label>
+                        <div id="mission-file-info" class="hidden mt-1 flex items-center gap-1 text-xs text-emerald-400">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span id="mission-file-info-text"></span>
+                            <span onclick="clearMissionFile()" class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
+                        </div>
+                    </div>
+                    <div id="doc-file-field">
+                        <span id="doc-file-label-text" class="text-xs text-gray-500 block mb-1">Document source (optionnel)</span>
                         <label for="doc-file"
                             class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
                             <input id="doc-file" type="file" accept=".txt,.md,.pdf,.docx,.doc" onchange="handleFileUpload(this)"
@@ -235,6 +252,13 @@
                             <option value="medium" selected>Moyen (1000-1500 mots)</option>
                             <option value="long">Long (2000-3000 mots)</option>
                         </select>
+                    </div>
+                    <!-- Contexte enrichi (articles uniquement) -->
+                    <div id="context-field" class="hidden">
+                        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-wv-corail transition">
+                            <input id="use-context" type="checkbox" class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-wv-corail focus:ring-wv-corail focus:ring-offset-0">
+                            <span>🎯 Utiliser contexte enrichi (articles precedents + veille + personnalite)</span>
+                        </label>
                     </div>
                     <button onclick="generateDocument()" id="btn-generate"
                         class="w-full py-2.5 bg-wv-corail hover:bg-wv-terracotta rounded-lg text-sm font-semibold text-white transition flex items-center justify-center gap-2">
@@ -330,6 +354,7 @@ let currentMarkdown = '';
 let currentLinkedIn = '';
 let selectedModel = '';
 let uploadedDocumentText = '';
+let uploadedMissionText = '';
 
 // ====================================
 // INIT
@@ -367,8 +392,13 @@ function toggleDocFields() {
     const docType = document.getElementById('doc-type').value;
     const audienceField = document.getElementById('audience-field');
     const lengthField = document.getElementById('length-field');
+    const contextField = document.getElementById('context-field');
     const audienceLabel = audienceField.querySelector('label');
     const topicField = document.getElementById('doc-topic');
+    const topicLabel = document.getElementById('topic-label');
+    const missionFileField = document.getElementById('mission-file-field');
+    const docFileField = document.getElementById('doc-file-field');
+    const docFileLabelText = document.getElementById('doc-file-label-text');
 
     // Audience: formation and rex_text
     audienceField.classList.toggle('hidden', docType !== 'formation' && docType !== 'rex_text');
@@ -378,6 +408,36 @@ function toggleDocFields() {
 
     // Length: article only
     lengthField.classList.toggle('hidden', docType !== 'article');
+
+    // Contexte enrichi: article only
+    contextField.classList.toggle('hidden', docType !== 'article');
+
+    // CV/Reference: special fields
+    if (docType === 'cv_reference') {
+        // Hide topic textarea, show file upload for mission
+        topicField.parentElement.classList.add('hidden');
+        missionFileField.classList.remove('hidden');
+
+        // Change doc-file label to CV/Reference
+        docFileLabelText.textContent = 'CV ou Reference projet (PDF/Word/Texte) - OBLIGATOIRE';
+    } else {
+        // Show topic textarea, hide mission file upload
+        topicField.parentElement.classList.remove('hidden');
+        missionFileField.classList.add('hidden');
+
+        // Reset mission file if leaving cv_reference mode
+        if (uploadedMissionText) {
+            clearMissionFile();
+        }
+
+        // Reset doc-file label
+        docFileLabelText.textContent = 'Document source (optionnel)';
+
+        // Update topic label for other types
+        if (topicLabel) {
+            topicLabel.textContent = 'Sujet / Brief';
+        }
+    }
 
     // Update placeholder per type
     const placeholders = {
@@ -423,6 +483,38 @@ function clearUploadedFile() {
     document.getElementById('doc-file').value = '';
     document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx';
     document.getElementById('file-info').classList.add('hidden');
+}
+
+async function handleMissionFileUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch('/api/slide-editor/parse-document', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+            return;
+        }
+        uploadedMissionText = data.text;
+        document.getElementById('mission-file-info').classList.remove('hidden');
+        document.getElementById('mission-file-info-text').textContent = `${data.filename} (${data.length} car.)`;
+    } catch (e) {
+        alert('Erreur upload: ' + e.message);
+    }
+}
+
+function clearMissionFile() {
+    uploadedMissionText = '';
+    document.getElementById('mission-file').value = '';
+    document.getElementById('mission-file-label').textContent = 'Importer appel d offre';
+    document.getElementById('mission-file-info').classList.add('hidden');
 }
 
 // ====================================
@@ -491,30 +583,52 @@ async function generateDocument() {
     const docType = document.getElementById('doc-type').value;
     const model = selectedModel || document.getElementById('model-selector').value;
 
-    if (!topic && !uploadedDocumentText) {
-        document.getElementById('doc-topic').focus();
-        document.getElementById('doc-topic').classList.add('border-wv-corail');
-        setTimeout(() => document.getElementById('doc-topic').classList.remove('border-wv-corail'), 2000);
-        return;
+    // Validation specifique pour CV/Reference
+    if (docType === 'cv_reference') {
+        if (!uploadedMissionText) {
+            alert('Veuillez uploader l appel d offre / mission cible');
+            return;
+        }
+        if (!uploadedDocumentText) {
+            alert('Veuillez uploader le CV ou la reference projet');
+            return;
+        }
+    } else {
+        // Validation normale pour les autres types
+        if (!topic && !uploadedDocumentText) {
+            document.getElementById('doc-topic').focus();
+            document.getElementById('doc-topic').classList.add('border-wv-corail');
+            setTimeout(() => document.getElementById('doc-topic').classList.remove('border-wv-corail'), 2000);
+            return;
+        }
     }
 
     const btn = document.getElementById('btn-generate');
     btn.disabled = true;
     btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Generation...';
 
-    const typeLabels = { formation: 'Programme de Formation', article: 'Article de Blog', rex_text: 'REX Mission', linkedin: 'Post LinkedIn', compte_rendu: 'Compte Rendu' };
+    const typeLabels = {
+        formation: 'Programme de Formation',
+        article: 'Article de Blog',
+        rex_text: 'REX Mission',
+        linkedin: 'Post LinkedIn',
+        compte_rendu: 'Compte Rendu',
+        cv_reference: 'Adaptation CV/Reference'
+    };
     showGenOverlay(typeLabels[docType] || 'Generation', 'Connexion au modele IA...');
     // Hide secondary panels
     document.getElementById('linkedin-section').classList.add('hidden');
     document.getElementById('email-section').classList.add('hidden');
 
+    // Pour cv_reference, topic = mission file, document_text = CV file
     const payload = {
         type: docType,
-        topic: topic,
+        topic: docType === 'cv_reference' ? uploadedMissionText : topic,
         document_text: uploadedDocumentText || '',
         audience: document.getElementById('doc-audience').value.trim(),
         length: document.getElementById('doc-length').value,
-        model: model
+        model: model,
+        use_context: docType === 'article' ? document.getElementById('use-context').checked : false
     };
 
     try {
@@ -547,9 +661,20 @@ async function generateDocument() {
             hideGenOverlay();
             resetBtn();
 
-            renderDocument(data.markdown || '');
-            if (data.linkedin_post) showLinkedInPost(data.linkedin_post);
-            if (data.email) showEmail(data.email);
+            // Si des slides sont retournees (CV/Reference Adapter), rediriger vers slide-editor
+            if (data.slides && data.slides.length > 0) {
+                const docType = data.doc_type || 'CV';
+                alert(`${docType} adapte genere avec succes ! Redirection vers le Slide Editor...`);
+                // Stocker les slides et rediriger
+                localStorage.setItem('cv_reference_slides', JSON.stringify(data.slides));
+                localStorage.setItem('cv_reference_type', docType);
+                window.location.href = '/slide-editor?source=cv_reference';
+            } else {
+                // Affichage normal pour documents markdown
+                renderDocument(data.markdown || '');
+                if (data.linkedin_post) showLinkedInPost(data.linkedin_post);
+                if (data.email) showEmail(data.email);
+            }
         });
 
         evtSource.addEventListener('error_msg', (e) => {
