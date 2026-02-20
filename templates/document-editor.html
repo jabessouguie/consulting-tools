@@ -201,6 +201,7 @@
                             <option value="linkedin">Post LinkedIn</option>
                             <option value="compte_rendu">Compte Rendu de Reunion</option>
                             <option value="cv_reference">CV/Reference Adapter</option>
+                            <option value="presentation_script">Script de Presentation (PPTX)</option>
                         </select>
                     </div>
                     <div>
@@ -228,10 +229,10 @@
                         <span id="doc-file-label-text" class="text-xs text-gray-500 block mb-1">Document source (optionnel)</span>
                         <label for="doc-file"
                             class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
-                            <input id="doc-file" type="file" accept=".txt,.md,.pdf,.docx,.doc" onchange="handleFileUpload(this)"
+                            <input id="doc-file" type="file" accept=".txt,.md,.pdf,.docx,.doc,.pptx" onchange="handleFileUpload(this)"
                                 class="sr-only">
                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                            <span id="file-label">Importer .txt .md .pdf .docx</span>
+                            <span id="file-label">Importer .txt .md .pdf .docx .pptx</span>
                         </label>
                         <div id="file-info" class="hidden mt-1 flex items-center gap-1 text-xs text-emerald-400">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -420,6 +421,13 @@ function toggleDocFields() {
 
         // Change doc-file label to CV/Reference
         docFileLabelText.textContent = 'CV ou Reference projet (PDF/Word/Texte) - OBLIGATOIRE';
+    } else if (docType === 'presentation_script') {
+        // Presentation script: topic = context, file = PPTX obligatoire
+        topicField.parentElement.classList.remove('hidden');
+        missionFileField.classList.add('hidden');
+
+        topicLabel.textContent = 'Contexte de presentation (optionnel)';
+        docFileLabelText.textContent = 'Fichier PowerPoint (.pptx) - OBLIGATOIRE';
     } else {
         // Show topic textarea, hide mission file upload
         topicField.parentElement.classList.remove('hidden');
@@ -445,7 +453,8 @@ function toggleDocFields() {
         article: 'Decrivez le sujet de l\'article, l\'angle, le message cle...',
         rex_text: 'Decrivez la mission, le contexte, les resultats obtenus...',
         linkedin: 'Decrivez le sujet du post, le message a faire passer, l\'actualite...',
-        compte_rendu: 'Collez le transcript de reunion ou decrivez les points cles discutes...'
+        compte_rendu: 'Collez le transcript de reunion ou decrivez les points cles discutes...',
+        presentation_script: 'Decrivez le contexte : public cible, objectif de la presentation (optionnel)...'
     };
     topicField.placeholder = placeholders[docType] || 'Decrivez le sujet...';
 }
@@ -481,7 +490,7 @@ async function handleFileUpload(input) {
 function clearUploadedFile() {
     uploadedDocumentText = '';
     document.getElementById('doc-file').value = '';
-    document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx';
+    document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx .pptx';
     document.getElementById('file-info').classList.add('hidden');
 }
 
