@@ -4263,7 +4263,7 @@ async def api_slide_editor_parse_document(file: UploadFile = File(...)):
 
 
 def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
-    """Add image generation prompts to relevant slides (no actual image generation)"""
+    """Add Nano Banana image generation prompts to relevant slides (no actual image generation)"""
     try:
         # Slide types that benefit from illustrations
         visual_types = ["content", "highlight", "stat", "diagram", "image", "two_column"]
@@ -4288,7 +4288,7 @@ def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
             if slide.get("image") or slide.get("image_prompt"):
                 continue
 
-            # Generate prompt for the slide
+            # Generate prompt for the slide (Nano Banana format)
             title = slide.get("title", "")
             content = slide.get("content", "")
             bullets = slide.get("bullets", [])
@@ -4332,9 +4332,10 @@ Colors: Cool blues, warm amber/gold accents, professional palette.
 Mood: Sophisticated, futuristic but grounded, business presentation quality.
 Format: Wide 16:9, 1792x1024px."""
 
-            # Add prompt to slide (no actual generation)
+            # Add prompt and dimensions to slide (for Nano Banana generation)
             slide["image_prompt"] = prompt.strip()
-            job["steps"].append({"message": f"Prompt image ajoute pour slide {idx+1}", "step": 4})
+            slide["image_dimensions"] = "1792x1024px (16:9)"
+            job["steps"].append({"message": f"Prompt Nano Banana ajoute pour slide {idx+1}", "step": 4})
 
     except Exception as e:
         print(f"  Erreur ajout prompts illustrations: {e}")
