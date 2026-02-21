@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
 from utils.llm_client import LLMClient
+from config import get_consultant_info
 
 
 class WorkshopPlannerAgent:
@@ -21,11 +22,8 @@ class WorkshopPlannerAgent:
     def __init__(self):
         self.llm_client = LLMClient()
 
-        self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha'),
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant en stratégie data et IA'),
-            'company': os.getenv('COMPANY_NAME', 'Consulting Tools'),
-        }
+        # Informations consultant (depuis config centralisee)
+        self.consultant_info = get_consultant_info()
 
     def generate_workshop_plan(
         self,

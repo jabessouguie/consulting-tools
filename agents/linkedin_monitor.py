@@ -16,6 +16,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 
 from utils.monitoring import MonitoringTool, extract_key_insights
 from utils.llm_client import LLMClient
+from config import get_consultant_info
 
 
 class LinkedInMonitorAgent:
@@ -26,21 +27,17 @@ class LinkedInMonitorAgent:
         self.monitoring = MonitoringTool()
         self.llm_client = LLMClient()
 
-        # Informations consultant
-        self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha'),
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant en stratégie data et IA'),
-            'company': os.getenv('COMPANY_NAME', 'Consulting Tools'),
-            'profile': os.getenv('CONSULTANT_PROFILE', ''),
-            'expertise': [
-                'Intelligence Artificielle',
-                'Data Science',
-                'GenAI',
-                'Stratégie Data',
-                'Cloud (Azure, AWS)',
-                'MLOps'
-            ]
-        }
+        # Informations consultant (depuis config centralisee)
+        self.consultant_info = get_consultant_info()
+        # Ajouter expertise (specifique a cet agent)
+        self.consultant_info['expertise'] = [
+            'Intelligence Artificielle',
+            'Data Science',
+            'GenAI',
+            'Stratégie Data',
+            'Cloud (Azure, AWS)',
+            'MLOps'
+        ]
 
         # Configuration veille
         self.rss_feeds = os.getenv('RSS_FEEDS', '').split(',')

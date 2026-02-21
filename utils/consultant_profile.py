@@ -4,10 +4,12 @@ Agrege : articles precedents, veille tech, personnalite, LinkedIn
 """
 import os
 import json
+import ast
 from pathlib import Path
 from typing import Dict, Any, List
 from collections import Counter
 import re
+from config import get_consultant_info
 
 
 class ConsultantProfile:
@@ -119,10 +121,13 @@ class ConsultantProfile:
         linkedin_json_root = self.data_dir / "linkedin_profile.json"
         linkedin_persona_root = self.data_dir / "linkedin_persona.md"
 
+        # Charger config consultant centralisee
+        consultant_config = get_consultant_info()
+
         profile = {
-            "name": os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
-            "title": os.getenv('CONSULTANT_TITLE', 'Consultant en strategie data et IA'),
-            "company": os.getenv('COMPANY_NAME', 'Consulting Tools'),
+            "name": consultant_config['name'],
+            "title": consultant_config['title'],
+            "company": consultant_config['company'],
             "bio": "",
             "experiences": [],
             "recent_posts": [],
@@ -383,8 +388,8 @@ class ConsultantProfile:
 
                 if key == 'tags':
                     try:
-                        metadata[key] = eval(value)
-                    except:
+                        metadata[key] = ast.literal_eval(value)
+                    except (ValueError, SyntaxError):
                         metadata[key] = []
                 else:
                     metadata[key] = value
