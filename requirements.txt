@@ -28,7 +28,8 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.0
 python-multipart==0.0.12
 starlette==0.38.2
-slowapi==0.1.9
+slowapi
+starlette-csrf==0.1.9
 
 # Authentication
 passlib[bcrypt]==1.7.4
@@ -43,5 +44,5 @@ python-dateutil==2.8.2
 pytz==2024.1
 python-pptx==1.0.2
 PyPDF2==3.0.1
-google-generativeapi>=0.8.0
+google-generativeai>=0.8.0
 Pillow==10.2.0
