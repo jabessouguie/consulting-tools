@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}WEnvision - Propositions Modulaires{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon proposal"></div>
+        <div>
+            <div class="card-title">Génération Modulaire de Propositions</div>
+            <div class="card-subtitle">Générez chaque section indépendamment pour éviter les limites de rate limit</div>
+        </div>
+    </div>
+
+    <form id="proposal-form">
+        <div class="form-group">
+            <label class="form-label">Appel d'offre (texte)</label>
+            <textarea class="form-textarea" id="tender-text" placeholder="Collez ici le contenu de l'appel d'offre..."></textarea>
+        </div>
+
+        <div class="or-divider">OU</div>
+
+        <div class="form-group">
+            <label class="form-label">Uploader un fichier (.txt, .md, .pdf)</label>
+            <div class="file-upload" id="file-upload-zone">
+                <input type="file" id="tender-file" accept=".txt,.md,.pdf" style="display:none">
+                <p>Cliquez ou glissez un fichier ici</p>
+                <p id="file-name" style="color: var(--corail); font-weight: 500; margin-top: 0.5rem;"></p>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
+    <div class="card-header">
+        <div class="card-icon"></div>
+        <div>
+            <div class="card-title">Sections à générer</div>
+            <div class="card-subtitle">Cliquez sur une section pour la générer individuellement</div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; padding: 1.5rem;">
+        <button class="btn btn-secondary section-btn" data-section="agenda" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">Agenda</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Structure de la proposition</div>
+        </button>
+
+        <button class="btn btn-secondary section-btn" data-section="context" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">Contexte</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Enjeux et objectifs</div>
+        </button>
+
+        <button class="btn btn-secondary section-btn" data-section="approach" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">Approche</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Vision et méthodologie</div>
+        </button>
+
+        <button class="btn btn-secondary section-btn" data-section="planning" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">Planning</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Phases de l'intervention</div>
+        </button>
+
+        <button class="btn btn-secondary section-btn" data-section="budget" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">Chiffrage</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Estimation financière</div>
+        </button>
+
+        <button class="btn btn-secondary section-btn" data-section="references" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">Références</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Projets similaires</div>
+        </button>
+
+        <button class="btn btn-secondary section-btn" data-section="cvs" style="padding: 1rem; text-align: left;">
+            <div style="font-weight: 600;">CVs</div>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">Équipe adaptée</div>
+        </button>
+    </div>
+
+    <div class="progress-container" id="progress" style="display:none;">
+        <div class="progress-bar-wrapper">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <ul class="progress-steps">
+            <li class="progress-step pending" data-step="analyze">
+                <span class="step-icon">1</span>
+                <span>Analyse de l'appel d'offre</span>
+            </li>
+            <li class="progress-step pending" data-step="generate">
+                <span class="step-icon">2</span>
+                <span>Génération de la section</span>
+            </li>
+            <li class="progress-step pending" data-step="pptx">
+                <span class="step-icon">3</span>
+                <span>Création du PPTX</span>
+            </li>
+        </ul>
+    </div>
+
+    <div id="error-container"></div>
+</div>
+
+<div class="result-container" id="result">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title" id="result-title">Section générée</div>
+                <div class="card-subtitle" id="result-subtitle"></div>
+            </div>
+        </div>
+
+        <!-- Prévisualisation des slides -->
+        <div id="preview-section" style="margin: 1.5rem 0; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--noir-profond);">Prévisualisation & Édition</h3>
+                <button class="btn btn-secondary" onclick="togglePreview()" style="padding: 0.4rem 1rem; font-size: 0.9rem;">
+                    Rafraîchir
+                </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+                <!-- Preview container on the left -->
+                <div style="background: var(--blanc); border-radius: 8px; padding: 1rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--gris-fonce);">Slides</div>
+                    <div id="slides-preview-container" style="display: flex; flex-direction: column; gap: 1rem; max-height: 600px; overflow-y: auto;">
+                        <!-- Les miniatures des slides seront insérées ici -->
+                    </div>
+                </div>
+
+                <!-- Edit panel on the right -->
+                <div id="slide-editor" style="background: var(--blanc); border-radius: 8px; padding: 1.5rem; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; color: var(--gris-fonce);">Éditer Slide <span id="edit-slide-number"></span></div>
+                        <button onclick="closeSlideEditor()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--gris-moyen);">×</button>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="form-label" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Titre</label>
+                        <input type="text" id="edit-slide-title" class="form-textarea" style="min-height: auto; padding: 0.5rem; font-size: 0.95rem;" placeholder="Titre de la slide">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="form-label" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Contenu (un bullet par ligne)</label>
+                        <textarea id="edit-slide-content" class="form-textarea" style="min-height: 200px; font-size: 0.9rem;" placeholder="• Premier point&#10;• Deuxième point&#10;• Troisième point"></textarea>
+                    </div>
+
+                    <div class="form-group" id="edit-diagram-group" style="margin-bottom: 1rem; display: none;">
+                        <label class="form-label" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Type de diagramme</label>
+                        <select id="edit-diagram-type" class="form-textarea" style="min-height: auto; padding: 0.5rem; font-size: 0.9rem;">
+                            <option value="flow">Flow (flux linéaire)</option>
+                            <option value="cycle">Cycle (processus circulaire)</option>
+                            <option value="pyramid">Pyramide (hiérarchie)</option>
+                            <option value="matrix">Matrix (2x2)</option>
+                            <option value="funnel">Funnel (entonnoir)</option>
+                            <option value="venn">Venn (intersections)</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <button class="btn btn-primary" onclick="regenerateSlide()" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
+                            Régénérer cette slide
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-content" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;" id="section-name"></div>
+            <div style="opacity: 0.7; margin-bottom: 1.5rem;"><span id="slides-count"></span> slide(s) générée(s)</div>
+        </div>
+
+        <div class="result-actions">
+            <button class="btn btn-secondary" onclick="showPreview()" style="font-size: 1rem;">
+                Prévisualiser
+            </button>
+            <button class="btn btn-secondary" onclick="exportToGoogleSlides()" style="font-size: 1rem;">
+                Google Slides
+            </button>
+            <a class="btn btn-primary" id="download-pptx" href="#" download style="font-size: 1.1rem;">
+                .pptx
+            </a>
+            <button class="btn btn-primary" id="download-pdf" onclick="downloadProposalPDF()" style="font-size: 1.1rem;">
+                .pdf
+            </button>
+        </div>
+
+        <!-- Section Feedback -->
+        <div class="feedback-section">
+            <div class="feedback-header">Feedback & Régénération</div>
+            <div class="feedback-subtitle">Décrivez les modifications souhaitées en langage naturel</div>
+            <textarea class="feedback-textarea" id="section-feedback" placeholder="Exemple :
+- Le planning est trop court, ajoute une phase de cadrage
+- Réduis le nombre de bullets à 2 par slide
+- Remplace le diagramme flow par un cycle
+- Augmente le budget de 20%"></textarea>
+            <button class="btn btn-primary" id="regenerate-section-btn" onclick="submitSectionFeedback()">
+                Régénérer avec feedback
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    initProposalModularPage();
+</script>
+{% endblock %}

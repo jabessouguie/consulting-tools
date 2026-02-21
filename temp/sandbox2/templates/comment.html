@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Commentaire LinkedIn - Wenvision Agents{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1> Commentaire LinkedIn</h1>
+        <p class="subtitle">Génère des commentaires pertinents et authentiques sur des posts LinkedIn</p>
+    </div>
+
+    <div class="card">
+        <form id="comment-form">
+            <div class="form-group">
+                <label for="post-input">Post LinkedIn</label>
+                <textarea
+                    id="post-input"
+                    name="post_input"
+                    placeholder="Colle le texte du post LinkedIn ici...&#10;&#10;OU&#10;&#10;Colle l'URL du post (on essaiera de le récupérer automatiquement)"
+                    required
+                ></textarea>
+                <small class="form-hint">Texte du post ou URL LinkedIn (format: linkedin.com/posts/...)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="comment-style">Style de commentaire</label>
+                <select id="comment-style" name="style">
+                    <option value="insightful"> Insightful - Apporte une perspective experte</option>
+                    <option value="question"> Question - Pose une question pertinente</option>
+                    <option value="experience"> Expérience - Partage une expérience similaire</option>
+                    <option value="reaction"> Réaction - Analyse et réagit au contenu</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Générer les commentaires
+            </button>
+        </form>
+    </div>
+
+    <div id="progress-section" style="display: none;">
+        <div class="card">
+            <h3>Génération en cours...</h3>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <div id="progress-steps">
+                <div class="progress-step" id="step-extract">
+                    <span class="step-icon">1</span>
+                    <span class="step-text">Extraction du contenu du post</span>
+                </div>
+                <div class="progress-step" id="step-generate">
+                    <span class="step-icon">2</span>
+                    <span class="step-text">Génération des commentaires</span>
+                </div>
+                <div class="progress-step" id="step-save">
+                    <span class="step-icon">3</span>
+                    <span class="step-text">Sauvegarde</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-section" style="display: none;">
+        <div class="result-header">
+            <h2>Commentaires générés</h2>
+            <div class="result-actions">
+                <button class="btn btn-secondary" onclick="downloadResult('comment')">
+                    Télécharger
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Post original (extrait)</h3>
+            <div id="post-preview" class="post-preview"></div>
+        </div>
+
+        <div class="card">
+            <div class="comment-variant-header">
+                <h3> Commentaire Court (50-150 caractères)</h3>
+                <button class="btn btn-secondary btn-sm" onclick="copyComment('short')">
+                    Copier
+                </button>
+            </div>
+            <div id="comment-short" class="comment-box"></div>
+            <div class="char-count">
+                <span id="count-short">0</span> caractères
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="comment-variant-header">
+                <h3> Commentaire Moyen (150-300 caractères)</h3>
+                <button class="btn btn-secondary btn-sm" onclick="copyComment('medium')">
+                    Copier
+                </button>
+            </div>
+            <div id="comment-medium" class="comment-box"></div>
+            <div class="char-count">
+                <span id="count-medium">0</span> caractères
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="comment-variant-header">
+                <h3> Commentaire Long (300-500 caractères)</h3>
+                <button class="btn btn-secondary btn-sm" onclick="copyComment('long')">
+                    Copier
+                </button>
+            </div>
+            <div id="comment-long" class="comment-box"></div>
+            <div class="char-count">
+                <span id="count-long">0</span> caractères
+            </div>
+        </div>
+
+        <div class="feedback-section">
+            <div class="feedback-header">
+                <h3> Feedback</h3>
+                <p class="feedback-subtitle">Les commentaires ne te conviennent pas ? Décris ce que tu veux modifier.</p>
+            </div>
+            <textarea
+                class="feedback-textarea"
+                id="comment-feedback"
+                placeholder="Ex: Rends le commentaire plus court et moins corporate, va droit au but..."
+            ></textarea>
+            <button class="btn btn-primary" id="regenerate-comment-btn" onclick="submitFeedback('comment')">
+                Régénérer avec feedback
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (typeof initCommentPage === 'function') {
+        initCommentPage();
+    }
+</script>
+{% endblock %}

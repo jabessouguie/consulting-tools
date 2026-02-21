@@ -534,9 +534,15 @@ function displayLinkedInResult(data) {
         card.innerHTML = `
             <div class="post-card-header">
                 <span class="post-type-badge ${post.post_type}">${post.post_type}</span>
-                <button class="btn btn-copy" onclick="copyPost(this, ${index})">Copier</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-copy" onclick="copyPost(this, ${index})">Copier</button>
+                    <button class="btn btn-primary" onclick="publishToLinkedIn(${index})" style="padding: 0.4rem 1rem; font-size: 0.9rem;">
+                        🔗 Publier
+                    </button>
+                </div>
             </div>
             <div class="post-content" id="post-${index}">${escapeHtml(post.main_post)}</div>
+            <div id="publish-status-${index}" style="margin-top: 0.75rem; font-size: 0.9rem;"></div>
             ${post.source_articles && post.source_articles.length ? `
             <div style="font-size: 0.8rem; color: var(--gris-moyen); margin-top: 0.75rem;">
                 <strong>Sources:</strong>
@@ -675,41 +681,63 @@ function copyEmail() {
     }
 }
 
-function shareByEmail() {
-    const content = document.getElementById('email-content').innerText;
+async function shareByEmail() {
+    const emailInput = document.getElementById('recipient-email');
+    const statusEl = document.getElementById('email-status');
 
-    // Extraire l'objet et le corps du mail
-    let subject = 'Compte rendu de réunion';
-    let body = content;
-
-    // Le format typique est : "**Objet :** ..." ou "Objet: ..." suivi du corps
-    const lines = content.split('\n');
-
-    // Trouver la ligne de l'objet
-    for (let i = 0; i < Math.min(lines.length, 5); i++) {
-        const line = lines[i].trim();
-        // Matcher "**Objet :**", "Objet:", "Subject:", etc.
-        const match = line.match(/^\*?\*?(Objet|Subject)\s*:?\*?\*?\s*(.+)$/i);
-        if (match) {
-            subject = match[2].trim();
-            // Le corps commence après l'objet (sauter les lignes vides)
-            let bodyStartIdx = i + 1;
-            while (bodyStartIdx < lines.length && lines[bodyStartIdx].trim() === '') {
-                bodyStartIdx++;
-            }
-            body = lines.slice(bodyStartIdx).join('\n').trim();
-            break;
-        }
+    if (!emailInput || !statusEl) {
+        console.error('Email input or status element not found');
+        return;
     }
 
-    // Nettoyer le corps : enlever les séparateurs markdown
-    body = body.replace(/^---+$/gm, '').trim();
+    const recipientEmail = emailInput.value.trim();
 
-    // Encoder pour mailto
-    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // Validation
+    if (!recipientEmail) {
+        statusEl.innerHTML = '<span style="color: var(--corail);">⚠️ Veuillez entrer une adresse email</span>';
+        return;
+    }
 
-    // Ouvrir le client mail
-    window.location.href = mailtoLink;
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+        statusEl.innerHTML = '<span style="color: var(--corail);">⚠️ Adresse email invalide</span>';
+        return;
+    }
+
+    // Check if we have meeting summary
+    if (!currentResult || !currentResult.minutes) {
+        statusEl.innerHTML = '<span style="color: var(--corail);">⚠️ Aucun compte rendu disponible</span>';
+        return;
+    }
+
+    // Show loading state
+    statusEl.innerHTML = '<span style="color: var(--noir-profond);">📧 Envoi en cours...</span>';
+
+    try {
+        const response = await fetch('/api/meeting/share-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to_email: recipientEmail,
+                meeting_summary: currentResult.minutes,
+                meeting_title: currentResult.email?.subject || 'Reunion'
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusEl.innerHTML = '<span style="color: #22c55e;">✅ Email envoyé avec succès !</span>';
+            emailInput.value = ''; // Clear input
+        } else {
+            statusEl.innerHTML = `<span style="color: var(--corail);">❌ Erreur: ${data.error || 'Erreur inconnue'}</span>`;
+        }
+    } catch (error) {
+        statusEl.innerHTML = `<span style="color: var(--corail);">❌ Erreur de connexion: ${error.message}</span>`;
+    }
 }
 
 function copyMainPost() {
@@ -761,6 +789,45 @@ function copyPost(btn, index) {
             btn.classList.remove('copied');
         }, 2000);
     });
+}
+
+async function publishToLinkedIn(index) {
+    const postElement = document.getElementById('post-' + index);
+    const statusElement = document.getElementById('publish-status-' + index);
+
+    if (!postElement || !statusElement) {
+        console.error('Post element not found');
+        return;
+    }
+
+    const postText = postElement.innerText.trim();
+
+    // Show loading state
+    statusElement.innerHTML = '<span style="color: var(--noir-profond);">🔗 Publication en cours...</span>';
+
+    try {
+        const response = await fetch('/api/linkedin/publish', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: postText,
+                visibility: 'PUBLIC'
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const url = data.url || '#';
+            statusElement.innerHTML = `<span style="color: #22c55e;">✅ <a href="${url}" target="_blank" style="color: #22c55e; text-decoration: underline;">Publié sur LinkedIn</a></span>`;
+        } else {
+            statusElement.innerHTML = `<span style="color: var(--corail);">❌ ${data.error || 'Erreur inconnue'}</span>`;
+        }
+    } catch (error) {
+        statusElement.innerHTML = `<span style="color: var(--corail);">❌ Erreur de connexion: ${error.message}</span>`;
+    }
 }
 
 function showError(pageType, message) {

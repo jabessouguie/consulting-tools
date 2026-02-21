@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WEnvision Agents{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <span class="brand-w">W</span><span class="brand-rest">Envision</span>
+                <span class="brand-tag">Agents IA</span>
+            </a>
+            <div class="nav-links">
+                <a href="/" class="nav-link {% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+                <a href="/slide-editor" class="nav-link {% if active == 'slide-editor' %}active{% endif %}">Slide Editor</a>
+                <a href="/document-editor" class="nav-link {% if active == 'document-editor' %}active{% endif %}">Documents</a>
+                <a href="/veille" class="nav-link {% if active == 'veille' %}active{% endif %}">Veille Tech</a>
+                <a href="/dataset" class="nav-link {% if active == 'dataset' %}active{% endif %}">Analyse Data</a>
+            </div>
+            <div class="nav-actions">
+                <select id="model-selector" class="model-selector" onchange="changeGeminiModel(this.value)" title="Modele Gemini">
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+                    <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                </select>
+                <a href="/logout" class="nav-logout" title="Deconnexion">Deconnexion</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p>WEnvision Agents &mdash; Consultant : {{ consultant_name }}</p>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
