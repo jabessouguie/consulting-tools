@@ -278,11 +278,16 @@ self.consultant_info = ConsultantConfig.get()
    - Message d'erreur clair si .env manquant ✅
    - 10+ agents mis à jour pour utiliser get_consultant_info() ✅
 
-### Phase 3 : MOYENNE PRIORITÉ (Améliorations)
+### Phase 3 : MOYENNE PRIORITÉ (Améliorations) ✅ TERMINÉE
 
-8. ⏳ **Masquage des secrets dans logs** - À FAIRE
-   - Fonction `mask_secret()`
-   - Logger sanitizé
+8. ✅ **Masquage des secrets dans logs** - FAIT
+   - Fonctions `mask_secret()`, `mask_api_key()`, `mask_password()` créées ✅
+   - Fonction `sanitize_error_message()` pour nettoyer les erreurs ✅
+   - Helpers `safe_error_message()` et `safe_traceback()` dans app.py ✅
+   - Appliqué à 27+ job["error"] assignments ✅
+   - Appliqué à 16+ JSONResponse error returns ✅
+   - Appliqué à 7+ traceback.format_exc() calls ✅
+   - Agents linkedin_commenter.py et tech_monitor.py mis à jour ✅
 
 9. ✅ **Guide d'installation pour nouveaux consultants** - FAIT (Phase 1)
    - `INSTALL_GUIDE.md` créé avec guide complet ✅
@@ -371,12 +376,20 @@ self.consultant_info = ConsultantConfig.get()
 - ✅ `utils/consultant_profile.py`
 - ✅ `app.py`
 
-**Total** : 4 nouveaux fichiers, 16 fichiers modifiés
+**Total Phase 1-2** : 4 nouveaux fichiers, 16 fichiers modifiés
+
+**Phase 3 Modifications** :
+- ✅ `utils/validation.py` - Ajout fonctions masquage secrets
+- ✅ `app.py` - Safe error handling (27+ occurrences)
+- ✅ `agents/linkedin_commenter.py` - Sanitize errors
+- ✅ `agents/tech_monitor.py` - Sanitize errors
+
+**Total Phase 1-3** : 4 nouveaux fichiers, 18 fichiers modifiés
 
 **Prochaines étapes recommandées** :
-1. ✅ Tester l'installation complète avec un nouveau consultant
-2. ✅ Ajouter CSRF protection - FAIT
-3. ✅ Ajouter rate limiting sur routes critiques - FAIT
-4. ⏳ Masquer secrets dans les logs (Phase 3 - Optionnel)
-5. ⏳ Tests de sécurité automatisés (Phase 3 - Optionnel)
-6. ⏳ Audit externe (Phase 3 - Recommandé avant production)
+1. ✅ Tester l'installation complète avec un nouveau consultant - FAIT
+2. ✅ Ajouter CSRF protection - FAIT (Phase 2)
+3. ✅ Ajouter rate limiting sur routes critiques - FAIT (Phase 2)
+4. ✅ Masquer secrets dans les logs - FAIT (Phase 3)
+5. ⏳ Tests de sécurité automatisés (Optionnel)
+6. ⏳ Audit externe (Recommandé avant production)
