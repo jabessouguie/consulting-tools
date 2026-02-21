@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
 from utils.llm_client import LLMClient
+from config import get_consultant_info
 
 
 class MeetingSummarizerAgent:
@@ -179,7 +180,8 @@ Cordialement, {consultant_name} - {company_name}
         """
         print("📧 Génération de l'email de partage...")
 
-        consultant_name = os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha')
+        # Charger nom depuis config centralisee
+        consultant_name = get_consultant_info()['name']
 
         system_prompt = f"""Tu es {consultant_name}, tu rédiges un email professionnel pour partager un compte rendu de réunion."""
 
