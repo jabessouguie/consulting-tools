@@ -42,7 +42,10 @@ from agents.workshop_planner import WorkshopPlannerAgent
 from agents.rfp_responder import RFPResponderAgent
 from utils.auth import authenticate_user, get_current_user, get_session_secret
 from config import get_consultant_info
-from utils.validation import validate_file_upload, sanitize_text_input, sanitize_filename, validate_url
+from utils.validation import (
+    validate_file_upload, sanitize_text_input, sanitize_filename, sanitize_url,
+    mask_secret, mask_api_key, sanitize_error_message
+)
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -170,6 +173,41 @@ except ValueError as e:
 
 # Job store (in-memory)
 jobs = {}
+
+
+# === SECURITY: Safe Error Handling (Phase 3) ===
+
+def safe_error_message(error: Exception, context: str = "") -> str:
+    """
+    Convertit une exception en message d erreur safe pour les logs et reponses
+    Masque automatiquement les secrets (API keys, passwords, tokens)
+
+    Args:
+        error: L exception
+        context: Contexte optionnel pour le message
+
+    Returns:
+        Message d erreur nettoye sans secrets
+    """
+    error_msg = str(error)
+    sanitized = sanitize_error_message(error_msg)
+
+    if context:
+        return f"{context}: {sanitized}"
+    return sanitized
+
+
+def safe_traceback() -> str:
+    """
+    Retourne un traceback nettoye sans secrets
+
+    Returns:
+        Traceback sanitize
+    """
+    import traceback
+    tb = traceback.format_exc()
+    return sanitize_error_message(tb)
+
 
 # Global model settings (in-memory, persists per session)
 AVAILABLE_GEMINI_MODELS = {
@@ -475,7 +513,7 @@ def _run_proposal(job_id: str, tender_text: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/proposal/stream/{job_id}")
@@ -684,7 +722,7 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.post("/api/proposal/preview")
@@ -779,7 +817,7 @@ async def api_proposal_preview(
             }, status_code=500)
 
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.post("/api/proposal/regenerate-section")
@@ -968,9 +1006,8 @@ Exemples:
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
-        import traceback
-        print(f"Error in regenerate section: {traceback.format_exc()}")
+        job["error"] = safe_error_message(e)
+        print(f"Error in regenerate section: {safe_traceback()}")
 
 
 @app.post("/api/proposal/regenerate-slide")
@@ -1081,9 +1118,8 @@ async def api_proposal_regenerate_slide(
         })
 
     except Exception as e:
-        import traceback
-        print(f"Error in regenerate slide: {traceback.format_exc()}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"Error in regenerate slide: {safe_traceback()}")
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.post("/api/proposal/export-to-slides")
@@ -1182,9 +1218,8 @@ async def api_export_to_slides(
                 raise
 
     except Exception as e:
-        import traceback
-        print(f"Error in export to slides: {traceback.format_exc()}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"Error in export to slides: {safe_traceback()}")
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 def _run_proposal_feedback(job_id: str, previous_content: str, feedback: str, tender_text: str):
@@ -1347,7 +1382,7 @@ IMPORTANT:
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === API: LINKEDIN ===
@@ -1441,7 +1476,7 @@ def _run_linkedin(job_id: str, post_type: str, num_posts: int):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/linkedin/stream/{job_id}")
@@ -1558,7 +1593,7 @@ REGLES IMPERATIVES:
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: ARTICLE TO POST ===
@@ -1644,7 +1679,7 @@ def _run_article_to_post(job_id: str, url: str, tone: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/article/stream/{job_id}")
@@ -1775,7 +1810,7 @@ NE PAS inventer d'anecdotes ou d'exemples.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: MEETING SUMMARIZER ===
@@ -1878,10 +1913,9 @@ def _run_meeting_summarizer(job_id: str, transcript: str):
         }
 
     except Exception as e:
-        import traceback
         job["status"] = "error"
-        job["error"] = str(e)
-        print(f"Error in meeting summarizer: {traceback.format_exc()}")
+        job["error"] = safe_error_message(e)
+        print(f"Error in meeting summarizer: {safe_traceback()}")
 
 
 @app.get("/api/meeting/stream/{job_id}")
@@ -2008,7 +2042,7 @@ Tu corriges un mail professionnel selon le retour du consultant.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: LINKEDIN COMMENT ===
@@ -2103,7 +2137,7 @@ def _run_comment_generator(job_id: str, post_input: str, style: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/comment/stream/{job_id}")
@@ -2289,7 +2323,7 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: TECH WATCH ===
@@ -2387,7 +2421,7 @@ def _run_tech_monitor(job_id: str, keywords: List[str], days: int, period_type: 
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/techwatch/stream/{job_id}")
@@ -2503,7 +2537,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: DATASET ANALYZER ===
@@ -2615,7 +2649,7 @@ def _run_dataset_analyzer(job_id: str, file_path: str, filename: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
         # Nettoyer le fichier temporaire en cas d'erreur
         try:
             if "temp_file" in job:
@@ -2735,7 +2769,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: WORKSHOP PLANNER ===
@@ -2814,7 +2848,7 @@ def _run_workshop_planner(job_id: str, topic: str, duration: str, audience: str,
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/workshop/stream/{job_id}")
@@ -2923,7 +2957,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: RFP RESPONDER ===
@@ -3021,7 +3055,7 @@ def _run_rfp_responder(job_id: str, rfp_text: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/rfp/stream/{job_id}")
@@ -3126,7 +3160,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # === PAGE & API: ARTICLE GENERATOR ===
@@ -3200,7 +3234,7 @@ def _run_article_generator(job_id: str, idea: str, use_context: bool = False):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/article-generator/stream/{job_id}")
@@ -3333,7 +3367,7 @@ illustration_prompt: |
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 # ====================================
@@ -3418,7 +3452,7 @@ def _run_formation_generator(job_id: str, client_needs: str):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/formation/stream/{job_id}")
@@ -3518,7 +3552,7 @@ def _run_formation_regenerate(job_id: str, previous_content: str, feedback: str)
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.post("/api/formation/export-gdocs")
@@ -3557,9 +3591,8 @@ async def api_formation_export_gdocs(
                 raise
 
     except Exception as e:
-        import traceback
-        print(f"Error in export to Google Docs: {traceback.format_exc()}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"Error in export to Google Docs: {safe_traceback()}")
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # ====================================
@@ -3611,7 +3644,7 @@ async def api_training_slides_generate(
         except Exception as e:
             if temp_file.exists():
                 temp_file.unlink()
-            return JSONResponse({"error": f"Erreur lors de la lecture du fichier : {str(e)}"}, status_code=400)
+            return JSONResponse({"error": f"Erreur lors de la lecture du fichier : {safe_error_message(e)}"}, status_code=400)
 
     elif programme_text:
         text = programme_text.strip()
@@ -3677,10 +3710,9 @@ def _run_training_slides_generator(job_id: str, programme_text: str):
         }
 
     except Exception as e:
-        import traceback
-        print(f"Error in training slides: {traceback.format_exc()}")
+        print(f"Error in training slides: {safe_traceback()}")
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/training-slides/stream/{job_id}")
@@ -3764,9 +3796,8 @@ async def api_training_slides_export(
                 raise
 
     except Exception as e:
-        import traceback
-        print(f"Error in training slides export: {traceback.format_exc()}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"Error in training slides export: {safe_traceback()}")
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # === API: DOWNLOAD ===
@@ -3891,7 +3922,7 @@ async def api_pdf_capabilities():
             "message": "Pour activer la conversion PDF, installez LibreOffice (PPTX→PDF) ou pandoc/weasyprint (MD→PDF)"
         }
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # ===================================
@@ -3962,7 +3993,7 @@ def _run_doc_to_presentation(job_id: str, documents: list, target_audience: str,
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        job["error"] = safe_error_message(e)
 
 
 @app.get("/api/doc-to-presentation/stream/{job_id}")
@@ -4149,7 +4180,7 @@ Société: {COMPANY_NAME}
         print(f"❌ Erreur génération Canva: {e}")
         import traceback
         traceback.print_exc()
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.post("/api/proposal-canva/generate-section")
@@ -4277,7 +4308,7 @@ Société: {COMPANY_NAME}
         print(f"❌ Erreur génération section: {e}")
         import traceback
         traceback.print_exc()
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # === SLIDE EDITOR (HTML-First) ===
@@ -4330,7 +4361,7 @@ async def api_slide_editor_parse_document(request: Request, file: UploadFile = F
 
         return {"text": text, "filename": filename, "length": len(text)}
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
@@ -4627,7 +4658,7 @@ Retourne TOUTES les slides (modifiees et non modifiees)."""
             print(f"Erreur slide-editor generate: {e}")
             import traceback
             traceback.print_exc()
-            job["error"] = str(e)
+            job["error"] = safe_error_message(e)
             job["status"] = "error"
 
     import threading
@@ -5015,7 +5046,7 @@ async def api_slide_editor_generate(request: Request):
         return JSONResponse({"error": "Erreur de parsing JSON", "slides": []}, status_code=422)
     except Exception as e:
         print(f"Erreur slide-editor generate: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # === DOCUMENT EDITOR ===
@@ -5352,7 +5383,7 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
             print(f"Erreur document-editor generate: {e}")
             import traceback
             traceback.print_exc()
-            job["error"] = str(e)
+            job["error"] = safe_error_message(e)
             job["status"] = "error"
 
     import threading
@@ -5417,7 +5448,7 @@ async def api_document_editor_export_gdocs(request: Request):
         return {"url": url}
     except Exception as e:
         print(f"Erreur export Google Docs: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # ===== VEILLE TECHNOLOGIQUE =====
@@ -5446,7 +5477,7 @@ async def api_veille_get_articles(
         return {"articles": articles, "count": len(articles)}
     except Exception as e:
         print(f"Erreur lecture articles: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.get("/api/veille/stats")
@@ -5459,7 +5490,7 @@ async def api_veille_stats():
         return stats
     except Exception as e:
         print(f"Erreur stats: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.post("/api/veille/generate-digest")
@@ -5491,7 +5522,7 @@ async def api_veille_generate_digest(request: Request):
         print(f"Erreur generation digest: {e}")
         import traceback
         traceback.print_exc()
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.get("/api/veille/digests")
@@ -5507,7 +5538,7 @@ async def api_veille_get_digests(period: str = "daily"):
         return {"latest_digest": latest}
     except Exception as e:
         print(f"Erreur lecture digests: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.post("/api/veille/articles/{article_id}/mark-read")
@@ -5520,7 +5551,7 @@ async def api_veille_mark_read(article_id: int):
         return {"success": True}
     except Exception as e:
         print(f"Erreur mark read: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @app.post("/api/veille/articles/{article_id}/toggle-favorite")
@@ -5533,7 +5564,7 @@ async def api_veille_toggle_favorite(article_id: int):
         return {"success": True}
     except Exception as e:
         print(f"Erreur toggle favorite: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # === MAIN ===

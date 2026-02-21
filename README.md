@@ -118,14 +118,15 @@ L'outil a besoin du "cerveau" de Google (Gemini) pour fonctionner.
    GEMINI_API_KEY=collez-votre-clé-ici
    USE_GEMINI=true
    ```
-6. Enregistrez et fermez le fichier.
+6. **Sécurité :** Modifiez également la ligne `AUTH_PASSWORD=` pour définir votre mot de passe d'accès à l'application.
+7. Enregistrez et fermez le fichier.
 
 ### 5. Lancer l'application la première fois
 1. Ouvrez l'outil de commande de votre ordinateur :
    - Sur Windows : Cherchez **"Invite de commandes"** ou **"cmd"** dans le menu Démarrer.
    - Sur Mac : Cherchez **"Terminal"** avec Spotlight.
 2. Tapez `cd ` (avec un espace après le cd) puis glissez-déposez le dossier de l'application dans la fenêtre. Appuyez sur Entrée.
-3. Tapez la commande suivante pour installer les composants nécessaires, et appuyez sur Entrée :
+3. Tapez la commande suivante pour installer les composants nécessaires, et appuyez sur Entrée (selon votre version de Python, utilisez `pip` ou `pip3`) :
    ```bash
    pip install -r requirements.txt
    ```
@@ -135,6 +136,7 @@ L'outil a besoin du "cerveau" de Google (Gemini) pour fonctionner.
    python app.py
    ```
 5. Ouvrez votre navigateur internet (Chrome, Safari, etc.) et tapez cette adresse : `http://localhost:8000`
+   *(Note: Si vous avez activé le mode sécurisé SSL, l'adresse sera `https://localhost:8443`)*
 
 L'application est prête à être utilisée !
 
