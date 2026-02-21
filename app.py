@@ -48,6 +48,7 @@ from utils.validation import validate_file_upload, sanitize_text_input, sanitize
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from urllib.parse import urlparse
 
 # === APP SETUP ===
 
@@ -61,6 +62,66 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Templates and static files
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+# === CSRF PROTECTION MIDDLEWARE ===
+
+class CSRFProtectionMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware CSRF basé sur Origin/Referer checking
+    Plus simple que token-based CSRF, adapté pour une app locale
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        # Méthodes qui nécessitent protection CSRF
+        unsafe_methods = {"POST", "PUT", "DELETE", "PATCH"}
+
+        # Routes exemptées (par exemple les webhooks externes)
+        exempt_paths = []
+
+        # Si méthode safe ou route exemptée, passer
+        if request.method not in unsafe_methods:
+            return await call_next(request)
+
+        if any(request.url.path.startswith(path) for path in exempt_paths):
+            return await call_next(request)
+
+        # Vérifier Origin ou Referer
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+
+        # Obtenir l'hôte autorisé
+        host = request.headers.get("host", "localhost:8000")
+        allowed_origins = [
+            f"http://{host}",
+            f"https://{host}",
+            "http://localhost:8000",
+            "https://localhost:8000",
+            "http://127.0.0.1:8000",
+            "https://127.0.0.1:8000",
+        ]
+
+        # Vérifier l'origine
+        origin_valid = False
+
+        if origin:
+            origin_valid = origin in allowed_origins
+        elif referer:
+            # Si pas d'Origin, vérifier Referer
+            try:
+                referer_origin = f"{urlparse(referer).scheme}://{urlparse(referer).netloc}"
+                origin_valid = referer_origin in allowed_origins
+            except:
+                origin_valid = False
+
+        if not origin_valid:
+            print(f"⚠️  CSRF blocked: {request.method} {request.url.path} from {origin or referer}")
+            return JSONResponse(
+                {"detail": "CSRF validation failed. Request origin not allowed."},
+                status_code=403
+            )
+
+        return await call_next(request)
 
 
 # === AUTHENTICATION MIDDLEWARE ===
@@ -92,6 +153,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 # Ajouter les middlewares dans l'ordre correct
 # L'ordre d'ajout est inversé : le dernier ajouté s'exécute en premier
+app.add_middleware(CSRFProtectionMiddleware)  # Protection CSRF (origin checking)
 # app.add_middleware(AuthMiddleware)  # DESACTIVE - Pas de login requis
 app.add_middleware(SessionMiddleware, secret_key=get_session_secret())  # S'exécute en premier
 
@@ -4230,7 +4292,8 @@ async def slide_editor_page(request: Request):
 
 
 @app.post("/api/slide-editor/parse-document")
-async def api_slide_editor_parse_document(file: UploadFile = File(...)):
+@limiter.limit("20/minute")
+async def api_slide_editor_parse_document(request: Request, file: UploadFile = File(...)):
     """Parse un document uploade et retourne son contenu texte (ou chemin pour PPTX)"""
     try:
         # Valider le fichier uploade (taille, type)
@@ -4412,6 +4475,7 @@ def _extract_slides_from_buffer(buffer, job):
 
 
 @app.post("/api/slide-editor/start-generate")
+@limiter.limit("5/minute")
 async def api_slide_editor_start_generate(request: Request):
     """Demarre la generation de slides en arriere-plan et retourne un job_id"""
     data = await request.json()
@@ -4895,6 +4959,7 @@ Reponds UNIQUEMENT avec le JSON."""
 
 
 @app.post("/api/slide-editor/generate")
+@limiter.limit("5/minute")
 async def api_slide_editor_generate(request: Request):
     """Genere des slides JSON via LLM pour le slide editor (non-streaming fallback)"""
     try:
@@ -4974,6 +5039,7 @@ async def veille_page(request: Request):
 
 
 @app.post("/api/document-editor/start-generate")
+@limiter.limit("10/minute")
 async def api_document_editor_start_generate(request: Request):
     """Demarre la generation de document en arriere-plan"""
     data = await request.json()

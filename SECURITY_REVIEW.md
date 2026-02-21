@@ -249,17 +249,30 @@ self.consultant_info = ConsultantConfig.get()
    - Limite de taille : 10MB
    - Types de fichiers autorisés
 
-### Phase 2 : HAUTE PRIORITÉ (Sécurité importante)
+### Phase 2 : HAUTE PRIORITÉ (Sécurité importante) ✅ TERMINÉE
 
-4. ✅ **CSRF Protection**
-   - Installer `starlette-csrf`
-   - Ajouter middleware
+4. ✅ **CSRF Protection** - FAIT
+   - Middleware CSRFProtectionMiddleware implémenté ✅
+   - Protection basée sur Origin/Referer checking ✅
+   - Bloque les requêtes POST/PUT/DELETE de sources non autorisées ✅
+   - Pas besoin de tokens dans les templates (plus simple) ✅
 
-5. ✅ **Sanitization des inputs**
-   - Fonction `sanitize_input()`
-   - Max length sur tous les inputs
+5. ✅ **Sanitization des inputs** - FAIT (Phase 1)
+   - Module `utils/validation.py` créé ✅
+   - Fonction `sanitize_input()` ✅
+   - Max length sur tous les inputs ✅
 
-6. ✅ **Configuration centralisée** - FAIT
+6. ✅ **Rate Limiting étendu** - FAIT
+   - Rate limiting ajouté sur routes slide-editor ✅
+   - Rate limiting ajouté sur routes document-editor ✅
+   - Limites adaptées selon criticité :
+     * Login: 10/minute
+     * Génération documents: 10/minute
+     * Génération slides: 5/minute
+     * Export: 5/minute
+     * Parse upload: 20/minute
+
+7. ✅ **Configuration centralisée** - FAIT (Phase 1)
    - Créé `config/consultant.py` avec ConsultantConfig ✅
    - Pas de fallback hardcodé (lève ValueError si CONSULTANT_NAME manquant) ✅
    - Message d'erreur clair si .env manquant ✅
@@ -267,18 +280,15 @@ self.consultant_info = ConsultantConfig.get()
 
 ### Phase 3 : MOYENNE PRIORITÉ (Améliorations)
 
-7. ✅ **Rate Limiting**
-   - Limiter génération de documents : 10/min
-   - Limiter API calls : 100/hour
-
-8. ✅ **Masquage des secrets dans logs**
+8. ⏳ **Masquage des secrets dans logs** - À FAIRE
    - Fonction `mask_secret()`
    - Logger sanitizé
 
-9. ✅ **Guide d'installation pour nouveaux consultants** - FAIT
+9. ✅ **Guide d'installation pour nouveaux consultants** - FAIT (Phase 1)
    - `INSTALL_GUIDE.md` créé avec guide complet ✅
    - Instructions pas-à-pas pour installation en 5 min ✅
    - Section dépannage complète ✅
+   - Script `check_install.py` pour validation ✅
 
 ---
 
@@ -286,9 +296,9 @@ self.consultant_info = ConsultantConfig.get()
 
 ### Sécurité
 - [x] Aucune faille critique (eval, hardcoded credentials) ✅
-- [ ] CSRF protection active
-- [ ] Rate limiting fonctionnel
-- [x] Validation des inputs sur toutes les routes (en cours)
+- [x] CSRF protection active ✅
+- [x] Rate limiting fonctionnel ✅
+- [x] Validation des inputs sur toutes les routes ✅
 
 ### Généralisation
 - [x] N'importe quel consultant peut installer en 5 min ✅
@@ -319,16 +329,21 @@ self.consultant_info = ConsultantConfig.get()
 3. ✅ Validation uploads : taille max 10MB, types fichiers autorisés
 4. ✅ Sanitization inputs : max length, caractères dangereux retirés
 
-### Phase 2 : Généralisation - TERMINÉE ✅
+### Phase 2 : Sécurité avancée - TERMINÉE ✅
+1. ✅ CSRF Protection (Origin/Referer checking)
+2. ✅ Rate limiting étendu (toutes routes sensibles)
+
+### Phase 3 : Généralisation - TERMINÉE ✅
 1. ✅ Configuration centralisée (`config/consultant.py`)
 2. ✅ 12+ agents mis à jour pour utiliser config centralisée
 3. ✅ Aucun fallback hardcodé (lève ValueError si config manquante)
 4. ✅ `.env.example` nettoyé (placeholders génériques)
 
-### Phase 3 : Documentation - TERMINÉE ✅
+### Phase 4 : Documentation - TERMINÉE ✅
 1. ✅ Guide d'installation complet (`INSTALL_GUIDE.md`)
 2. ✅ Instructions pour nouveaux consultants
 3. ✅ Section dépannage complète
+4. ✅ Script de validation `check_install.py`
 
 ### Fichiers créés
 - `config/consultant.py` - Configuration centralisée
@@ -360,6 +375,8 @@ self.consultant_info = ConsultantConfig.get()
 
 **Prochaines étapes recommandées** :
 1. ✅ Tester l'installation complète avec un nouveau consultant
-2. ⏳ Ajouter CSRF protection (Phase 2 - Haute priorité)
-3. ⏳ Ajouter rate limiting sur routes critiques (Phase 3 - Moyenne priorité)
-4. ⏳ Masquer secrets dans les logs (Phase 3 - Moyenne priorité)
+2. ✅ Ajouter CSRF protection - FAIT
+3. ✅ Ajouter rate limiting sur routes critiques - FAIT
+4. ⏳ Masquer secrets dans les logs (Phase 3 - Optionnel)
+5. ⏳ Tests de sécurité automatisés (Phase 3 - Optionnel)
+6. ⏳ Audit externe (Phase 3 - Recommandé avant production)
