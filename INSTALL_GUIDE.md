@@ -378,6 +378,238 @@ VEILLE_KEYWORDS=Intelligence Artificielle,Data Science,GenAI
 VEILLE_FREQUENCY_HOURS=24
 ```
 
+### Utiliser NotebookLM pour les références
+
+**⚠️ Important** : NotebookLM n'a pas d'API publique. L'intégration se fait via export manuel.
+
+#### Pourquoi NotebookLM ?
+
+NotebookLM de Google permet de structurer vos connaissances métier :
+- Projets de référence avec ROI chiffrés
+- Méthodologies et frameworks utilisés
+- Expertises techniques détaillées
+- Cas d'usage clients réussis
+
+Ces informations enrichissent automatiquement vos propositions commerciales.
+
+#### Workflow d'intégration
+
+**1. Créer votre NotebookLM** (sur [notebooklm.google.com](https://notebooklm.google.com))
+
+Organisez vos sources par thème :
+- **Projets** : "Mise en place DataHub - Client X - ROI 40%"
+- **Expertise** : "GenAI - Fine-tuning - RAG - Prompt Engineering"
+- **Méthodologies** : "Agile Data - Design Thinking - POC itératifs"
+
+**2. Générer un export structuré**
+
+Dans NotebookLM, demandez à l'IA :
+```
+Génère un JSON avec cette structure :
+
+{
+  "projects": [
+    {
+      "name": "Nom du projet",
+      "client": "Secteur client",
+      "description": "Description courte",
+      "technologies": ["Tech1", "Tech2"],
+      "results": "ROI ou impact chiffré"
+    }
+  ],
+  "expertise": {
+    "ai_ml": ["Compétence 1", "Compétence 2"],
+    "data": ["Compétence 1", "Compétence 2"],
+    "cloud": ["Compétence 1", "Compétence 2"]
+  },
+  "methodologies": [
+    {
+      "name": "Nom méthodo",
+      "description": "Description",
+      "use_cases": ["Cas 1", "Cas 2"]
+    }
+  ]
+}
+```
+
+**3. Copier le JSON dans le fichier de références**
+
+```bash
+# Créer le dossier si nécessaire
+mkdir -p data/notebooklm
+
+# Coller le JSON dans le fichier
+# Mac/Linux
+nano data/notebooklm/references.json
+
+# Ou avec votre éditeur
+code data/notebooklm/references.json  # VS Code
+```
+
+**4. Utilisation automatique**
+
+Le fichier `references.json` est **automatiquement chargé** par le `ProposalGeneratorAgent` :
+- ✅ Aucune configuration supplémentaire requise
+- ✅ Projets pertinents sélectionnés par LLM selon le contexte
+- ✅ Méthodologies adaptées au besoin client
+- ✅ Expertise technique mise en avant
+
+#### Exemple de fichier references.json
+
+```json
+{
+  "projects": [
+    {
+      "name": "Plateforme DataHub - Retail",
+      "client": "Grande distribution",
+      "description": "Centralisation 50+ sources data avec gouvernance",
+      "technologies": ["Databricks", "Azure", "DBT", "Power BI"],
+      "results": "ROI 40% en 18 mois - Réduction 60% temps reporting"
+    },
+    {
+      "name": "Chatbot RH GenAI",
+      "client": "Banque",
+      "description": "Assistant IA pour 500+ questions RH internes",
+      "technologies": ["Claude", "RAG", "FastAPI", "ChromaDB"],
+      "results": "Satisfaction 92% - 70% requêtes automatisées"
+    }
+  ],
+  "expertise": {
+    "ai_ml": [
+      "Fine-tuning LLM (GPT, Claude, Gemini)",
+      "RAG (Retrieval-Augmented Generation)",
+      "Prompt Engineering & Chain-of-Thought",
+      "Computer Vision (YOLO, Imagen)"
+    ],
+    "data": [
+      "Data Engineering (Databricks, Spark)",
+      "Data Governance (Purview, Collibra)",
+      "Analytics (Power BI, Tableau)",
+      "MLOps (MLflow, Kubeflow)"
+    ],
+    "cloud": ["Azure", "AWS", "GCP"]
+  },
+  "methodologies": [
+    {
+      "name": "POC Agile GenAI",
+      "description": "Sprints 2 semaines - Prototypage rapide - Validation métier",
+      "use_cases": ["Chatbot", "Document intelligence", "Classification"]
+    },
+    {
+      "name": "Data Strategy Workshop",
+      "description": "2 jours - Cartographie data - Roadmap priorisée - Quick wins",
+      "use_cases": ["Transformation data", "Gouvernance", "IA"]
+    }
+  ]
+}
+```
+
+#### Mise à jour des références
+
+Actualisez `references.json` quand vous :
+- ✅ Terminez un nouveau projet avec ROI mesurable
+- ✅ Acquérez une nouvelle compétence technique
+- ✅ Développez une nouvelle méthodologie
+
+**Fréquence recommandée** : Tous les 3 mois ou après chaque projet significatif.
+
+#### Alternative : Fichier manuel simple
+
+Si vous n'utilisez pas NotebookLM, créez directement le fichier JSON avec vos références.
+
+**Emplacement** : `data/notebooklm/references.json`
+
+**Template minimal** :
+```json
+{
+  "projects": [],
+  "expertise": {
+    "ai_ml": [],
+    "data": [],
+    "cloud": []
+  },
+  "methodologies": []
+}
+```
+
+### Configurer Gmail API (partage email)
+
+**1. Activer Gmail API dans Google Cloud**
+
+1. Allez sur [Google Cloud Console](https://console.cloud.google.com/)
+2. Sélectionnez votre projet (ou créez-en un)
+3. **APIs & Services** → **Enable APIs and Services**
+4. Recherchez "Gmail API" → **Enable**
+5. **OAuth consent screen** :
+   - Choisissez "External" si compte personnel
+   - Ajoutez le scope : `https://www.googleapis.com/auth/gmail.send`
+6. **Credentials** → **Create Credentials** → **OAuth client ID**
+   - Type : "Desktop app"
+   - Téléchargez le JSON → sauvegardez comme `config/google_credentials.json`
+
+**2. Premier lancement avec nouveau scope**
+
+```bash
+# Supprimer le token existant pour ré-authentifier
+rm config/token.pickle
+
+# Relancer l'app
+python app.py
+```
+
+L'app ouvrira automatiquement votre navigateur pour autoriser l'accès Gmail.
+
+**3. Utilisation**
+
+Dans **Meeting Summarizer** :
+1. Générez un compte rendu de réunion
+2. Entrez l'email du destinataire
+3. Cliquez "📧 Envoyer"
+4. Le compte rendu est envoyé en pièce jointe (.md)
+
+### Configurer LinkedIn OAuth (publication posts)
+
+**1. Créer une app LinkedIn**
+
+1. Allez sur [LinkedIn Developers](https://www.linkedin.com/developers/apps)
+2. **Create app** :
+   - App name : "WEnvision Consulting Tools"
+   - LinkedIn Page : Votre page entreprise (ou créez-en une)
+3. **Auth** tab :
+   - Redirect URLs : `http://localhost:8000/auth/linkedin/callback`
+4. **Products** tab :
+   - Demandez accès à "Share on LinkedIn" (peut nécessiter validation)
+5. **Auth** tab → **Application credentials** :
+   - Copiez **Client ID** et **Client Secret**
+
+**2. Configuration dans .env**
+
+```bash
+LINKEDIN_CLIENT_ID=votre_client_id
+LINKEDIN_CLIENT_SECRET=votre_client_secret
+LINKEDIN_REDIRECT_URI=http://localhost:8000/auth/linkedin/callback
+```
+
+**3. Obtenir le token d'accès**
+
+1. Lancez l'app : `python app.py`
+2. Visitez : [http://localhost:8000/auth/linkedin](http://localhost:8000/auth/linkedin)
+3. Autorisez l'application
+4. Copiez le `LINKEDIN_ACCESS_TOKEN` affiché
+5. Ajoutez-le dans `.env` :
+   ```bash
+   LINKEDIN_ACCESS_TOKEN=le_token_genere
+   ```
+
+**4. Utilisation**
+
+Dans **Veille LinkedIn** :
+1. Générez des posts LinkedIn
+2. Cliquez "🔗 Publier" sur le post choisi
+3. Le post est publié instantanément sur votre profil
+
+**⚠️ Note** : Le token expire après ~60 jours. Répétez l'étape 3 pour le renouveler.
+
 ---
 
 ## ❓ Dépannage

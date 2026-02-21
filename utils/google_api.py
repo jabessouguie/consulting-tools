@@ -17,6 +17,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive.file',  # Créer et modifier des fichiers
     'https://www.googleapis.com/auth/presentations',  # Créer et modifier des présentations
     'https://www.googleapis.com/auth/documents.readonly',
+    'https://www.googleapis.com/auth/gmail.send',  # Envoyer des emails
 ]
 
 

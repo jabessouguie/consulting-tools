@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}WEnvision - Document vers Presentation{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon"></div>
+        <div>
+            <div class="card-title">Document vers Presentation</div>
+            <div class="card-subtitle">Convertissez vos documents en presentation PPTX professionnelle</div>
+        </div>
+    </div>
+
+    <form id="doc-presentation-form">
+        <div class="form-group">
+            <label class="form-label">Documents (Markdown, PDF ou DOCX)</label>
+            <div class="file-upload" id="doc-upload-zone">
+                <input type="file" id="doc-files" multiple accept=".md,.pdf,.docx,.txt" style="display:none">
+                <p>Cliquez ou glissez vos fichiers ici</p>
+                <small style="color: var(--gris-moyen);">Formats acceptes : .md, .pdf, .docx, .txt - Plusieurs fichiers possibles</small>
+            </div>
+            <div id="file-list" style="margin-top: 0.5rem;"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Public cible</label>
+            <input type="text" class="form-input" id="target-audience"
+                   placeholder="Ex: Comex, Equipe technique, Client final, Investisseurs..." required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Objectif de la presentation</label>
+            <textarea class="form-textarea" id="presentation-objective"
+                      placeholder="Ex: Convaincre d'investir dans une solution data, Former l'equipe sur les bonnes pratiques IA, Presenter les resultats du trimestre..."
+                      style="min-height: 100px;" required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="generate-btn">
+            Generer la presentation
+        </button>
+    </form>
+
+    <div class="progress-container" id="progress">
+        <div class="progress-bar-wrapper">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <ul class="progress-steps">
+            <li class="progress-step pending" data-step="parse">
+                <span class="step-icon">1</span>
+                <span>Parsing des documents</span>
+            </li>
+            <li class="progress-step pending" data-step="structure">
+                <span class="step-icon">2</span>
+                <span>Structuration des slides</span>
+            </li>
+            <li class="progress-step pending" data-step="images">
+                <span class="step-icon">3</span>
+                <span>Generation des illustrations</span>
+            </li>
+            <li class="progress-step pending" data-step="pptx">
+                <span class="step-icon">4</span>
+                <span>Creation du PPTX</span>
+            </li>
+        </ul>
+    </div>
+
+    <div id="error-container"></div>
+</div>
+
+<div class="result-container" id="result">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Presentation generee</div>
+                <div class="card-subtitle"><span id="slide-count"></span> slides</div>
+            </div>
+        </div>
+
+        <div class="result-content" id="slides-preview"></div>
+
+        <div class="result-actions">
+            <a class="btn btn-primary" id="download-pptx" href="#" download>Telecharger PPTX</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    initDocToPresentationPage();
+</script>
+{% endblock %}
