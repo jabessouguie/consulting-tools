@@ -88,11 +88,13 @@ class PDFConverter:
 
         try:
             # Commande LibreOffice pour conversion PDF
+            # Options pour préserver les couleurs et la qualité
             cmd = [
                 self.libreoffice_path,
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', str(output_dir),
+                '-env:UserInstallation=file:///tmp/LibreOffice_Conversion_${USER}',
                 str(pptx_path)
             ]
 
@@ -190,22 +192,179 @@ class PDFConverter:
 <head>
     <meta charset="UTF-8">
     <style>
-        body {{
-            font-family: 'Inter', Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-            color: #333;
+        /* Palette Consulting Tools */
+        :root {{
+            --blanc: #FFFFFF;
+            --rose-poudre: #F5E6E8;
+            --noir-profond: #1A1A1A;
+            --gris-clair: #F5F5F5;
+            --gris-moyen: #9CA3AF;
+            --corail: #E86F51;
+            --terracotta: #C4624F;
         }}
-        h1, h2, h3 {{ color: #FF6B58; font-family: 'Chakra Petch', sans-serif; }}
-        code {{ background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }}
-        pre {{ background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }}
-        blockquote {{ border-left: 4px solid #FF6B58; padding-left: 20px; margin-left: 0; color: #666; }}
+
+        @page {{
+            size: A4;
+            margin: 2cm;
+            @bottom-right {{
+                content: counter(page);
+                font-size: 10pt;
+                color: #9CA3AF;
+            }}
+        }}
+
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1A1A1A;
+            background: #FFFFFF;
+            font-size: 11pt;
+        }}
+
+        /* Titres avec palette Consulting Tools */
+        h1 {{
+            color: #E86F51;
+            font-family: 'Chakra Petch', Arial, sans-serif;
+            font-size: 28pt;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 16pt;
+            padding-bottom: 8pt;
+            border-bottom: 3px solid #F5E6E8;
+        }}
+
+        h2 {{
+            color: #C4624F;
+            font-family: 'Chakra Petch', Arial, sans-serif;
+            font-size: 20pt;
+            font-weight: 600;
+            margin-top: 24pt;
+            margin-bottom: 12pt;
+        }}
+
+        h3 {{
+            color: #1A1A1A;
+            font-family: 'Chakra Petch', Arial, sans-serif;
+            font-size: 16pt;
+            font-weight: 600;
+            margin-top: 16pt;
+            margin-bottom: 8pt;
+        }}
+
+        h4, h5, h6 {{
+            color: #1A1A1A;
+            font-weight: 600;
+            margin-top: 12pt;
+            margin-bottom: 6pt;
+        }}
+
+        /* Paragraphes */
+        p {{
+            margin-bottom: 10pt;
+            text-align: justify;
+        }}
+
+        /* Listes */
+        ul, ol {{
+            margin-bottom: 12pt;
+            padding-left: 25pt;
+        }}
+
+        li {{
+            margin-bottom: 4pt;
+        }}
+
+        /* Emphase */
+        strong {{
+            color: #E86F51;
+            font-weight: 600;
+        }}
+
+        em {{
+            color: #C4624F;
+            font-style: italic;
+        }}
+
+        /* Code */
+        code {{
+            background: #F5F5F5;
+            color: #C4624F;
+            padding: 2pt 4pt;
+            border-radius: 3pt;
+            font-family: 'Courier New', monospace;
+            font-size: 10pt;
+        }}
+
+        pre {{
+            background: #F5F5F5;
+            border-left: 4px solid #E86F51;
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin-bottom: 12pt;
+        }}
+
+        pre code {{
+            background: transparent;
+            padding: 0;
+            color: #1A1A1A;
+        }}
+
+        /* Citations */
+        blockquote {{
+            border-left: 4px solid #E86F51;
+            background: #F5E6E8;
+            padding: 12pt 16pt;
+            margin: 12pt 0;
+            color: #1A1A1A;
+            font-style: italic;
+        }}
+
+        /* Tableaux */
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12pt;
+        }}
+
+        th {{
+            background: #E86F51;
+            color: #FFFFFF;
+            padding: 8pt;
+            text-align: left;
+            font-weight: 600;
+        }}
+
+        td {{
+            padding: 6pt 8pt;
+            border-bottom: 1px solid #F5F5F5;
+        }}
+
+        tr:nth-child(even) {{
+            background: #F5E6E8;
+        }}
+
+        /* Liens */
+        a {{
+            color: #E86F51;
+            text-decoration: none;
+            font-weight: 500;
+        }}
+
+        a:hover {{
+            text-decoration: underline;
+        }}
+
+        /* Séparateurs */
+        hr {{
+            border: none;
+            border-top: 2px solid #F5E6E8;
+            margin: 24pt 0;
+        }}
     </style>
 </head>
 <body>
-{markdown.markdown(md_content, extensions=['extra', 'codehilite'])}
+{markdown.markdown(md_content, extensions=['extra', 'codehilite', 'tables', 'toc'])}
 </body>
 </html>
 """

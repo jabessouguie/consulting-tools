@@ -109,6 +109,31 @@ Marie : Bonjour à tous. On se retrouve pour faire le point sur le projet...
             </div>
         </div>
 
+        <!-- Email Share -->
+        <div style="margin: 1.5rem; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--noir-profond);">📧 Partager par email</h3>
+            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <input
+                        type="email"
+                        id="recipient-email"
+                        placeholder="email@exemple.com"
+                        class="form-input"
+                        oninput="validateEmailInput(this)"
+                        style="width: 100%; padding: 0.75rem; background: var(--blanc); border: 1px solid var(--gris-clair); border-radius: 8px; font-size: 0.95rem;"
+                    />
+                </div>
+                <button
+                    onclick="confirmAndShareEmail()"
+                    class="btn btn-email"
+                    style="padding: 0.75rem 1.5rem; font-size: 0.95rem; white-space: nowrap;"
+                >
+                    📧 Envoyer
+                </button>
+            </div>
+            <p id="email-status" style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--noir-profond);"></p>
+        </div>
+
         <div class="result-actions">
             <a class="btn btn-primary" id="download-md" href="#" download style="font-size: 1.1rem;">
                 Télécharger .md

@@ -111,53 +111,46 @@ TRANSCRIPT COMPLET (pour contexte) :
 
 Genere un compte rendu au format Markdown avec cette structure EXACTE :
 
-# Compte rendu - Reunion [Nom du projet ou sujet] - [Date]
+# Compte Rendu de Reunion
 
-## 1. En-tete
-- **Objet** : Compte rendu - Reunion [Nom du projet ou sujet] - [Date]
-- **Participants** : [Liste des participants (noms, roles, organisations)]
-- **Date et duree** : [Date], [Heure debut] - [Heure fin]
+**Date** : [Date de la reunion]
+**Participants** : [Liste des participants]
+**Duree** : [Duree de la reunion]
 
-## 2. Objectifs de la reunion
-La reunion avait pour but de :
-- [Objectif 1]
-- [Objectif 2]
+## Resume Executif
 
-## 3. Points cles discutes
+[Synthese en 2-3 phrases des points cles et de l objectif de la reunion]
 
-### 3.1. [Sujet 1]
-- [Resume en 2-3 lignes des echanges]
-    - [Sous-point ou detail important]
-    - [Question ouverte ou point non resolu]
+## Points Discutes
 
-### 3.2. [Sujet 2]
-- [Resume]
+### [Sujet 1]
+- [Point detaille 1]
+- [Point detaille 2]
 
-## 4. Decisions prises
-Les decisions suivantes ont ete actees :
-1. **[Decision 1]** : [Description claire et concise]
-2. **[Decision 2]** : [Description]
+### [Sujet 2]
+- [Point detaille]
 
-## 5. Actions et responsables
+## Decisions Prises
+
+- **[Decision]** : [Justification + Responsable si mentionne]
+
+## Actions a Mener
+
 | Action | Responsable | Echeance |
 |--------|-------------|----------|
-| [Action 1] | [Nom] | [Date] |
-| [Action 2] | [Nom] | [Date] |
+| [Action] | [Nom] | [Date] |
 
-## 6. Prochaines etapes
-- **[Etape 1]** : [Description] - Date prevue : [Date]
-- **[Etape 2]** : [Description] - Date prevue : [Date]
+## Points a Suivre
 
-## 7. Annexes
-Documents ou liens partages pendant la reunion :
-- [Lien/Document 1] : [Description]
+- [Point de vigilance ou sujet a revoir]
 
-## 8. Cloture
-Pour toute question ou precision, n'hesitez pas a me contacter.
-Cordialement, {consultant_name} - {company_name}
-
----
-*Compte rendu genere le {datetime.now().strftime('%d/%m/%Y a %H:%M')} par {consultant_name} - {company_name}*"""
+REGLES IMPORTANTES :
+- Retourne UNIQUEMENT le markdown
+- Pas de preambule email
+- Pas de formule de politesse
+- Pas de signature
+- Factuel et structure
+- Pas de meta-informations sur la generation"""
 
         minutes = self.llm.generate(
             prompt=prompt,
@@ -244,15 +237,16 @@ CORPS:
             "body": body
         }
 
-    def run(self, transcript: str) -> Dict[str, Any]:
+    def run(self, transcript: str, generate_email: bool = True) -> Dict[str, Any]:
         """
-        Pipeline complet : analyse le transcript et génère compte rendu + email
+        Pipeline complet : analyse le transcript et génère compte rendu + email (optionnel)
 
         Args:
             transcript: Transcript de la réunion
+            generate_email: Si True, génère aussi un email de partage (défaut: True pour compatibilité)
 
         Returns:
-            Dictionnaire avec minutes, email, et métadonnées
+            Dictionnaire avec minutes, email (si demandé), et métadonnées
         """
         print("\n🎙️  ANALYSE DE REUNION\n")
 
@@ -263,8 +257,10 @@ CORPS:
         # Génération du compte rendu
         minutes = self.generate_minutes(transcript, extracted_info)
 
-        # Génération de l'email
-        email = self.generate_email(extracted_info, minutes)
+        # Génération de l'email (optionnel)
+        email = None
+        if generate_email:
+            email = self.generate_email(extracted_info, minutes)
 
         # Sauvegarde
         output_dir = self.base_dir / "output"
@@ -278,9 +274,13 @@ CORPS:
 
         print(f"\n✅ Compte rendu sauvegardé : {minutes_path.relative_to(self.base_dir)}")
 
-        return {
+        result = {
             "minutes": minutes,
-            "email": email,
             "minutes_path": str(minutes_path.relative_to(self.base_dir)),
             "generated_at": datetime.now().isoformat()
         }
+
+        if email:
+            result["email"] = email
+
+        return result

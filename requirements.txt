@@ -29,7 +29,7 @@ uvicorn[standard]==0.30.0
 python-multipart==0.0.12
 starlette==0.38.2
 slowapi
-starlette-csrf==0.1.9
+starlette-csrf>=3.0.0
 
 # Authentication
 passlib[bcrypt]==1.7.4

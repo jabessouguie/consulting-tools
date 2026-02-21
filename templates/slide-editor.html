@@ -180,6 +180,12 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 PPTX
             </button>
+            <button onclick="exportToGoogleSlides()" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1" title="Exporter vers Google Slides">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2z"/>
+                </svg>
+                Google Slides
+            </button>
             <button onclick="exportPDF()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 PDF
@@ -1301,7 +1307,40 @@ function exportPDF() {
     doc.write('<title>' + (slides[0]?.title || 'Presentation') + ' - Consulting Tools</title>');
     doc.write('<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">');
     doc.write('<scr' + 'ipt src="https://cdn.tailwindcss.com"><\/scr' + 'ipt>');
-    doc.write('<style>' + styleContent + '\n@media print { body { margin: 0; } .slide-page { page-break-after: always; display: flex; align-items: center; justify-content: center; height: 100vh; } .slide-card { width: 100% !important; max-width: none; border-radius: 0; box-shadow: none; } } body { background: #000; margin: 0; padding: 0; } .slide-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; } .slide-card { max-width: 960px; width: 100%; border-radius: 8px; overflow: hidden; }</style>');
+    doc.write('<style>');
+    doc.write(`
+        /* Force Consulting Tools color palette for PDF export */
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+        /* Consulting Tools Palette - Forced for PDF */
+        .bg-slate-900, [style*="background:#1F1F1F"], [style*="background: #1F1F1F"] { background-color: #1F1F1F !important; }
+        .bg-white, [style*="background:#FFFFFF"], [style*="background: #FFFFFF"] { background-color: #FFFFFF !important; }
+        .bg-rose-50, [style*="background:#F5E6E8"], [style*="background: #F5E6E8"] { background-color: #F5E6E8 !important; }
+        [style*="background:#FF6B58"], [style*="background: #FF6B58"] { background-color: #FF6B58 !important; }
+        [style*="background:#C0504D"], [style*="background: #C0504D"] { background-color: #C0504D !important; }
+        [style*="background:#E86F51"], [style*="background: #E86F51"] { background-color: #E86F51 !important; }
+        [style*="background:#C4624F"], [style*="background: #C4624F"] { background-color: #C4624F !important; }
+
+        [style*="color:#FF6B58"], [style*="color: #FF6B58"] { color: #FF6B58 !important; }
+        [style*="color:#E86F51"], [style*="color: #E86F51"] { color: #E86F51 !important; }
+        [style*="color:#C4624F"], [style*="color: #C4624F"] { color: #C4624F !important; }
+        [style*="color:#FFFFFF"], [style*="color: #FFFFFF"] { color: #FFFFFF !important; }
+        [style*="color:#1F1F1F"], [style*="color: #1F1F1F"] { color: #1F1F1F !important; }
+
+        /* Gradient backgrounds */
+        [style*="linear-gradient"] { -webkit-print-color-adjust: exact !important; }
+    `);
+    doc.write(styleContent);
+    doc.write(`
+        @media print {
+            body { margin: 0; background: #000 !important; }
+            .slide-page { page-break-after: always; display: flex; align-items: center; justify-content: center; height: 100vh; }
+            .slide-card { width: 100% !important; max-width: none; border-radius: 0; box-shadow: none; }
+        }
+        body { background: #000; margin: 0; padding: 0; }
+        .slide-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .slide-card { max-width: 960px; width: 100%; border-radius: 8px; overflow: hidden; }
+    </style>');
     doc.write('</head><body>');
     doc.write(slideHtmls);
     doc.write('<scr' + 'ipt>setTimeout(function(){ window.print(); }, 500);<\/scr' + 'ipt>');
@@ -1468,6 +1507,78 @@ function exportPPTX() {
 
     const filename = (slides[0]?.title || 'presentation').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
     pptx.writeFile({ fileName: `${filename}_Consulting Tools.pptx` });
+}
+
+// ====================================
+// GOOGLE SLIDES EXPORT
+// ====================================
+async function exportToGoogleSlides() {
+    if (!slides || slides.length === 0) {
+        showToast('Aucun slide à exporter', 'warning', 'Export impossible');
+        return;
+    }
+
+    const title = slides[0]?.title || 'Présentation Consulting Tools';
+
+    // Show loading toast
+    const loadingToast = showToast('Export vers Google Slides en cours...', 'info', 'Export', 0);
+
+    try {
+        const formData = new FormData();
+        formData.append('slides_data', JSON.stringify(slides));
+        formData.append('title', title);
+
+        const response = await fetch('/api/training-slides/export-slides', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        // Close loading toast
+        if (loadingToast) {
+            closeToast(loadingToast);
+        }
+
+        if (response.ok && data.presentation_url) {
+            showToast(
+                `Présentation créée avec succès !`,
+                'success',
+                '✓ Google Slides',
+                6000
+            );
+
+            // Open Google Slides in new tab
+            window.open(data.presentation_url, '_blank');
+        } else if (data.setup_required) {
+            showToast(
+                'Google API non configurée. Voir VALIDATION_COMPLETE.md',
+                'warning',
+                'Configuration requise',
+                8000
+            );
+        } else {
+            showToast(
+                data.error || 'Erreur lors de l\'export',
+                'error',
+                'Échec',
+                6000
+            );
+        }
+    } catch (error) {
+        // Close loading toast
+        if (loadingToast) {
+            closeToast(loadingToast);
+        }
+
+        showToast(
+            `Erreur de connexion : ${error.message}`,
+            'error',
+            'Échec',
+            6000
+        );
+        console.error('Error exporting to Google Slides:', error);
+    }
 }
 
 // ====================================
