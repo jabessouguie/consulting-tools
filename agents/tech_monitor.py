@@ -20,6 +20,7 @@ import html2text
 
 from utils.llm_client import LLMClient
 from utils.article_db import ArticleDatabase
+from config import get_consultant_info
 
 
 class TechMonitorAgent:
@@ -35,11 +36,8 @@ class TechMonitorAgent:
         # Base de données des articles
         self.db = ArticleDatabase()
 
-        self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha'),
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant en stratégie data et IA'),
-            'company': os.getenv('COMPANY_NAME', 'Wenvision'),
-        }
+        # Informations consultant (depuis config centralisee)
+        self.consultant_info = get_consultant_info()
 
         # Sources RSS par défaut (thématiques data/IA)
         self.default_sources = [

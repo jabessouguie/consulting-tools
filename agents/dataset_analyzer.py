@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 
 from utils.llm_client import LLMClient
+from config import get_consultant_info
 
 
 class DatasetAnalyzerAgent:
@@ -25,11 +26,8 @@ class DatasetAnalyzerAgent:
     def __init__(self):
         self.llm_client = LLMClient()
 
-        self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha'),
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant en stratégie data et IA'),
-            'company': os.getenv('COMPANY_NAME', 'Wenvision'),
-        }
+        # Informations consultant (depuis config centralisee)
+        self.consultant_info = get_consultant_info()
 
     def load_dataset(self, file_path: str) -> pd.DataFrame:
         """
