@@ -25,6 +25,7 @@ from utils.pptx_reader import (
 )
 from utils.pptx_generator import build_proposal_pptx
 from utils.image_generator import ImageGenerator, ImageLibrary, DiagramGenerator
+from config import get_consultant_info
 
 # Chemin de base du projet
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,13 +50,8 @@ class ProposalGeneratorAgent:
             BASE_DIR, "Biographies - CV All Consulting Tools.pptx"
         )
 
-        # Informations consultant
-        self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sébastien Abessouguie Bayiha'),
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant en stratégie data et IA'),
-            'company': os.getenv('COMPANY_NAME', 'Consulting Tools'),
-            'profile': os.getenv('CONSULTANT_PROFILE', '')
-        }
+        # Informations consultant (depuis config centralisee)
+        self.consultant_info = get_consultant_info()
 
         # Diagram generation (Claude + Mermaid) et images
         self.diagram_generator = DiagramGenerator(llm_client=self.llm_client)

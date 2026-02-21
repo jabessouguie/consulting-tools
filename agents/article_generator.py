@@ -6,6 +6,7 @@ Prend une idee et genere un article markdown avec le style Consulting Tools/Jean
 import os
 import sys
 import re
+import ast
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from pathlib import Path
@@ -276,8 +277,8 @@ Reponds au format JSON :
                 # Tags = liste
                 if key == 'tags':
                     try:
-                        metadata[key] = eval(value)  # Liste Python
-                    except:
+                        metadata[key] = ast.literal_eval(value)  # Liste Python - SAFE
+                    except (ValueError, SyntaxError):
                         metadata[key] = []
                 else:
                     metadata[key] = value

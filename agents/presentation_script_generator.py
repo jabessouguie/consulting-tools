@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 from pptx import Presentation
 from utils.llm_client import LLMClient
+from config import get_consultant_info
 
 
 class PresentationScriptGenerator:
@@ -14,11 +15,8 @@ class PresentationScriptGenerator:
 
     def __init__(self):
         self.llm = LLMClient(max_tokens=8192)
-        self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant en strategie data et IA'),
-            'company': os.getenv('COMPANY_NAME', 'Consulting Tools')
-        }
+        # Informations consultant (depuis config centralisee)
+        self.consultant_info = get_consultant_info()
 
     def extract_slides_content(self, pptx_path: str) -> List[Dict[str, Any]]:
         """

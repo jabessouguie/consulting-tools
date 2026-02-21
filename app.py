@@ -41,6 +41,8 @@ from agents.dataset_analyzer import DatasetAnalyzerAgent
 from agents.workshop_planner import WorkshopPlannerAgent
 from agents.rfp_responder import RFPResponderAgent
 from utils.auth import authenticate_user, get_current_user, get_session_secret
+from config import get_consultant_info
+from utils.validation import validate_file_upload, sanitize_text_input, sanitize_filename, validate_url
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -93,9 +95,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # app.add_middleware(AuthMiddleware)  # DESACTIVE - Pas de login requis
 app.add_middleware(SessionMiddleware, secret_key=get_session_secret())  # S'exécute en premier
 
-# Consultant info
-CONSULTANT_NAME = os.getenv("CONSULTANT_NAME", "Jean-Sébastien Abessouguie Bayiha")
-COMPANY_NAME = os.getenv("COMPANY_NAME", "Consulting Tools")
+# Consultant info (depuis config centralisee)
+try:
+    _consultant_config = get_consultant_info()
+    CONSULTANT_NAME = _consultant_config['name']
+    COMPANY_NAME = _consultant_config['company']
+except ValueError as e:
+    # Si config non chargee, on laisse l'app demarrer mais avec avertissement
+    print(f"\n⚠️  {e}")
+    CONSULTANT_NAME = "CONFIGURE_CONSULTANT_NAME"
+    COMPANY_NAME = "CONFIGURE_COMPANY_NAME"
 
 # Job store (in-memory)
 jobs = {}
@@ -2451,11 +2460,10 @@ async def dataset_page(request: Request):
 async def api_dataset_analyze(request: Request, file: UploadFile = File(...)):
     """Lance l'analyse d'un dataset"""
 
-    # Vérifier le type de fichier
-    filename = file.filename or ""
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in ['.csv', '.xlsx', '.xls']:
-        return JSONResponse({"error": "Format non supporté. Utilisez CSV ou Excel."}, status_code=400)
+    # Valider le fichier (taille, type)
+    allowed_exts = {'.csv', '.xlsx', '.xls'}
+    content = await validate_file_upload(file, allowed_extensions=allowed_exts)
+    filename = sanitize_filename(file.filename or "dataset.csv")
 
     # Sauvegarder temporairement le fichier
     temp_dir = BASE_DIR / "temp"
@@ -2464,7 +2472,6 @@ async def api_dataset_analyze(request: Request, file: UploadFile = File(...)):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     temp_path = temp_dir / f"upload_{timestamp}_{filename}"
 
-    content = await file.read()
     with open(temp_path, 'wb') as f:
         f.write(content)
 
@@ -4226,8 +4233,9 @@ async def slide_editor_page(request: Request):
 async def api_slide_editor_parse_document(file: UploadFile = File(...)):
     """Parse un document uploade et retourne son contenu texte (ou chemin pour PPTX)"""
     try:
-        content = await file.read()
-        filename = file.filename or "document.txt"
+        # Valider le fichier uploade (taille, type)
+        content = await validate_file_upload(file)
+        filename = sanitize_filename(file.filename or "document.txt")
         ext = Path(filename).suffix.lower()
 
         if ext in ('.md', '.txt'):
@@ -4891,12 +4899,15 @@ async def api_slide_editor_generate(request: Request):
     """Genere des slides JSON via LLM pour le slide editor (non-streaming fallback)"""
     try:
         data = await request.json()
-        topic = data.get("topic", "")
-        audience = data.get("audience", "")
+
+        # Valider et sanitizer les inputs texte
+        topic = sanitize_text_input(data.get("topic", ""), max_length=1000, field_name="topic")
+        audience = sanitize_text_input(data.get("audience", ""), max_length=500, field_name="audience")
+        document_text = sanitize_text_input(data.get("document_text", ""), max_length=50000, field_name="document_text")
+
         slide_count = data.get("slide_count", 10)
         gen_type = data.get("type", "presentation")
         model = data.get("model", "")
-        document_text = data.get("document_text", "")
 
         from utils.llm_client import LLMClient
         llm_kwargs = {"max_tokens": 8192}
@@ -4967,13 +4978,16 @@ async def api_document_editor_start_generate(request: Request):
     """Demarre la generation de document en arriere-plan"""
     data = await request.json()
     doc_type = data.get("type", "formation")
-    topic = data.get("topic", "")
-    document_text = data.get("document_text", "")
-    audience = data.get("audience", "")
+
+    # Valider et sanitizer les inputs texte
+    topic = sanitize_text_input(data.get("topic", ""), max_length=1000, field_name="topic")
+    document_text = sanitize_text_input(data.get("document_text", ""), max_length=50000, field_name="document_text")
+    audience = sanitize_text_input(data.get("audience", ""), max_length=500, field_name="audience")
+    feedback = sanitize_text_input(data.get("feedback", ""), max_length=5000, field_name="feedback")
+    previous_content = sanitize_text_input(data.get("previous_content", ""), max_length=50000, field_name="previous_content")
+
     length = data.get("length", "medium")
     model = data.get("model", "")
-    feedback = data.get("feedback", "")
-    previous_content = data.get("previous_content", "")
     use_context = data.get("use_context", False)
 
     job_id = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{id(data) % 10000}"
@@ -5476,6 +5490,14 @@ if __name__ == "__main__":
         print("  🔒 HTTPS activé (certificat auto-signé)")
     else:
         print("  ⚠️  HTTP uniquement (pas de SSL)")
+
+    # Security warning for default password
+    auth_password = os.getenv("AUTH_PASSWORD", "")
+    if not auth_password or auth_password == "CHANGE_ME_ON_FIRST_INSTALL":
+        print("\n  🚨 SECURITE : Mot de passe par defaut detecte !")
+        print("  → Veuillez configurer AUTH_PASSWORD dans votre fichier .env")
+        print("  → Utilisez un mot de passe fort et unique")
+
     print(f"{'='*50}\n")
 
     if use_ssl:
