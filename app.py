@@ -3850,8 +3850,8 @@ async def api_download(path: str):
         )
 
     except Exception as e:
-        print(f"Erreur lors du téléchargement: {e}")
-        return JSONResponse({"error": f"Erreur lors du téléchargement: {str(e)}"}, status_code=500)
+        print(f"Erreur lors du téléchargement: {safe_error_message(e)}")
+        return JSONResponse({"error": f"Erreur lors du téléchargement: {safe_error_message(e)}"}, status_code=500)
 
 
 @app.post("/api/convert-to-pdf")
@@ -3907,8 +3907,8 @@ async def api_convert_to_pdf(request: Request):
             }, status_code=500)
 
     except Exception as e:
-        print(f"Erreur lors de la conversion PDF: {e}")
-        return JSONResponse({"error": f"Erreur: {str(e)}"}, status_code=500)
+        print(f"Erreur lors de la conversion PDF: {safe_error_message(e)}")
+        return JSONResponse({"error": f"Erreur: {safe_error_message(e)}"}, status_code=500)
 
 
 @app.get("/api/pdf-capabilities")

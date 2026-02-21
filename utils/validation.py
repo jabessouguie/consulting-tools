@@ -225,3 +225,108 @@ def validate_description(desc: str) -> str:
 def validate_title(title: str) -> str:
     """Valide un titre"""
     return sanitize_text_input(title, max_length=MAX_SHORT_INPUT_LENGTH, field_name="title")
+
+
+# === SECRET MASKING (Phase 3 Security) ===
+
+def mask_secret(secret: Optional[str], show_chars: int = 4) -> str:
+    """
+    Masque un secret pour les logs (API key, password, token)
+
+    Args:
+        secret: Le secret a masquer
+        show_chars: Nombre de caracteres a montrer au debut et a la fin
+
+    Returns:
+        Secret masque (ex: "sk-a***xyz" ou "***")
+
+    Examples:
+        >>> mask_secret("sk-ant-api-key-12345")
+        "sk-a***345"
+        >>> mask_secret("short")
+        "***"
+        >>> mask_secret(None)
+        "***"
+    """
+    if not secret:
+        return "***"
+
+    # Si le secret est trop court, tout masquer
+    if len(secret) < (show_chars * 2 + 3):
+        return "***"
+
+    # Montrer debut et fin
+    return f"{secret[:show_chars]}***{secret[-show_chars:]}"
+
+
+def mask_api_key(api_key: Optional[str]) -> str:
+    """
+    Masque une API key pour les logs
+
+    Args:
+        api_key: La cle API
+
+    Returns:
+        Cle masquee
+
+    Examples:
+        >>> mask_api_key("sk-ant-api-1234567890abcdef")
+        "sk-a***cdef"
+        >>> mask_api_key("AIzaSyD1234567890abcdef")
+        "AIza***cdef"
+    """
+    return mask_secret(api_key, show_chars=4)
+
+
+def mask_password(password: Optional[str]) -> str:
+    """
+    Masque un mot de passe pour les logs
+
+    Args:
+        password: Le mot de passe
+
+    Returns:
+        Mot de passe masque (toujours "***" pour securite maximale)
+    """
+    # Pour les passwords, toujours tout masquer
+    return "***" if password else "***"
+
+
+def sanitize_error_message(error_msg: str) -> str:
+    """
+    Nettoie un message d erreur pour enlever les secrets potentiels
+
+    Args:
+        error_msg: Message d erreur original
+
+    Returns:
+        Message nettoye
+
+    Examples:
+        >>> sanitize_error_message("API key sk-ant-123456 is invalid")
+        "API key ****** is invalid"
+    """
+    import re
+
+    # Patterns de secrets courants
+    patterns = [
+        # API keys Anthropic
+        (r'sk-ant-[a-zA-Z0-9-_]{40,}', '******'),
+        # API keys OpenAI
+        (r'sk-[a-zA-Z0-9]{32,}', '******'),
+        # API keys Google/Gemini
+        (r'AIza[a-zA-Z0-9_-]{35,}', '******'),
+        # Tokens generiques
+        (r'[a-zA-Z0-9_-]{40,}', lambda m: mask_secret(m.group(0), show_chars=3)),
+        # Passwords dans URLs
+        (r'://[^:]+:([^@]+)@', r'://*****:*****@'),
+    ]
+
+    sanitized = error_msg
+    for pattern, replacement in patterns:
+        if callable(replacement):
+            sanitized = re.sub(pattern, replacement, sanitized)
+        else:
+            sanitized = re.sub(pattern, replacement, sanitized)
+
+    return sanitized

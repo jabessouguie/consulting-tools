@@ -71,7 +71,8 @@ class LinkedInCommenterAgent:
                 else:
                     print(f"   ⚠️  Impossible de recuperer l'URL (status {response.status_code}), utilisation du texte fourni")
             except Exception as e:
-                print(f"   ⚠️  Erreur lors du scraping: {str(e)}, utilisation du texte fourni")
+                from utils.validation import sanitize_error_message
+                print(f"   ⚠️  Erreur lors du scraping: {sanitize_error_message(str(e))}, utilisation du texte fourni")
 
         # Fallback: utiliser le texte tel quel
         return {

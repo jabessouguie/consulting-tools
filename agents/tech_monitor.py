@@ -110,7 +110,8 @@ class TechMonitorAgent:
                     })
 
             except Exception as e:
-                print(f"   ⚠️  Erreur sur {source_url}: {str(e)}")
+                from utils.validation import sanitize_error_message
+                print(f"   ⚠️  Erreur sur {source_url}: {sanitize_error_message(str(e))}")
                 continue
 
         print(f"   ✅ {len(articles)} articles collectés")
