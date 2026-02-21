@@ -601,11 +601,12 @@ function renderSlideHTML(slide, isThumbnail) {
                         ${slide.image_path
                             ? `<img src="${slide.image_path}" class="w-full h-full object-cover" alt="">`
                             : slide.image_prompt
-                                ? `<div class="text-left ${t ? 'text-[3px]' : 'text-[10px]'} leading-relaxed">
-                                    <div class="font-chakra font-bold mb-1 accent ${t ? 'text-[4px]' : 'text-xs'}">📸 Image Prompt (DALL-E/Midjourney)</div>
-                                    <div class="text-secondary">${slide.image_prompt.substring(0, t ? 100 : 400)}${(slide.image_prompt.length > (t ? 100 : 400)) ? '...' : ''}</div>
+                                ? `<div class="text-left ${t ? 'text-[3px]' : 'text-[9px]'} leading-relaxed w-full">
+                                    <div class="font-chakra font-bold mb-2 accent ${t ? 'text-[4px]' : 'text-xs'}">🎨 Prompt Nano Banana</div>
+                                    <div class="text-muted ${t ? 'text-[2px]' : 'text-[8px]'} mb-2 opacity-70">Dimensions : ${slide.image_dimensions || '1792x1024px (16:9)'}</div>
+                                    <div class="text-secondary text-[${t ? '3px' : '9px'}] leading-snug">${slide.image_prompt.substring(0, t ? 80 : 350)}${(slide.image_prompt.length > (t ? 80 : 350)) ? '...' : ''}</div>
                                    </div>`
-                                : `<div class="text-muted ${t ? 'text-[4px]' : 'text-sm'} text-center">[Image]</div>`
+                                : `<div class="text-muted ${t ? 'text-[4px]' : 'text-sm'} text-center">[Image placeholder]<br><span class="${t ? 'text-[2px]' : 'text-xs'}">1792x1024px</span></div>`
                         }
                     </div>
                     <div class="${pad} flex flex-col">
@@ -772,10 +773,51 @@ function renderDiagram(slide, isThumbnail) {
             </div>`;
 
         case 'matrix':
+        case 'grid':
             return `<div class="grid grid-cols-2 gap-${t ? '0.5' : '3'} w-[80%]">
                 ${elements.map((el, i) =>
                     `<div class="box-bg rounded-lg ${t ? 'p-1 text-[3px]' : 'p-4 text-xs'} text-secondary font-semibold text-center border border-gray-700/20">${el}</div>`
                 ).join('')}
+            </div>`;
+
+        case 'hierarchy':
+            return `<div class="flex flex-col items-center gap-${t ? '0.5' : '2'}">
+                <div class="${boxClass} accent-bg">${elements[0] || 'Root'}</div>
+                ${elements.length > 1 ? `
+                    <div class="${arrowClass}">&#8595;</div>
+                    <div class="flex gap-${t ? '0.5' : '2'} flex-wrap justify-center">
+                        ${elements.slice(1).map((el, i) =>
+                            `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : 'box-bg text-secondary border border-gray-700/20'}">${el}</div>`
+                        ).join('')}
+                    </div>
+                ` : ''}
+            </div>`;
+
+        case 'process':
+            return `<div class="flex flex-col gap-${t ? '0.5' : '2'} w-full items-center">
+                ${elements.map((el, i) =>
+                    `<div class="flex items-center gap-${t ? '0.5' : '2'} w-[80%]">
+                        <div class="accent-bg text-white ${t ? 'w-3 h-3 text-[3px]' : 'w-8 h-8 text-sm'} rounded-full flex items-center justify-center font-bold flex-shrink-0">${i + 1}</div>
+                        <div class="${t ? 'flex-1 px-1 py-0.5 text-[3px]' : 'flex-1 px-3 py-2 text-xs'} box-bg rounded-lg text-secondary font-semibold border border-gray-700/20">${el}</div>
+                    </div>`
+                ).join('')}
+            </div>`;
+
+        case 'relations':
+            const center = elements[0] || 'Centre';
+            const satellites = elements.slice(1);
+            return `<div class="relative w-full h-full flex items-center justify-center">
+                <div class="${boxClass} accent-bg z-10">${center}</div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    ${satellites.map((el, i) => {
+                        const angle = (360 / satellites.length) * i;
+                        const radius = t ? '35%' : '40%';
+                        return `<div class="${boxClass} box-bg text-secondary border border-gray-700/20 absolute"
+                            style="transform: rotate(${angle}deg) translate(${radius}) rotate(-${angle}deg)">
+                            ${el}
+                        </div>`;
+                    }).join('')}
+                </div>
             </div>`;
 
         default:
