@@ -45,4 +45,4 @@ pytz==2024.1
 python-pptx==1.0.2
 PyPDF2==3.0.1
 google-generativeai>=0.8.0
-Pillow==10.2.0
+Pillow>=10.2.0
