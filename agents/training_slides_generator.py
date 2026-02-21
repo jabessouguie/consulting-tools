@@ -134,10 +134,36 @@ CONSIGNES OBLIGATOIRES pour les slides (style Veolia - moderne et impactant) :
 8. PUBLIC CIBLE : Adapte le vocabulaire et la profondeur au niveau du public
 9. DURÉE : Calibre le nombre de slides pour la durée prévue (environ 2-3 slides par 10 min)
 
-NOUVEAUX TYPES DE SLIDES DISPONIBLES (en plus de content/diagram/section):
+TYPES DE SLIDES DISPONIBLES :
+
+**Slides de contenu** :
+- "content": slide classique avec titre + bullets (max 5 points courts)
 - "stat": chiffre clé en très grand (stat_value, stat_label, context, subtitle)
 - "quote": citation/principe pédagogique (quote_text, author optional, title optional)
-- "highlight": 2-4 points clés dans encadrés colorés (title, key_points, highlight_color)
+- "highlight": 2-4 points clés dans encadrés colorés (title, key_points)
+- "two_column": comparaison 2 colonnes (title, left_title, left_points, right_title, right_points)
+- "table": tableau de données (title, headers, rows)
+
+**Slides visuelles** :
+- "image": slide avec image (title, caption, bullets, image_prompt, image_dimensions)
+  * image_prompt: Prompt detaille pour Nano Banana
+  * image_dimensions: "1792x1024px (16:9)" par defaut
+  * Exemple prompt: "Premium professional illustration for training, topic: [sujet], style: modern minimal, Unreal Engine 5 render, colors: cool blues + warm amber accents, 16:9 format, 1792x1024px"
+
+**Diagrammes** (type "diagram" + diagram_type):
+- "flow": processus lineaire avec fleches (elements: ["Etape 1", "Etape 2", ...])
+- "grid": grille 2x2 ou plus (elements: ["Case 1", "Case 2", ...])
+- "hierarchy": hierarchie/organigramme (elements: ["Root", "Child 1", "Child 2", ...])
+- "process": processus numerote vertical (elements: ["Action 1", "Action 2", ...])
+- "relations": schema relationnel en etoile (elements: ["Centre", "Satellite 1", "Satellite 2", ...])
+- "cycle": cycle iteratif (elements: ["Phase 1", "Phase 2", ...])
+- "timeline": chronologie horizontale (elements: ["2020", "2022", "2025", ...])
+- "pyramid": pyramide (elements: ["Base", "Milieu", "Sommet"])
+
+**Slides de structure** :
+- "section": separateur de module (title, number optional)
+- "cover": slide de couverture (title, subtitle, meta)
+- "closing": slide de fin (title, subtitle)
 
 Tu dois retourner UNIQUEMENT un JSON valide avec un tableau de slides."""
 
@@ -186,6 +212,31 @@ Retourne un JSON avec ce format exact (VARIE LES TYPES) :
         "diagram_type": "cycle",
         "elements": ["Collecte données", "Entraînement", "Déploiement", "Monitoring"],
         "description": "Processus itératif"
+    }},
+    {{
+        "type": "diagram",
+        "title": "Organisation équipe Data",
+        "diagram_type": "hierarchy",
+        "elements": ["CDO", "Data Engineers", "Data Scientists", "Data Analysts"],
+        "description": "Structure hiérarchique"
+    }},
+    {{
+        "type": "image",
+        "title": "Architecture Big Data",
+        "caption": "Exemple d architecture moderne",
+        "bullets": ["Scalabilité", "Résilience", "Performance"],
+        "image_prompt": "Premium professional diagram of modern big data architecture, distributed systems, clean minimal design, Unreal Engine 5 render, tech blueprint style, cool blue and amber accents, 16:9 format, 1792x1024px",
+        "image_dimensions": "1792x1024px (16:9)"
+    }},
+    {{
+        "type": "table",
+        "title": "Comparaison des frameworks ML",
+        "headers": ["Framework", "Performance", "Facilité", "Communauté"],
+        "rows": [
+            ["TensorFlow", "⭐⭐⭐⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐⭐"],
+            ["PyTorch", "⭐⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
+            ["Scikit-learn", "⭐⭐⭐", "⭐⭐⭐⭐⭐", "⭐⭐⭐⭐"]
+        ]
     }},
     {{
         "type": "content",
