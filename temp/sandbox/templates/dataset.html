@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Analyse de Dataset - Consulting Tools Agents{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1> Analyse de Dataset</h1>
+        <p class="subtitle">Upload un fichier CSV/Excel pour une analyse exploratoire automatique</p>
+    </div>
+
+    <div class="card">
+        <form id="dataset-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="dataset-file">Fichier de données</label>
+                <div class="file-upload" id="dataset-file-upload-zone">
+                    <input type="file" id="dataset-file" accept=".csv,.xlsx,.xls" style="display:none" required>
+                    <p> Cliquez ou glissez un fichier CSV/Excel ici</p>
+                    <p id="dataset-file-name" style="color: var(--corail); font-weight: 500; margin-top: 0.5rem;"></p>
+                </div>
+                <small class="form-hint">Formats acceptés: CSV, Excel (.xlsx, .xls) - Max 50 MB</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="dataset-btn">
+                Analyser le dataset
+            </button>
+        </form>
+    </div>
+
+    <div id="progress-section" style="display: none;">
+        <div class="card">
+            <h3>Analyse en cours...</h3>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <div id="progress-steps">
+                <div class="progress-step" id="step-load">
+                    <span class="step-icon">1</span>
+                    <span class="step-text">Chargement du dataset</span>
+                </div>
+                <div class="progress-step" id="step-structure">
+                    <span class="step-icon">2</span>
+                    <span class="step-text">Analyse de la structure</span>
+                </div>
+                <div class="progress-step" id="step-quality">
+                    <span class="step-icon">3</span>
+                    <span class="step-text">Analyse de la qualité</span>
+                </div>
+                <div class="progress-step" id="step-stats">
+                    <span class="step-icon">4</span>
+                    <span class="step-text">Calcul des statistiques</span>
+                </div>
+                <div class="progress-step" id="step-report">
+                    <span class="step-icon">5</span>
+                    <span class="step-text">Génération du rapport</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-section" style="display: none;">
+        <div class="result-header">
+            <h2>Rapport d'analyse</h2>
+            <div class="result-actions">
+                <button class="btn btn-secondary" onclick="copyReport()">
+                    Copier
+                </button>
+                <button class="btn btn-secondary" onclick="downloadResult('dataset')">
+                    Télécharger
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="dataset-stats" style="margin-bottom: 1.5rem; padding: 1rem; background-color: var(--bg-secondary); border-radius: 8px;">
+                <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                    <div>
+                        <strong> Fichier:</strong>
+                        <span id="stat-filename">-</span>
+                    </div>
+                    <div>
+                        <strong> Lignes:</strong>
+                        <span id="stat-rows">0</span>
+                    </div>
+                    <div>
+                        <strong> Colonnes:</strong>
+                        <span id="stat-columns">0</span>
+                    </div>
+                    <div>
+                        <strong> Taille:</strong>
+                        <span id="stat-memory">0 MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="report-content" class="markdown-content"></div>
+        </div>
+
+        <div class="feedback-section">
+            <div class="feedback-header">
+                <h3> Feedback</h3>
+                <p class="feedback-subtitle">Tu veux approfondir certains points ? Décris ce que tu veux modifier.</p>
+            </div>
+            <textarea
+                class="feedback-textarea"
+                id="dataset-feedback"
+                placeholder="Ex: Ajoute une analyse des outliers, développe les recommandations, explique mieux les corrélations..."
+            ></textarea>
+            <button class="btn btn-primary" id="regenerate-dataset-btn" onclick="submitFeedback('dataset')">
+                Régénérer avec feedback
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (typeof initDatasetPage === 'function') {
+        initDatasetPage();
+    }
+</script>
+{% endblock %}

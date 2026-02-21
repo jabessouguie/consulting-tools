@@ -320,6 +320,126 @@ async def logout(request: Request):
     return RedirectResponse(url="/login", status_code=302)
 
 
+# === LINKEDIN OAUTH ===
+
+@app.get("/auth/linkedin")
+async def linkedin_auth_start():
+    """Demarre le flux OAuth LinkedIn"""
+    from utils.linkedin_client import LinkedInClient, is_linkedin_configured
+
+    if not is_linkedin_configured():
+        return HTMLResponse("""
+            <h1>LinkedIn OAuth non configure</h1>
+            <p>Veuillez configurer les variables suivantes dans votre .env :</p>
+            <ul>
+                <li>LINKEDIN_CLIENT_ID</li>
+                <li>LINKEDIN_CLIENT_SECRET</li>
+                <li>LINKEDIN_REDIRECT_URI</li>
+            </ul>
+            <p>Consultez <a href="https://www.linkedin.com/developers/apps">LinkedIn Developers</a> pour créer une app.</p>
+        """, status_code=400)
+
+    try:
+        client = LinkedInClient()
+        auth_url = client.get_auth_url()
+        return RedirectResponse(auth_url)
+    except Exception as e:
+        return HTMLResponse(f"<h1>Erreur</h1><p>{safe_error_message(e)}</p>", status_code=500)
+
+
+@app.get("/auth/linkedin/callback")
+async def linkedin_auth_callback(code: str = None, error: str = None, error_description: str = None):
+    """Gere le callback OAuth LinkedIn"""
+    from utils.linkedin_client import LinkedInClient
+
+    # Check for errors
+    if error:
+        return HTMLResponse(f"""
+            <h1>Erreur OAuth LinkedIn</h1>
+            <p><strong>Erreur :</strong> {error}</p>
+            <p><strong>Description :</strong> {error_description or 'N/A'}</p>
+            <p><a href="/">Retour au dashboard</a></p>
+        """, status_code=400)
+
+    if not code:
+        return HTMLResponse("""
+            <h1>Erreur OAuth LinkedIn</h1>
+            <p>Code d autorisation manquant</p>
+            <p><a href="/">Retour au dashboard</a></p>
+        """, status_code=400)
+
+    try:
+        client = LinkedInClient()
+        token_data = client.exchange_code_for_token(code)
+        access_token = token_data.get('access_token')
+        expires_in = token_data.get('expires_in', 'N/A')
+
+        return HTMLResponse(f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>LinkedIn Connected!</title>
+                <style>
+                    body {{
+                        font-family: 'Inter', sans-serif;
+                        max-width: 800px;
+                        margin: 50px auto;
+                        padding: 20px;
+                        background: #f8f9fa;
+                    }}
+                    .success {{
+                        background: white;
+                        padding: 30px;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    }}
+                    h1 {{ color: #0a66c2; }}
+                    code {{
+                        background: #f0f0f0;
+                        padding: 15px;
+                        display: block;
+                        border-radius: 8px;
+                        margin: 15px 0;
+                        font-family: monospace;
+                        word-break: break-all;
+                    }}
+                    .btn {{
+                        background: #0a66c2;
+                        color: white;
+                        padding: 12px 24px;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        display: inline-block;
+                        margin-top: 20px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="success">
+                    <h1>✅ LinkedIn connecté avec succès !</h1>
+                    <p>Votre application est maintenant autorisée à publier sur LinkedIn.</p>
+                    <p><strong>Expire dans :</strong> {expires_in} secondes</p>
+
+                    <h2>Configuration</h2>
+                    <p>Ajoutez cette ligne à votre fichier <code>.env</code> :</p>
+                    <code>LINKEDIN_ACCESS_TOKEN={access_token}</code>
+
+                    <p><strong>Important :</strong> Ce token expire. Vous devrez répéter le processus OAuth lorsqu il expirera.</p>
+
+                    <a href="/" class="btn">Retour au dashboard</a>
+                </div>
+            </body>
+            </html>
+        """)
+
+    except Exception as e:
+        return HTMLResponse(f"""
+            <h1>Erreur lors de l echange du code</h1>
+            <p>{safe_error_message(e)}</p>
+            <p><a href="/">Retour au dashboard</a></p>
+        """, status_code=500)
+
+
 # === SETTINGS API ===
 
 @app.get("/api/settings/model")
@@ -1596,6 +1716,71 @@ REGLES IMPERATIVES:
         job["error"] = safe_error_message(e)
 
 
+@app.post("/api/linkedin/publish")
+@limiter.limit("5/minute")
+async def api_linkedin_publish(request: Request):
+    """Publie un post directement sur LinkedIn"""
+    from utils.linkedin_client import LinkedInClient, has_linkedin_access_token
+    from utils.validation import sanitize_text_input
+
+    # Check if LinkedIn is configured
+    if not has_linkedin_access_token():
+        return JSONResponse({
+            "error": "LinkedIn non configure. Completez le flux OAuth via /auth/linkedin"
+        }, status_code=400)
+
+    body = await request.json()
+    text = body.get('text', '').strip()
+    visibility = body.get('visibility', 'PUBLIC')
+
+    # Validate
+    if not text:
+        return JSONResponse({"error": "Texte du post manquant"}, status_code=400)
+
+    # Sanitize and validate length
+    try:
+        text = sanitize_text_input(text, max_length=3000, field_name="post")
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+    if visibility not in ['PUBLIC', 'CONNECTIONS']:
+        visibility = 'PUBLIC'
+
+    try:
+        client = LinkedInClient()
+        result = client.publish_post(text=text, visibility=visibility)
+
+        return JSONResponse({
+            "message": "Post publie avec succes sur LinkedIn",
+            "id": result.get('id'),
+            "url": result.get('url'),
+            "status": result.get('status')
+        })
+
+    except ValueError as e:
+        # Configuration or validation errors
+        return JSONResponse(
+            {"error": f"Erreur de configuration: {safe_error_message(e)}"},
+            status_code=400
+        )
+    except Exception as e:
+        # API errors
+        return JSONResponse(
+            {"error": f"Erreur lors de la publication: {safe_error_message(e)}"},
+            status_code=500
+        )
+
+
+@app.get("/api/linkedin/status")
+async def api_linkedin_status():
+    """Verifie le status de connexion LinkedIn"""
+    from utils.linkedin_client import has_linkedin_access_token
+
+    return JSONResponse({
+        "connected": has_linkedin_access_token()
+    })
+
+
 # === PAGE & API: ARTICLE TO POST ===
 
 @app.get("/article", response_class=HTMLResponse)
@@ -2043,6 +2228,90 @@ Tu corriges un mail professionnel selon le retour du consultant.""",
     except Exception as e:
         job["status"] = "error"
         job["error"] = safe_error_message(e)
+
+
+@app.post("/api/meeting/share-email")
+@limiter.limit("10/minute")
+async def api_meeting_share_email(request: Request):
+    """Partage le compte rendu de reunion par email avec piece jointe"""
+    from utils.gmail_client import GmailClient
+    from utils.validation import validate_email
+
+    body = await request.json()
+    to_email = body.get("to_email", "").strip()
+    meeting_summary = body.get("meeting_summary", "")
+    meeting_title = body.get("meeting_title", "Sans titre")
+
+    # Valider email
+    if not to_email:
+        return JSONResponse({"error": "Email destinataire manquant"}, status_code=400)
+
+    if not validate_email(to_email):
+        return JSONResponse({"error": "Email destinataire invalide"}, status_code=400)
+
+    if not meeting_summary:
+        return JSONResponse({"error": "Compte rendu manquant"}, status_code=400)
+
+    try:
+        # Get consultant info
+        consultant_info = get_consultant_info()
+
+        # Creer fichier temporaire pour le compte rendu
+        import tempfile
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        temp_file = tempfile.NamedTemporaryFile(
+            mode='w',
+            suffix='.md',
+            prefix=f'compte_rendu_{timestamp}_',
+            delete=False,
+            encoding='utf-8'
+        )
+
+        temp_file.write(meeting_summary)
+        temp_file.close()
+
+        # Construire email
+        subject = f"Compte rendu de reunion - {meeting_title}"
+        body = f"""Bonjour,
+
+Veuillez trouver ci-joint le compte rendu de notre reunion.
+
+Cordialement,
+{consultant_info['name']}
+{consultant_info['title']}
+{consultant_info['company']}
+"""
+
+        # Envoyer email
+        gmail = GmailClient()
+        result = gmail.send_email(
+            to=to_email,
+            subject=subject,
+            body=body,
+            attachments=[temp_file.name]
+        )
+
+        # Supprimer fichier temporaire
+        import os
+        os.unlink(temp_file.name)
+
+        return JSONResponse({
+            "message": "Email envoye avec succes",
+            "id": result['id']
+        })
+
+    except FileNotFoundError as e:
+        return JSONResponse(
+            {"error": f"Fichier non trouve: {safe_error_message(e)}"},
+            status_code=404
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur lors de l envoi: {safe_error_message(e)}"},
+            status_code=500
+        )
 
 
 # === PAGE & API: LINKEDIN COMMENT ===
