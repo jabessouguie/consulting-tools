@@ -1,0 +1,602 @@
+{% extends "base.html" %}
+
+{% block title %}TenderScout AI — Consulting Tools Agents{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">TenderScout <span style="color: var(--accent-primary, #7c6af7);">AI</span></h1>
+    <p class="page-subtitle">Détectez et analysez les appels d'offres publics avec Gemini AI (GO / NO-GO)</p>
+</div>
+
+<!-- ── FORMULAIRE DE SCAN ───────────────────────────────────────────── -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <h2 class="card-title" style="margin-bottom: 1rem;">Lancer un scan</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Mots-clés -->
+        <div>
+            <label style="font-size: 0.85rem; color: var(--gris-moyen, #888); display: block; margin-bottom: 0.4rem;">
+                Mots-clés <span style="color: #e55;">(séparés par virgule)</span>
+            </label>
+            <input type="text" id="keywords-input" placeholder="ex: transformation digitale, consulting, data" style="width: 100%; padding: 0.65rem 0.9rem; border: 1px solid #333; border-radius: 8px;
+                       background: var(--bg-input, #1a1a2e); color: var(--text-primary, #e0e0e0);
+                       font-size: 0.95rem; box-sizing: border-box;" />
+        </div>
+
+        <!-- Sources -->
+        <div>
+            <label style="font-size: 0.85rem; color: var(--gris-moyen, #888); display: block; margin-bottom: 0.4rem;">
+                Sources
+            </label>
+            <div style="display: flex; gap: 1.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="src-boamp" checked
+                        style="width: 16px; height: 16px; accent-color: var(--accent-primary, #7c6af7);">
+                    <span style="font-size: 0.9rem;">BOAMP</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="src-francemarches"
+                        style="width: 16px; height: 16px; accent-color: var(--accent-primary, #7c6af7);">
+                    <span style="font-size: 0.9rem;">Francemarches.com</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Bouton -->
+        <div>
+            <button id="btn-scan" onclick="launchScan()" class="btn btn-primary" style="min-width: 160px;">
+                Lancer le scan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── PROGRESSION SSE ──────────────────────────────────────────────── -->
+<div id="progress-section" class="card" style="display:none; margin-bottom: 1.5rem;">
+    <h3 style="margin-bottom: 0.8rem; font-size: 1rem;">Progression</h3>
+    <div id="steps-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+    <div id="progress-bar-wrap"
+        style="margin-top: 0.8rem; background: #222; border-radius: 8px; height: 8px; overflow: hidden;">
+        <div id="progress-bar"
+            style="height: 100%; width: 0%; background: var(--accent-primary, #7c6af7); transition: width 0.4s ease;">
+        </div>
+    </div>
+</div>
+
+<!-- ── RÉSULTATS ────────────────────────────────────────────────────── -->
+<div id="results-section" class="card" style="display:none;">
+    <div
+        style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1rem;">
+        <h2 class="card-title" style="margin: 0;">Appels d'offres analysés</h2>
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+            <!-- Filtres décision -->
+            <div style="display: flex; gap: 0.4rem;">
+                <button onclick="filterDecision(null)" class="filter-btn active" id="f-all">Tous</button>
+                <button onclick="filterDecision('GO')" class="filter-btn" id="f-go">GO</button>
+                <button onclick="filterDecision('A_ETUDIER')" class="filter-btn" id="f-etudier">À étudier</button>
+                <button onclick="filterDecision('NO-GO')" class="filter-btn" id="f-nogo">NO-GO</button>
+            </div>
+            <!-- Filtre source -->
+            <select id="filter-source" onchange="loadTenders()"
+                style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #444; background: #1a1a2e; color: #e0e0e0; font-size: 0.85rem;">
+                <option value="">Toutes sources</option>
+                <option value="boamp">BOAMP</option>
+                <option value="francemarches">Francemarches</option>
+            </select>
+            <!-- Actions -->
+            <button onclick="exportExcel()" class="btn btn-secondary"
+                style="font-size: 0.85rem; padding: 0.35rem 0.8rem;">
+                Exporter Excel
+            </button>
+            <button onclick="openNotifyModal()" class="btn btn-secondary"
+                style="font-size: 0.85rem; padding: 0.35rem 0.8rem;">
+                Envoyer Gmail
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats rapides -->
+    <div id="stats-bar" style="display: flex; gap: 1.2rem; margin-bottom: 1rem; flex-wrap: wrap;"></div>
+
+    <!-- Tableau -->
+    <div style="overflow-x: auto;">
+        <table id="tenders-table" style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid #333; text-align: left;">
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Source</th>
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Titre</th>
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Acheteur</th>
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Date limite
+                    </th>
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Décision</th>
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Score</th>
+                </tr>
+            </thead>
+            <tbody id="tenders-tbody"></tbody>
+        </table>
+        <p id="no-tenders-msg" style="display:none; text-align: center; color: #666; padding: 2rem;">
+            Aucun appel d'offres trouvé pour ces filtres.
+        </p>
+    </div>
+</div>
+
+<!-- ── MODAL DÉTAIL AO ──────────────────────────────────────────────── -->
+<div id="detail-overlay" class="modal-overlay" style="display:none;" onclick="closeDetailModal()">
+    <div class="modal-card" onclick="event.stopPropagation()"
+        style="max-width: 680px; max-height: 85vh; overflow-y: auto;">
+        <h3 id="detail-titre" style="margin-bottom: 1rem; font-size: 1.05rem; line-height: 1.4;"></h3>
+        <div id="detail-body" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        <div class="modal-actions" style="margin-top: 1.5rem;">
+            <button onclick="closeDetailModal()" class="btn btn-secondary">Fermer</button>
+            <a id="detail-link" href="#" target="_blank" class="btn btn-primary" style="text-decoration: none;">Voir sur
+                le site</a>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL GMAIL ──────────────────────────────────────────────────── -->
+<div id="gmail-overlay" class="modal-overlay" style="display:none;" onclick="closeNotifyModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 520px;">
+        <h3>Envoyer le récap Gmail</h3>
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+            <div>
+                <label
+                    style="font-size: 0.85rem; color: #888; display: block; margin-bottom: 0.3rem;">Destinataire</label>
+                <input type="email" id="gmail-to" placeholder="email@example.com" style="width: 100%; padding: 0.6rem; border: 1px solid #333; border-radius: 8px;
+                           background: #1a1a2e; color: #e0e0e0; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
+            <div>
+                <label style="font-size: 0.85rem; color: #888; display: block; margin-bottom: 0.3rem;">Chemin
+                    credentials.json</label>
+                <input type="text" id="gmail-credentials" placeholder="/path/to/credentials.json" style="width: 100%; padding: 0.6rem; border: 1px solid #333; border-radius: 8px;
+                           background: #1a1a2e; color: #e0e0e0; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
+            <p id="gmail-status" style="font-size: 0.85rem; color: #888; min-height: 1.2em;"></p>
+        </div>
+        <div class="modal-actions" style="margin-top: 1.5rem;">
+            <button onclick="closeNotifyModal()" class="btn btn-secondary">Annuler</button>
+            <button onclick="sendGmailNotification()" id="btn-gmail-send" class="btn btn-primary">Envoyer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MESSAGE ERREUR ───────────────────────────────────────────────── -->
+<div id="error-banner" style="display:none; background: #3a1010; border: 1px solid #e55; border-radius: 8px;
+     padding: 0.8rem 1rem; margin-bottom: 1rem; color: #f88; font-size: 0.9rem;"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .filter-btn {
+        padding: 0.3rem 0.7rem;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: transparent;
+        color: #ccc;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+        background: var(--accent-primary, #7c6af7);
+        border-color: var(--accent-primary, #7c6af7);
+        color: #fff;
+    }
+
+    .decision-badge {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 5px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+    }
+
+    .badge-go {
+        background: #0d3b1e;
+        color: #4caf50;
+    }
+
+    .badge-nogo {
+        background: #3b0d0d;
+        color: #e57373;
+    }
+
+    .badge-etudier {
+        background: #2a2d0d;
+        color: #ffd54f;
+    }
+
+    .badge-pending {
+        background: #1a1a2e;
+        color: #666;
+    }
+
+    .tender-row {
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .tender-row:hover {
+        background: rgba(124, 106, 247, 0.08);
+    }
+
+    .stat-chip {
+        padding: 0.35rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .step-icon {
+        width: 18px;
+        text-align: center;
+    }
+</style>
+<script>
+    // ── État ──────────────────────────────────────────────────────────────
+    let currentDecisionFilter = null;
+    let currentJobId = null;
+    let allTenders = [];
+
+    // ── Scan ──────────────────────────────────────────────────────────────
+    async function launchScan() {
+        const rawKeywords = document.getElementById('keywords-input').value.trim();
+        if (!rawKeywords) {
+            showError('Veuillez saisir au moins un mot-clé.');
+            return;
+        }
+        const keywords = rawKeywords.split(',').map(k => k.trim()).filter(Boolean);
+        const sources = [];
+        if (document.getElementById('src-boamp').checked) sources.push('boamp');
+        if (document.getElementById('src-francemarches').checked) sources.push('francemarches');
+        if (sources.length === 0) {
+            showError('Veuillez sélectionner au moins une source.');
+            return;
+        }
+
+        clearError();
+        document.getElementById('btn-scan').disabled = true;
+        document.getElementById('btn-scan').textContent = 'Scan en cours…';
+        resetProgress();
+        document.getElementById('progress-section').style.display = 'block';
+
+        try {
+            const resp = await fetch('/api/tenderscout/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keywords, sources }),
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || resp.statusText);
+            }
+            const { job_id } = await resp.json();
+            currentJobId = job_id;
+            listenSSE(job_id);
+        } catch (e) {
+            showError('Erreur lors du lancement du scan : ' + e.message);
+            resetScanButton();
+        }
+    }
+
+    function listenSSE(jobId) {
+        const es = new EventSource(`/api/tenderscout/stream/${jobId}`);
+
+        es.addEventListener('step', e => {
+            const data = JSON.parse(e.data);
+            addStep(data);
+            if (data.progress !== undefined) {
+                document.getElementById('progress-bar').style.width = data.progress + '%';
+            }
+        });
+
+        es.addEventListener('result', e => {
+            es.close();
+            const data = JSON.parse(e.data);
+            document.getElementById('progress-bar').style.width = '100%';
+            addStep({ step: 'done', status: 'done', message: `Terminé — ${data.new || 0} nouveaux AOs, ${data.analyzed || 0} analysés.` });
+            resetScanButton();
+            document.getElementById('results-section').style.display = 'block';
+            loadTenders();
+        });
+
+        es.addEventListener('error_msg', e => {
+            es.close();
+            const data = JSON.parse(e.data);
+            showError('Erreur : ' + (data.message || data));
+            resetScanButton();
+        });
+
+        es.onerror = () => {
+            es.close();
+            resetScanButton();
+        };
+    }
+
+    // ── Étapes ────────────────────────────────────────────────────────────
+    function addStep(data) {
+        const list = document.getElementById('steps-list');
+        const label = stepLabel(data.step) + (data.tender ? ` — ${data.tender}` : '') + (data.message ? ` — ${data.message}` : '');
+        const icon = data.status === 'done' ? '✅' : data.status === 'active' ? '⏳' : 'ℹ️';
+
+        // Mettre à jour le dernier step du même type ou en créer un nouveau
+        const existing = list.querySelector(`[data-step="${data.step}"][data-status="active"]`);
+        if (existing && data.status === 'done') {
+            existing.querySelector('.step-icon').textContent = '✅';
+            existing.dataset.status = 'done';
+            return;
+        }
+
+        const el = document.createElement('div');
+        el.className = 'step-item';
+        el.dataset.step = data.step;
+        el.dataset.status = data.status;
+        el.innerHTML = `<span class="step-icon">${icon}</span><span>${label}</span>`;
+        list.appendChild(el);
+    }
+
+    function stepLabel(step) {
+        const labels = {
+            scrape_boamp: 'Scraping BOAMP',
+            scrape_francemarches: 'Scraping Francemarches',
+            save: 'Sauvegarde en base',
+            analyze: 'Analyse Gemini',
+            done: 'Terminé',
+        };
+        return labels[step] || step;
+    }
+
+    function resetProgress() {
+        document.getElementById('steps-list').innerHTML = '';
+        document.getElementById('progress-bar').style.width = '0%';
+    }
+
+    function resetScanButton() {
+        const btn = document.getElementById('btn-scan');
+        btn.disabled = false;
+        btn.textContent = 'Lancer le scan';
+    }
+
+    // ── Chargement des résultats ──────────────────────────────────────────
+    async function loadTenders() {
+        const source = document.getElementById('filter-source').value;
+        const params = new URLSearchParams();
+        if (source) params.set('source', source);
+        if (currentDecisionFilter) params.set('decision', currentDecisionFilter);
+
+        try {
+            const resp = await fetch(`/api/tenderscout/tenders?${params}`);
+            allTenders = await resp.json();
+            renderTable(allTenders);
+            renderStats(allTenders);
+        } catch (e) {
+            showError('Erreur lors du chargement des AOs : ' + e.message);
+        }
+    }
+
+    function renderTable(tenders) {
+        const tbody = document.getElementById('tenders-tbody');
+        const noMsg = document.getElementById('no-tenders-msg');
+        tbody.innerHTML = '';
+
+        if (!tenders.length) {
+            noMsg.style.display = 'block';
+            return;
+        }
+        noMsg.style.display = 'none';
+
+        tenders.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.className = 'tender-row';
+            tr.onclick = () => openDetail(t);
+            tr.innerHTML = `
+            <td style="padding: 0.6rem 0.8rem;">${sourceBadge(t.source)}</td>
+            <td style="padding: 0.6rem 0.8rem; max-width: 320px;">
+                <span style="font-weight: 500;">${escHtml(t.titre)}</span>
+            </td>
+            <td style="padding: 0.6rem 0.8rem; color: #aaa; font-size: 0.82rem;">${escHtml(t.acheteur || '—')}</td>
+            <td style="padding: 0.6rem 0.8rem; color: #aaa; font-size: 0.82rem;">${escHtml(t.date_limite || '—')}</td>
+            <td style="padding: 0.6rem 0.8rem;">${decisionBadge(t.decision)}</td>
+            <td style="padding: 0.6rem 0.8rem; font-weight: 600; color: ${scoreColor(t.score)};">${t.score !== null && t.score !== undefined ? t.score : '—'}</td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderStats(tenders) {
+        const bar = document.getElementById('stats-bar');
+        const go = tenders.filter(t => t.decision === 'GO').length;
+        const nogo = tenders.filter(t => t.decision === 'NO-GO').length;
+        const etudier = tenders.filter(t => t.decision === 'A_ETUDIER').length;
+        const pending = tenders.filter(t => !t.decision).length;
+        bar.innerHTML = `
+        <span class="stat-chip" style="background:#0d1e3b; color:#64b5f6;">${tenders.length} total</span>
+        <span class="stat-chip badge-go">${go} GO</span>
+        <span class="stat-chip badge-etudier">${etudier} À étudier</span>
+        <span class="stat-chip badge-nogo">${nogo} NO-GO</span>
+        ${pending ? `<span class="stat-chip badge-pending">${pending} en attente</span>` : ''}
+    `;
+    }
+
+    // ── Filtres ───────────────────────────────────────────────────────────
+    function filterDecision(decision) {
+        currentDecisionFilter = decision;
+        ['f-all', 'f-go', 'f-etudier', 'f-nogo'].forEach(id => {
+            document.getElementById(id).classList.remove('active');
+        });
+        const map = { null: 'f-all', GO: 'f-go', A_ETUDIER: 'f-etudier', 'NO-GO': 'f-nogo' };
+        const key = decision === null ? null : decision;
+        document.getElementById(map[String(key)] || 'f-all').classList.add('active');
+        loadTenders();
+    }
+
+    // ── Détail ────────────────────────────────────────────────────────────
+    function openDetail(tender) {
+        document.getElementById('detail-titre').textContent = tender.titre;
+        document.getElementById('detail-link').href = tender.url || '#';
+
+        let analyse = {};
+        if (tender.analyse) {
+            try { analyse = JSON.parse(tender.analyse); } catch { }
+        }
+
+        const body = document.getElementById('detail-body');
+        body.innerHTML = '';
+
+        const rows = [
+            ['Source', sourceBadge(tender.source)],
+            ['Acheteur', escHtml(tender.acheteur || '—')],
+            ['Date publication', escHtml(tender.date_publication || '—')],
+            ['Date limite', escHtml(tender.date_limite || '—')],
+            ['Décision', decisionBadge(tender.decision)],
+            ['Score', tender.score !== null && tender.score !== undefined ? `<strong style="font-size:1.1rem;">${tender.score}/100</strong>` : '—'],
+            ['Résumé', escHtml(analyse.resume || tender.description || '—')],
+            ['Budget estimé', escHtml(analyse.budget_estime || '—')],
+            ['Échéance', escHtml(analyse.echeance || tender.date_limite || '—')],
+        ];
+
+        rows.forEach(([label, value]) => {
+            const div = document.createElement('div');
+            div.innerHTML = `<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.2rem;">${label}</span><div>${value}</div>`;
+            body.appendChild(div);
+        });
+
+        const listFields = [
+            ['Critères de notation', analyse.criteres_notation],
+            ['Atouts', analyse.atouts],
+            ['Risques', analyse.risques],
+        ];
+        listFields.forEach(([label, items]) => {
+            if (items && items.length) {
+                const div = document.createElement('div');
+                const listHtml = items.map(i => `<li style="margin-bottom:0.25rem;">${escHtml(i)}</li>`).join('');
+                div.innerHTML = `<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.2rem;">${label}</span><ul style="margin:0; padding-left:1.2rem;">${listHtml}</ul>`;
+                body.appendChild(div);
+            }
+        });
+
+        if (analyse.recommandation) {
+            const div = document.createElement('div');
+            div.innerHTML = `<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.2rem;">Recommandation</span>
+            <div style="background:#1a1a2e; border-left: 3px solid var(--accent-primary,#7c6af7); padding: 0.6rem 0.8rem; border-radius: 0 6px 6px 0; font-style: italic;">${escHtml(analyse.recommandation)}</div>`;
+            body.appendChild(div);
+        }
+
+        document.getElementById('detail-overlay').style.display = 'flex';
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detail-overlay').style.display = 'none';
+    }
+
+    // ── Export Excel ──────────────────────────────────────────────────────
+    function exportExcel() {
+        window.location = '/api/tenderscout/export';
+    }
+
+    // ── Gmail ─────────────────────────────────────────────────────────────
+    function openNotifyModal() {
+        document.getElementById('gmail-status').textContent = '';
+        document.getElementById('gmail-overlay').style.display = 'flex';
+    }
+
+    function closeNotifyModal() {
+        document.getElementById('gmail-overlay').style.display = 'none';
+    }
+
+    async function sendGmailNotification() {
+        const to = document.getElementById('gmail-to').value.trim();
+        const credentials_path = document.getElementById('gmail-credentials').value.trim();
+        if (!to || !credentials_path) {
+            document.getElementById('gmail-status').textContent = 'Destinataire et chemin credentials requis.';
+            return;
+        }
+
+        const btn = document.getElementById('btn-gmail-send');
+        btn.disabled = true;
+        btn.textContent = 'Envoi…';
+        document.getElementById('gmail-status').textContent = '';
+
+        try {
+            const resp = await fetch('/api/tenderscout/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, credentials_path }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || resp.statusText);
+            document.getElementById('gmail-status').textContent = 'Brouillon Gmail créé avec succès (id: ' + data.id + ').';
+            document.getElementById('gmail-status').style.color = '#4caf50';
+        } catch (e) {
+            document.getElementById('gmail-status').textContent = 'Erreur : ' + e.message;
+            document.getElementById('gmail-status').style.color = '#e57373';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Envoyer';
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function decisionBadge(decision) {
+        if (!decision) return '<span class="decision-badge badge-pending">En attente</span>';
+        const cls = { GO: 'badge-go', 'NO-GO': 'badge-nogo', 'A_ETUDIER': 'badge-etudier' }[decision] || 'badge-pending';
+        const label = decision === 'A_ETUDIER' ? 'À étudier' : decision;
+        return `<span class="decision-badge ${cls}">${label}</span>`;
+    }
+
+    function sourceBadge(source) {
+        const s = (source || '').toLowerCase();
+        if (s === 'boamp') return '<span style="font-size:0.78rem; font-weight:600; color:#90caf9;">BOAMP</span>';
+        if (s === 'francemarches') return '<span style="font-size:0.78rem; font-weight:600; color:#a5d6a7;">FM</span>';
+        return escHtml(source || '—');
+    }
+
+    function scoreColor(score) {
+        if (score === null || score === undefined) return '#666';
+        if (score >= 70) return '#4caf50';
+        if (score >= 40) return '#ffd54f';
+        return '#e57373';
+    }
+
+    function showError(msg) {
+        const banner = document.getElementById('error-banner');
+        banner.textContent = msg;
+        banner.style.display = 'block';
+    }
+
+    function clearError() {
+        document.getElementById('error-banner').style.display = 'none';
+    }
+
+    // Charger les AOs existants au chargement de la page
+    window.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const resp = await fetch('/api/tenderscout/tenders');
+            if (resp.ok) {
+                allTenders = await resp.json();
+                if (allTenders.length) {
+                    document.getElementById('results-section').style.display = 'block';
+                    renderTable(allTenders);
+                    renderStats(allTenders);
+                }
+            }
+        } catch { }
+    });
+</script>
+{% endblock %}

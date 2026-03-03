@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Editor - Consulting Tools</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -34,9 +37,18 @@
     </script>
     <style>
         /* ============ SCROLLBAR ============ */
-        .doc-panel::-webkit-scrollbar { width: 6px; }
-        .doc-panel::-webkit-scrollbar-track { background: transparent; }
-        .doc-panel::-webkit-scrollbar-thumb { background: #3A3A3B; border-radius: 3px; }
+        .doc-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .doc-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .doc-panel::-webkit-scrollbar-thumb {
+            background: #3A3A3B;
+            border-radius: 3px;
+        }
 
         /* ============ MARKDOWN PREVIEW ============ */
         .md-preview {
@@ -44,6 +56,7 @@
             color: #1F1F1F;
             line-height: 1.7;
         }
+
         .md-preview h1 {
             font-family: 'Chakra Petch', sans-serif;
             font-weight: 700;
@@ -53,6 +66,7 @@
             padding-bottom: 0.5rem;
             border-bottom: 3px solid #FF6B58;
         }
+
         .md-preview h2 {
             font-family: 'Chakra Petch', sans-serif;
             font-weight: 600;
@@ -60,6 +74,7 @@
             color: #C0504D;
             margin: 2rem 0 0.75rem 0;
         }
+
         .md-preview h3 {
             font-family: 'Chakra Petch', sans-serif;
             font-weight: 500;
@@ -67,11 +82,30 @@
             color: #3A3A3B;
             margin: 1.5rem 0 0.5rem 0;
         }
-        .md-preview p { margin: 0.5rem 0; }
-        .md-preview ul, .md-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
-        .md-preview li { margin: 0.25rem 0; }
-        .md-preview li::marker { color: #FF6B58; }
-        .md-preview strong { color: #1F1F1F; font-weight: 600; }
+
+        .md-preview p {
+            margin: 0.5rem 0;
+        }
+
+        .md-preview ul,
+        .md-preview ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .md-preview li {
+            margin: 0.25rem 0;
+        }
+
+        .md-preview li::marker {
+            color: #FF6B58;
+        }
+
+        .md-preview strong {
+            color: #1F1F1F;
+            font-weight: 600;
+        }
+
         .md-preview code {
             background: #FBF0F4;
             color: #C0504D;
@@ -79,6 +113,7 @@
             border-radius: 4px;
             font-size: 0.9em;
         }
+
         .md-preview pre {
             background: #1F1F1F;
             color: #EEEEEE;
@@ -87,11 +122,13 @@
             overflow-x: auto;
             margin: 1rem 0;
         }
+
         .md-preview pre code {
             background: none;
             color: inherit;
             padding: 0;
         }
+
         .md-preview blockquote {
             border-left: 4px solid #FF6B58;
             padding: 0.5rem 1rem;
@@ -101,11 +138,13 @@
             color: #474747;
             font-style: italic;
         }
+
         .md-preview table {
             width: 100%;
             border-collapse: collapse;
             margin: 1rem 0;
         }
+
         .md-preview th {
             background: #3A3A3B;
             color: white;
@@ -114,13 +153,16 @@
             font-weight: 600;
             font-size: 0.9rem;
         }
+
         .md-preview td {
             padding: 0.5rem 0.75rem;
             border-bottom: 1px solid #eee;
         }
+
         .md-preview tr:nth-child(even) td {
             background: #FBF0F4;
         }
+
         .md-preview hr {
             border: none;
             height: 2px;
@@ -130,16 +172,26 @@
 
         /* ============ ANIMATIONS ============ */
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
     </style>
 </head>
+
 <body class="bg-gray-950 text-white font-inter min-h-screen">
 
     <!-- ===== TOP BAR ===== -->
-    <header class="h-14 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center px-4 gap-4 sticky top-0 z-50">
+    <header
+        class="h-14 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center px-4 gap-4 sticky top-0 z-50">
         <a href="/" class="flex items-center gap-2 text-white no-underline">
             <span class="text-wv-corail font-chakra font-bold text-xl">W</span>
             <span class="font-chakra font-semibold text-sm">Envision</span>
@@ -153,26 +205,40 @@
             <span class="text-xs text-gray-500">Modele:</span>
             <select id="model-selector" onchange="changeModel(this.value)"
                 class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white focus:border-wv-corail focus:outline-none">
+                <option value="gemini-3.1-flash" selected>Gemini 3.1 Flash</option>
+                <option value="gemini-3.0-flash">Gemini 3.0 Flash</option>
+                <option value="gemini-2.1-flash">Gemini 2.1 Flash</option>
                 <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                 <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             </select>
         </div>
 
         <!-- Action buttons (hidden until content exists) -->
         <div id="action-buttons" class="flex items-center gap-2 hidden">
-            <button onclick="copyToClipboard()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium transition flex items-center gap-1" title="Copier">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            <button onclick="copyToClipboard()"
+                class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium transition flex items-center gap-1"
+                title="Copier">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
                 Copier
             </button>
-            <button onclick="downloadMarkdown()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <button onclick="downloadMarkdown()"
+                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
                 .md
             </button>
-            <button onclick="exportToGoogleDocs()" id="btn-gdocs" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            <button onclick="exportToGoogleDocs()" id="btn-gdocs"
+                class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
                 Google Docs
             </button>
         </div>
@@ -182,12 +248,16 @@
     <div class="flex h-[calc(100vh-56px)]">
 
         <!-- LEFT: Generation panel -->
-        <aside class="w-80 bg-gray-900/50 border-r border-gray-800 overflow-y-auto doc-panel flex-shrink-0 flex flex-col">
+        <aside
+            class="w-80 bg-gray-900/50 border-r border-gray-800 overflow-y-auto doc-panel flex-shrink-0 flex flex-col">
 
             <!-- Generation IA section -->
             <div class="p-4 border-b border-gray-800">
                 <h3 class="font-chakra font-semibold text-sm text-wv-corail mb-3 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                     Generation IA
                 </h3>
                 <div class="space-y-3">
@@ -211,33 +281,50 @@
                     </div>
                     <!-- Champ upload pour appel d offre (CV/Reference uniquement) -->
                     <div id="mission-file-field" class="hidden">
-                        <span class="text-xs text-gray-500 block mb-1">Appel d offre / Mission cible (PDF/Word/Texte)</span>
+                        <span class="text-xs text-gray-500 block mb-1">Appel d offre / Mission cible
+                            (PDF/Word/Texte)</span>
                         <label for="mission-file"
                             class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
-                            <input id="mission-file" type="file" accept=".txt,.md,.pdf,.docx,.doc" onchange="handleMissionFileUpload(this)"
-                                class="sr-only">
-                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <input id="mission-file" type="file" accept=".txt,.md,.pdf,.docx,.doc"
+                                onchange="handleMissionFileUpload(this)" class="sr-only">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
                             <span id="mission-file-label">Importer appel d offre</span>
                         </label>
-                        <div id="mission-file-info" class="hidden mt-1 flex items-center gap-1 text-xs text-emerald-400">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <div id="mission-file-info"
+                            class="hidden mt-1 flex items-center gap-1 text-xs text-emerald-400">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
                             <span id="mission-file-info-text"></span>
-                            <span onclick="clearMissionFile()" class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
+                            <span onclick="clearMissionFile()"
+                                class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
                         </div>
                     </div>
                     <div id="doc-file-field">
-                        <span id="doc-file-label-text" class="text-xs text-gray-500 block mb-1">Document source (optionnel)</span>
+                        <span id="doc-file-label-text" class="text-xs text-gray-500 block mb-1">Document source
+                            (optionnel)</span>
                         <label for="doc-file"
                             class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
-                            <input id="doc-file" type="file" accept=".txt,.md,.pdf,.docx,.doc,.pptx" onchange="handleFileUpload(this)"
-                                class="sr-only">
-                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <input id="doc-file" type="file" accept=".txt,.md,.pdf,.docx,.doc,.pptx"
+                                onchange="handleFileUpload(this)" class="sr-only">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
                             <span id="file-label">Importer .txt .md .pdf .docx .pptx</span>
                         </label>
                         <div id="file-info" class="hidden mt-1 flex items-center gap-1 text-xs text-emerald-400">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
                             <span id="file-info-text"></span>
-                            <span onclick="clearUploadedFile()" class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
+                            <span onclick="clearUploadedFile()"
+                                class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
                         </div>
                     </div>
                     <div id="audience-field" class="hidden">
@@ -256,23 +343,32 @@
                     </div>
                     <!-- Contexte enrichi (articles uniquement) -->
                     <div id="context-field" class="hidden">
-                        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-wv-corail transition">
-                            <input id="use-context" type="checkbox" class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-wv-corail focus:ring-wv-corail focus:ring-offset-0">
+                        <label
+                            class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-wv-corail transition">
+                            <input id="use-context" type="checkbox"
+                                class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-wv-corail focus:ring-wv-corail focus:ring-offset-0">
                             <span>🎯 Utiliser contexte enrichi (articles precedents + veille + personnalite)</span>
                         </label>
                     </div>
                     <button onclick="generateDocument()" id="btn-generate"
                         class="w-full py-2.5 bg-wv-corail hover:bg-wv-terracotta rounded-lg text-sm font-semibold text-white transition flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                         Generer
                     </button>
                     <div id="feedback-section" class="hidden mt-3 pt-3 border-t border-gray-700">
                         <label class="text-xs text-gray-500 block mb-1">Corriger / Affiner</label>
-                        <textarea id="doc-feedback" rows="2" placeholder="Ex: Ajoute plus de details sur le module 2, change le ton..."
+                        <textarea id="doc-feedback" rows="2"
+                            placeholder="Ex: Ajoute plus de details sur le module 2, change le ton..."
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-wv-corail focus:outline-none resize-none"></textarea>
                         <button onclick="regenerateWithFeedback()" id="btn-regenerate"
                             class="w-full mt-2 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium text-white transition flex items-center justify-center gap-2">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
                             Regenerer avec feedback
                         </button>
                     </div>
@@ -282,11 +378,17 @@
             <!-- LinkedIn post (visible after article generation) -->
             <div id="linkedin-section" class="hidden p-4 border-b border-gray-800">
                 <h3 class="font-chakra font-semibold text-sm text-wv-corail mb-2 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                    </svg>
                     Post LinkedIn
                 </h3>
-                <div id="linkedin-content" class="text-xs text-gray-300 whitespace-pre-wrap bg-gray-800/50 rounded-lg p-3 max-h-48 overflow-y-auto doc-panel"></div>
-                <button onclick="copyLinkedIn()" class="mt-2 w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-white transition">
+                <div id="linkedin-content"
+                    class="text-xs text-gray-300 whitespace-pre-wrap bg-gray-800/50 rounded-lg p-3 max-h-48 overflow-y-auto doc-panel">
+                </div>
+                <button onclick="copyLinkedIn()"
+                    class="mt-2 w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-white transition">
                     Copier le post LinkedIn
                 </button>
             </div>
@@ -294,12 +396,19 @@
             <!-- Email (visible after compte rendu generation) -->
             <div id="email-section" class="hidden p-4 border-b border-gray-800">
                 <h3 class="font-chakra font-semibold text-sm text-wv-corail mb-2 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
                     Email de partage
                 </h3>
-                <div class="text-xs text-gray-400 mb-1">Objet : <span id="email-subject" class="text-gray-300"></span></div>
-                <div id="email-body" class="text-xs text-gray-300 whitespace-pre-wrap bg-gray-800/50 rounded-lg p-3 max-h-48 overflow-y-auto doc-panel"></div>
-                <button onclick="copyEmail()" class="mt-2 w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-white transition">
+                <div class="text-xs text-gray-400 mb-1">Objet : <span id="email-subject" class="text-gray-300"></span>
+                </div>
+                <div id="email-body"
+                    class="text-xs text-gray-300 whitespace-pre-wrap bg-gray-800/50 rounded-lg p-3 max-h-48 overflow-y-auto doc-panel">
+                </div>
+                <button onclick="copyEmail()"
+                    class="mt-2 w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-white transition">
                     Copier l'email
                 </button>
             </div>
@@ -308,7 +417,8 @@
             <div class="p-4 flex-1">
                 <div id="info-panel" class="text-xs text-gray-500 space-y-2">
                     <p>Selectionnez un type de document et decrivez votre sujet pour generer du contenu.</p>
-                    <p class="text-gray-600">Formats : Formation, Article + LinkedIn, REX, Post LinkedIn, Compte Rendu.</p>
+                    <p class="text-gray-600">Formats : Formation, Article + LinkedIn, REX, Post LinkedIn, Compte Rendu.
+                    </p>
                 </div>
             </div>
         </aside>
@@ -319,7 +429,10 @@
             <div id="empty-state" class="flex-1 flex items-center justify-center">
                 <div class="text-center max-w-md">
                     <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-800 flex items-center justify-center">
-                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
                     </div>
                     <h2 class="font-chakra font-semibold text-lg text-gray-400 mb-2">Document Editor</h2>
                     <p class="text-gray-600 text-sm">Generez des programmes de formation, articles ou REX avec l'IA.</p>
@@ -334,11 +447,14 @@
             </div>
 
             <!-- Generation progress overlay -->
-            <div id="gen-overlay" class="absolute inset-0 bg-gray-950/80 backdrop-blur-sm hidden flex-col items-center justify-center z-10">
+            <div id="gen-overlay"
+                class="absolute inset-0 bg-gray-950/80 backdrop-blur-sm hidden flex-col items-center justify-center z-10">
                 <div class="text-center">
                     <div class="relative w-16 h-16 mx-auto mb-4">
                         <div class="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
-                        <div id="gen-spinner" class="absolute inset-0 border-4 border-wv-corail border-t-transparent rounded-full animate-spin"></div>
+                        <div id="gen-spinner"
+                            class="absolute inset-0 border-4 border-wv-corail border-t-transparent rounded-full animate-spin">
+                        </div>
                     </div>
                     <p class="font-chakra font-semibold text-lg text-white" id="gen-status">Initialisation...</p>
                     <p class="text-gray-400 text-sm mt-1" id="gen-substatus"></p>
@@ -347,543 +463,544 @@
         </main>
     </div>
 
-<script>
-// ====================================
-// STATE
-// ====================================
-let currentMarkdown = '';
-let currentLinkedIn = '';
-let selectedModel = '';
-let uploadedDocumentText = '';
-let uploadedMissionText = '';
+    <script>
+        // ====================================
+        // STATE
+        // ====================================
+        let currentMarkdown = '';
+        let currentLinkedIn = '';
+        let selectedModel = '';
+        let uploadedDocumentText = '';
+        let uploadedMissionText = '';
 
-// ====================================
-// INIT
-// ====================================
-function init() {
-    initModelSelector();
-    toggleDocFields();
-}
+        // ====================================
+        // INIT
+        // ====================================
+        function init() {
+            initModelSelector();
+            toggleDocFields();
+        }
 
-function initModelSelector() {
-    fetch('/api/settings/model').then(r => r.json()).then(data => {
-        if (data.model) {
-            selectedModel = data.model;
-            const sel = document.getElementById('model-selector');
-            for (let opt of sel.options) {
-                if (opt.value === data.model) { opt.selected = true; break; }
+        function initModelSelector() {
+            fetch('/api/settings/model').then(r => r.json()).then(data => {
+                if (data.model) {
+                    selectedModel = data.model;
+                    const sel = document.getElementById('model-selector');
+                    for (let opt of sel.options) {
+                        if (opt.value === data.model) { opt.selected = true; break; }
+                    }
+                }
+            }).catch(() => { });
+        }
+
+        function changeModel(model) {
+            selectedModel = model;
+            fetch('/api/settings/model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model })
+            }).catch(() => { });
+        }
+
+        // ====================================
+        // TYPE TOGGLE
+        // ====================================
+        function toggleDocFields() {
+            const docType = document.getElementById('doc-type').value;
+            const audienceField = document.getElementById('audience-field');
+            const lengthField = document.getElementById('length-field');
+            const contextField = document.getElementById('context-field');
+            const audienceLabel = audienceField.querySelector('label');
+            const topicField = document.getElementById('doc-topic');
+            const topicLabel = document.getElementById('topic-label');
+            const missionFileField = document.getElementById('mission-file-field');
+            const docFileField = document.getElementById('doc-file-field');
+            const docFileLabelText = document.getElementById('doc-file-label-text');
+
+            // Audience: formation and rex_text
+            audienceField.classList.toggle('hidden', docType !== 'formation' && docType !== 'rex_text');
+            if (audienceLabel) {
+                audienceLabel.textContent = docType === 'rex_text' ? 'Client / Mission' : 'Public cible';
             }
-        }
-    }).catch(() => {});
-}
 
-function changeModel(model) {
-    selectedModel = model;
-    fetch('/api/settings/model', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model })
-    }).catch(() => {});
-}
+            // Length: article only
+            lengthField.classList.toggle('hidden', docType !== 'article');
 
-// ====================================
-// TYPE TOGGLE
-// ====================================
-function toggleDocFields() {
-    const docType = document.getElementById('doc-type').value;
-    const audienceField = document.getElementById('audience-field');
-    const lengthField = document.getElementById('length-field');
-    const contextField = document.getElementById('context-field');
-    const audienceLabel = audienceField.querySelector('label');
-    const topicField = document.getElementById('doc-topic');
-    const topicLabel = document.getElementById('topic-label');
-    const missionFileField = document.getElementById('mission-file-field');
-    const docFileField = document.getElementById('doc-file-field');
-    const docFileLabelText = document.getElementById('doc-file-label-text');
+            // Contexte enrichi: article only
+            contextField.classList.toggle('hidden', docType !== 'article');
 
-    // Audience: formation and rex_text
-    audienceField.classList.toggle('hidden', docType !== 'formation' && docType !== 'rex_text');
-    if (audienceLabel) {
-        audienceLabel.textContent = docType === 'rex_text' ? 'Client / Mission' : 'Public cible';
-    }
+            // CV/Reference: special fields
+            if (docType === 'cv_reference') {
+                // Hide topic textarea, show file upload for mission
+                topicField.parentElement.classList.add('hidden');
+                missionFileField.classList.remove('hidden');
 
-    // Length: article only
-    lengthField.classList.toggle('hidden', docType !== 'article');
+                // Change doc-file label to CV/Reference
+                docFileLabelText.textContent = 'CV ou Reference projet (PDF/Word/Texte) - OBLIGATOIRE';
+            } else if (docType === 'presentation_script') {
+                // Presentation script: topic = context, file = PPTX obligatoire
+                topicField.parentElement.classList.remove('hidden');
+                missionFileField.classList.add('hidden');
 
-    // Contexte enrichi: article only
-    contextField.classList.toggle('hidden', docType !== 'article');
-
-    // CV/Reference: special fields
-    if (docType === 'cv_reference') {
-        // Hide topic textarea, show file upload for mission
-        topicField.parentElement.classList.add('hidden');
-        missionFileField.classList.remove('hidden');
-
-        // Change doc-file label to CV/Reference
-        docFileLabelText.textContent = 'CV ou Reference projet (PDF/Word/Texte) - OBLIGATOIRE';
-    } else if (docType === 'presentation_script') {
-        // Presentation script: topic = context, file = PPTX obligatoire
-        topicField.parentElement.classList.remove('hidden');
-        missionFileField.classList.add('hidden');
-
-        topicLabel.textContent = 'Contexte de presentation (optionnel)';
-        docFileLabelText.textContent = 'Fichier PowerPoint (.pptx) - OBLIGATOIRE';
-    } else {
-        // Show topic textarea, hide mission file upload
-        topicField.parentElement.classList.remove('hidden');
-        missionFileField.classList.add('hidden');
-
-        // Reset mission file if leaving cv_reference mode
-        if (uploadedMissionText) {
-            clearMissionFile();
-        }
-
-        // Reset doc-file label
-        docFileLabelText.textContent = 'Document source (optionnel)';
-
-        // Update topic label for other types
-        if (topicLabel) {
-            topicLabel.textContent = 'Sujet / Brief';
-        }
-    }
-
-    // Update placeholder per type
-    const placeholders = {
-        formation: 'Decrivez le besoin de formation, le public, la duree souhaitee...',
-        article: 'Decrivez le sujet de l\'article, l\'angle, le message cle...',
-        rex_text: 'Decrivez la mission, le contexte, les resultats obtenus...',
-        linkedin: 'Decrivez le sujet du post, le message a faire passer, l\'actualite...',
-        compte_rendu: 'Collez le transcript de reunion ou decrivez les points cles discutes...',
-        presentation_script: 'Decrivez le contexte : public cible, objectif de la presentation (optionnel)...'
-    };
-    topicField.placeholder = placeholders[docType] || 'Decrivez le sujet...';
-}
-
-// ====================================
-// FILE UPLOAD
-// ====================================
-async function handleFileUpload(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const resp = await fetch('/api/slide-editor/parse-document', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await resp.json();
-        if (data.error) {
-            alert('Erreur: ' + data.error);
-            return;
-        }
-        uploadedDocumentText = data.text;
-        document.getElementById('file-info').classList.remove('hidden');
-        document.getElementById('file-info-text').textContent = `${data.filename} (${data.length} car.)`;
-    } catch (e) {
-        alert('Erreur upload: ' + e.message);
-    }
-}
-
-function clearUploadedFile() {
-    uploadedDocumentText = '';
-    document.getElementById('doc-file').value = '';
-    document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx .pptx';
-    document.getElementById('file-info').classList.add('hidden');
-}
-
-async function handleMissionFileUpload(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const resp = await fetch('/api/slide-editor/parse-document', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await resp.json();
-        if (data.error) {
-            alert('Erreur: ' + data.error);
-            return;
-        }
-        uploadedMissionText = data.text;
-        document.getElementById('mission-file-info').classList.remove('hidden');
-        document.getElementById('mission-file-info-text').textContent = `${data.filename} (${data.length} car.)`;
-    } catch (e) {
-        alert('Erreur upload: ' + e.message);
-    }
-}
-
-function clearMissionFile() {
-    uploadedMissionText = '';
-    document.getElementById('mission-file').value = '';
-    document.getElementById('mission-file-label').textContent = 'Importer appel d offre';
-    document.getElementById('mission-file-info').classList.add('hidden');
-}
-
-// ====================================
-// OVERLAY
-// ====================================
-function showGenOverlay(msg, sub) {
-    const overlay = document.getElementById('gen-overlay');
-    overlay.classList.remove('hidden');
-    overlay.classList.add('flex');
-    document.getElementById('gen-status').textContent = msg || 'Initialisation...';
-    document.getElementById('gen-substatus').textContent = sub || '';
-}
-
-function hideGenOverlay() {
-    const overlay = document.getElementById('gen-overlay');
-    overlay.classList.add('hidden');
-    overlay.classList.remove('flex');
-}
-
-// ====================================
-// RENDER
-// ====================================
-let streamingBuffer = '';
-
-function renderDocument(markdown) {
-    currentMarkdown = markdown;
-    streamingBuffer = '';
-    document.getElementById('empty-state').classList.add('hidden');
-    document.getElementById('doc-preview').classList.remove('hidden');
-    document.getElementById('doc-content').innerHTML = marked.parse(markdown);
-    document.getElementById('action-buttons').classList.remove('hidden');
-    document.getElementById('feedback-section').classList.remove('hidden');
-}
-
-function appendChunk(text) {
-    streamingBuffer += text;
-    document.getElementById('empty-state').classList.add('hidden');
-    document.getElementById('doc-preview').classList.remove('hidden');
-    document.getElementById('doc-content').innerHTML = marked.parse(streamingBuffer);
-    // Auto-scroll to bottom
-    const preview = document.getElementById('doc-preview');
-    preview.scrollTop = preview.scrollHeight;
-}
-
-function showLinkedInPost(post) {
-    if (!post) return;
-    currentLinkedIn = post;
-    document.getElementById('linkedin-section').classList.remove('hidden');
-    document.getElementById('linkedin-content').textContent = post;
-}
-
-let currentEmail = '';
-function showEmail(email) {
-    if (!email) return;
-    currentEmail = typeof email === 'string' ? email : (email.body || '');
-    document.getElementById('email-section').classList.remove('hidden');
-    document.getElementById('email-subject').textContent = email.subject || '';
-    document.getElementById('email-body').textContent = email.body || email;
-}
-
-// ====================================
-// GENERATE
-// ====================================
-async function generateDocument() {
-    const topic = document.getElementById('doc-topic').value.trim();
-    const docType = document.getElementById('doc-type').value;
-    const model = selectedModel || document.getElementById('model-selector').value;
-
-    // Validation specifique pour CV/Reference
-    if (docType === 'cv_reference') {
-        if (!uploadedMissionText) {
-            alert('Veuillez uploader l appel d offre / mission cible');
-            return;
-        }
-        if (!uploadedDocumentText) {
-            alert('Veuillez uploader le CV ou la reference projet');
-            return;
-        }
-    } else {
-        // Validation normale pour les autres types
-        if (!topic && !uploadedDocumentText) {
-            document.getElementById('doc-topic').focus();
-            document.getElementById('doc-topic').classList.add('border-wv-corail');
-            setTimeout(() => document.getElementById('doc-topic').classList.remove('border-wv-corail'), 2000);
-            return;
-        }
-    }
-
-    const btn = document.getElementById('btn-generate');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Generation...';
-
-    const typeLabels = {
-        formation: 'Programme de Formation',
-        article: 'Article de Blog',
-        rex_text: 'REX Mission',
-        linkedin: 'Post LinkedIn',
-        compte_rendu: 'Compte Rendu',
-        cv_reference: 'Adaptation CV/Reference'
-    };
-    showGenOverlay(typeLabels[docType] || 'Generation', 'Connexion au modele IA...');
-    // Hide secondary panels
-    document.getElementById('linkedin-section').classList.add('hidden');
-    document.getElementById('email-section').classList.add('hidden');
-
-    // Pour cv_reference, topic = mission file, document_text = CV file
-    const payload = {
-        type: docType,
-        topic: docType === 'cv_reference' ? uploadedMissionText : topic,
-        document_text: uploadedDocumentText || '',
-        audience: document.getElementById('doc-audience').value.trim(),
-        length: document.getElementById('doc-length').value,
-        model: model,
-        use_context: docType === 'article' ? document.getElementById('use-context').checked : false
-    };
-
-    try {
-        const resp = await fetch('/api/document-editor/start-generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const { job_id } = await resp.json();
-        if (!job_id) throw new Error('Pas de job_id');
-
-        const evtSource = new EventSource(`/api/document-editor/stream/${job_id}`);
-
-        streamingBuffer = '';
-
-        evtSource.addEventListener('status', (e) => {
-            const data = JSON.parse(e.data);
-            document.getElementById('gen-status').textContent = data.message;
-            if (data.substep) document.getElementById('gen-substatus').textContent = data.substep;
-        });
-
-        evtSource.addEventListener('chunk', (e) => {
-            const data = JSON.parse(e.data);
-            hideGenOverlay();
-            appendChunk(data.text);
-        });
-
-        evtSource.addEventListener('result', (e) => {
-            const data = JSON.parse(e.data);
-            evtSource.close();
-            hideGenOverlay();
-            resetBtn();
-
-            // Si des slides sont retournees (CV/Reference Adapter), rediriger vers slide-editor
-            if (data.slides && data.slides.length > 0) {
-                const docType = data.doc_type || 'CV';
-                alert(`${docType} adapte genere avec succes ! Redirection vers le Slide Editor...`);
-                // Stocker les slides et rediriger
-                localStorage.setItem('cv_reference_slides', JSON.stringify(data.slides));
-                localStorage.setItem('cv_reference_type', docType);
-                window.location.href = '/slide-editor?source=cv_reference';
+                topicLabel.textContent = 'Contexte de presentation (optionnel)';
+                docFileLabelText.textContent = 'Fichier PowerPoint (.pptx) - OBLIGATOIRE';
             } else {
-                // Affichage normal pour documents markdown
-                renderDocument(data.markdown || '');
-                if (data.linkedin_post) showLinkedInPost(data.linkedin_post);
-                if (data.email) showEmail(data.email);
+                // Show topic textarea, hide mission file upload
+                topicField.parentElement.classList.remove('hidden');
+                missionFileField.classList.add('hidden');
+
+                // Reset mission file if leaving cv_reference mode
+                if (uploadedMissionText) {
+                    clearMissionFile();
+                }
+
+                // Reset doc-file label
+                docFileLabelText.textContent = 'Document source (optionnel)';
+
+                // Update topic label for other types
+                if (topicLabel) {
+                    topicLabel.textContent = 'Sujet / Brief';
+                }
             }
-        });
 
-        evtSource.addEventListener('error_msg', (e) => {
-            evtSource.close();
-            const data = JSON.parse(e.data);
-            hideGenOverlay();
-            alert('Erreur: ' + data.message);
-            resetBtn();
-        });
+            // Update placeholder per type
+            const placeholders = {
+                formation: 'Decrivez le besoin de formation, le public, la duree souhaitee...',
+                article: 'Decrivez le sujet de l\'article, l\'angle, le message cle...',
+                rex_text: 'Decrivez la mission, le contexte, les resultats obtenus...',
+                linkedin: 'Decrivez le sujet du post, le message a faire passer, l\'actualite...',
+                compte_rendu: 'Collez le transcript de reunion ou decrivez les points cles discutes...',
+                presentation_script: 'Decrivez le contexte : public cible, objectif de la presentation (optionnel)...'
+            };
+            topicField.placeholder = placeholders[docType] || 'Decrivez le sujet...';
+        }
 
-        evtSource.onerror = () => {
-            evtSource.close();
-            hideGenOverlay();
-            alert('Erreur de connexion au serveur.');
-            resetBtn();
-        };
+        // ====================================
+        // FILE UPLOAD
+        // ====================================
+        async function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
 
-    } catch (e) {
-        console.error('Generation error:', e);
-        hideGenOverlay();
-        alert('Erreur lors de la generation.');
-        resetBtn();
-    }
-}
+            const formData = new FormData();
+            formData.append('file', file);
 
-function resetBtn() {
-    const btn = document.getElementById('btn-generate');
-    btn.disabled = false;
-    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Generer';
-}
+            try {
+                const resp = await fetch('/api/slide-editor/parse-document', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert('Erreur: ' + data.error);
+                    return;
+                }
+                uploadedDocumentText = data.text;
+                document.getElementById('file-info').classList.remove('hidden');
+                document.getElementById('file-info-text').textContent = `${data.filename} (${data.length} car.)`;
+            } catch (e) {
+                alert('Erreur upload: ' + e.message);
+            }
+        }
 
-// ====================================
-// REGENERATE WITH FEEDBACK
-// ====================================
-async function regenerateWithFeedback() {
-    const feedback = document.getElementById('doc-feedback').value.trim();
-    if (!feedback) {
-        document.getElementById('doc-feedback').focus();
-        return;
-    }
-    if (!currentMarkdown) return;
+        function clearUploadedFile() {
+            uploadedDocumentText = '';
+            document.getElementById('doc-file').value = '';
+            document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx .pptx';
+            document.getElementById('file-info').classList.add('hidden');
+        }
 
-    const docType = document.getElementById('doc-type').value;
-    const topic = document.getElementById('doc-topic').value.trim();
-    const model = selectedModel || document.getElementById('model-selector').value;
+        async function handleMissionFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
 
-    const btn = document.getElementById('btn-regenerate');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Regeneration...';
+            const formData = new FormData();
+            formData.append('file', file);
 
-    showGenOverlay('Regeneration', 'Application du feedback...');
+            try {
+                const resp = await fetch('/api/slide-editor/parse-document', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert('Erreur: ' + data.error);
+                    return;
+                }
+                uploadedMissionText = data.text;
+                document.getElementById('mission-file-info').classList.remove('hidden');
+                document.getElementById('mission-file-info-text').textContent = `${data.filename} (${data.length} car.)`;
+            } catch (e) {
+                alert('Erreur upload: ' + e.message);
+            }
+        }
 
-    try {
-        const resp = await fetch('/api/document-editor/start-generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        function clearMissionFile() {
+            uploadedMissionText = '';
+            document.getElementById('mission-file').value = '';
+            document.getElementById('mission-file-label').textContent = 'Importer appel d offre';
+            document.getElementById('mission-file-info').classList.add('hidden');
+        }
+
+        // ====================================
+        // OVERLAY
+        // ====================================
+        function showGenOverlay(msg, sub) {
+            const overlay = document.getElementById('gen-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            document.getElementById('gen-status').textContent = msg || 'Initialisation...';
+            document.getElementById('gen-substatus').textContent = sub || '';
+        }
+
+        function hideGenOverlay() {
+            const overlay = document.getElementById('gen-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        // ====================================
+        // RENDER
+        // ====================================
+        let streamingBuffer = '';
+
+        function renderDocument(markdown) {
+            currentMarkdown = markdown;
+            streamingBuffer = '';
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('doc-preview').classList.remove('hidden');
+            document.getElementById('doc-content').innerHTML = marked.parse(markdown);
+            document.getElementById('action-buttons').classList.remove('hidden');
+            document.getElementById('feedback-section').classList.remove('hidden');
+        }
+
+        function appendChunk(text) {
+            streamingBuffer += text;
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('doc-preview').classList.remove('hidden');
+            document.getElementById('doc-content').innerHTML = marked.parse(streamingBuffer);
+            // Auto-scroll to bottom
+            const preview = document.getElementById('doc-preview');
+            preview.scrollTop = preview.scrollHeight;
+        }
+
+        function showLinkedInPost(post) {
+            if (!post) return;
+            currentLinkedIn = post;
+            document.getElementById('linkedin-section').classList.remove('hidden');
+            document.getElementById('linkedin-content').textContent = post;
+        }
+
+        let currentEmail = '';
+        function showEmail(email) {
+            if (!email) return;
+            currentEmail = typeof email === 'string' ? email : (email.body || '');
+            document.getElementById('email-section').classList.remove('hidden');
+            document.getElementById('email-subject').textContent = email.subject || '';
+            document.getElementById('email-body').textContent = email.body || email;
+        }
+
+        // ====================================
+        // GENERATE
+        // ====================================
+        async function generateDocument() {
+            const topic = document.getElementById('doc-topic').value.trim();
+            const docType = document.getElementById('doc-type').value;
+            const model = selectedModel || document.getElementById('model-selector').value;
+
+            // Validation specifique pour CV/Reference
+            if (docType === 'cv_reference') {
+                if (!uploadedMissionText) {
+                    alert('Veuillez uploader l appel d offre / mission cible');
+                    return;
+                }
+                if (!uploadedDocumentText) {
+                    alert('Veuillez uploader le CV ou la reference projet');
+                    return;
+                }
+            } else {
+                // Validation normale pour les autres types
+                if (!topic && !uploadedDocumentText) {
+                    document.getElementById('doc-topic').focus();
+                    document.getElementById('doc-topic').classList.add('border-wv-corail');
+                    setTimeout(() => document.getElementById('doc-topic').classList.remove('border-wv-corail'), 2000);
+                    return;
+                }
+            }
+
+            const btn = document.getElementById('btn-generate');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Generation...';
+
+            const typeLabels = {
+                formation: 'Programme de Formation',
+                article: 'Article de Blog',
+                rex_text: 'REX Mission',
+                linkedin: 'Post LinkedIn',
+                compte_rendu: 'Compte Rendu',
+                cv_reference: 'Adaptation CV/Reference'
+            };
+            showGenOverlay(typeLabels[docType] || 'Generation', 'Connexion au modele IA...');
+            // Hide secondary panels
+            document.getElementById('linkedin-section').classList.add('hidden');
+            document.getElementById('email-section').classList.add('hidden');
+
+            // Pour cv_reference, topic = mission file, document_text = CV file
+            const payload = {
                 type: docType,
-                topic: topic,
+                topic: docType === 'cv_reference' ? uploadedMissionText : topic,
                 document_text: uploadedDocumentText || '',
                 audience: document.getElementById('doc-audience').value.trim(),
                 length: document.getElementById('doc-length').value,
                 model: model,
-                feedback: feedback,
-                previous_content: currentMarkdown
-            })
-        });
-        const { job_id } = await resp.json();
-        if (!job_id) throw new Error('Pas de job_id');
+                use_context: docType === 'article' ? document.getElementById('use-context').checked : false
+            };
 
-        const evtSource = new EventSource(`/api/document-editor/stream/${job_id}`);
+            try {
+                const resp = await fetch('/api/document-editor/start-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const { job_id } = await resp.json();
+                if (!job_id) throw new Error('Pas de job_id');
 
-        streamingBuffer = '';
+                const evtSource = new EventSource(`/api/document-editor/stream/${job_id}`);
 
-        evtSource.addEventListener('status', (e) => {
-            const data = JSON.parse(e.data);
-            document.getElementById('gen-status').textContent = data.message;
-            if (data.substep) document.getElementById('gen-substatus').textContent = data.substep;
-        });
+                streamingBuffer = '';
 
-        evtSource.addEventListener('chunk', (e) => {
-            const data = JSON.parse(e.data);
-            hideGenOverlay();
-            appendChunk(data.text);
-        });
+                evtSource.addEventListener('status', (e) => {
+                    const data = JSON.parse(e.data);
+                    document.getElementById('gen-status').textContent = data.message;
+                    if (data.substep) document.getElementById('gen-substatus').textContent = data.substep;
+                });
 
-        evtSource.addEventListener('result', (e) => {
-            const data = JSON.parse(e.data);
-            evtSource.close();
-            hideGenOverlay();
-            resetRegenBtn();
-            document.getElementById('doc-feedback').value = '';
-            renderDocument(data.markdown || '');
-            if (data.linkedin_post) showLinkedInPost(data.linkedin_post);
-            if (data.email) showEmail(data.email);
-        });
+                evtSource.addEventListener('chunk', (e) => {
+                    const data = JSON.parse(e.data);
+                    hideGenOverlay();
+                    appendChunk(data.text);
+                });
 
-        evtSource.addEventListener('error_msg', (e) => {
-            evtSource.close();
-            hideGenOverlay();
-            alert('Erreur: ' + JSON.parse(e.data).message);
-            resetRegenBtn();
-        });
+                evtSource.addEventListener('result', (e) => {
+                    const data = JSON.parse(e.data);
+                    evtSource.close();
+                    hideGenOverlay();
+                    resetBtn();
 
-        evtSource.onerror = () => {
-            evtSource.close();
-            hideGenOverlay();
-            alert('Erreur de connexion.');
-            resetRegenBtn();
-        };
-    } catch (e) {
-        hideGenOverlay();
-        alert('Erreur: ' + e.message);
-        resetRegenBtn();
-    }
-}
+                    // Si des slides sont retournees (CV/Reference Adapter), rediriger vers slide-editor
+                    if (data.slides && data.slides.length > 0) {
+                        const docType = data.doc_type || 'CV';
+                        alert(`${docType} adapte genere avec succes ! Redirection vers le Slide Editor...`);
+                        // Stocker les slides et rediriger
+                        localStorage.setItem('cv_reference_slides', JSON.stringify(data.slides));
+                        localStorage.setItem('cv_reference_type', docType);
+                        window.location.href = '/slide-editor?source=cv_reference';
+                    } else {
+                        // Affichage normal pour documents markdown
+                        renderDocument(data.markdown || '');
+                        if (data.linkedin_post) showLinkedInPost(data.linkedin_post);
+                        if (data.email) showEmail(data.email);
+                    }
+                });
 
-function resetRegenBtn() {
-    const btn = document.getElementById('btn-regenerate');
-    btn.disabled = false;
-    btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
-}
+                evtSource.addEventListener('error_msg', (e) => {
+                    evtSource.close();
+                    const data = JSON.parse(e.data);
+                    hideGenOverlay();
+                    alert('Erreur: ' + data.message);
+                    resetBtn();
+                });
 
-// ====================================
-// EXPORT ACTIONS
-// ====================================
-function copyToClipboard() {
-    navigator.clipboard.writeText(currentMarkdown).then(() => {
-        const btn = event.currentTarget;
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Copie !';
-        setTimeout(() => btn.innerHTML = orig, 2000);
-    });
-}
+                evtSource.onerror = () => {
+                    evtSource.close();
+                    hideGenOverlay();
+                    alert('Erreur de connexion au serveur.');
+                    resetBtn();
+                };
 
-function copyLinkedIn() {
-    navigator.clipboard.writeText(currentLinkedIn).then(() => {
-        const btn = event.currentTarget;
-        btn.textContent = 'Copie !';
-        setTimeout(() => btn.textContent = 'Copier le post LinkedIn', 2000);
-    });
-}
-
-function copyEmail() {
-    const subject = document.getElementById('email-subject').textContent;
-    const body = document.getElementById('email-body').textContent;
-    navigator.clipboard.writeText(`Objet : ${subject}\n\n${body}`).then(() => {
-        const btn = event.currentTarget;
-        btn.textContent = 'Copie !';
-        setTimeout(() => btn.textContent = "Copier l'email", 2000);
-    });
-}
-
-function downloadMarkdown() {
-    const blob = new Blob([currentMarkdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const topic = document.getElementById('doc-topic').value.trim();
-    const slug = (topic || 'document').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
-    a.href = url;
-    a.download = `${slug}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-async function exportToGoogleDocs() {
-    if (!currentMarkdown) return;
-
-    const btn = document.getElementById('btn-gdocs');
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Export...';
-
-    try {
-        const topic = document.getElementById('doc-topic').value.trim() || 'Document Consulting Tools';
-        const resp = await fetch('/api/document-editor/export-gdocs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ markdown: currentMarkdown, title: topic })
-        });
-        const data = await resp.json();
-        if (data.error) {
-            alert('Erreur: ' + data.error);
-        } else if (data.url) {
-            window.open(data.url, '_blank');
+            } catch (e) {
+                console.error('Generation error:', e);
+                hideGenOverlay();
+                alert('Erreur lors de la generation.');
+                resetBtn();
+            }
         }
-    } catch (e) {
-        alert('Erreur export Google Docs: ' + e.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = orig;
-    }
-}
 
-// ====================================
-// BOOT
-// ====================================
-init();
-</script>
+        function resetBtn() {
+            const btn = document.getElementById('btn-generate');
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Generer';
+        }
+
+        // ====================================
+        // REGENERATE WITH FEEDBACK
+        // ====================================
+        async function regenerateWithFeedback() {
+            const feedback = document.getElementById('doc-feedback').value.trim();
+            if (!feedback) {
+                document.getElementById('doc-feedback').focus();
+                return;
+            }
+            if (!currentMarkdown) return;
+
+            const docType = document.getElementById('doc-type').value;
+            const topic = document.getElementById('doc-topic').value.trim();
+            const model = selectedModel || document.getElementById('model-selector').value;
+
+            const btn = document.getElementById('btn-regenerate');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Regeneration...';
+
+            showGenOverlay('Regeneration', 'Application du feedback...');
+
+            try {
+                const resp = await fetch('/api/document-editor/start-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: docType,
+                        topic: topic,
+                        document_text: uploadedDocumentText || '',
+                        audience: document.getElementById('doc-audience').value.trim(),
+                        length: document.getElementById('doc-length').value,
+                        model: model,
+                        feedback: feedback,
+                        previous_content: currentMarkdown
+                    })
+                });
+                const { job_id } = await resp.json();
+                if (!job_id) throw new Error('Pas de job_id');
+
+                const evtSource = new EventSource(`/api/document-editor/stream/${job_id}`);
+
+                streamingBuffer = '';
+
+                evtSource.addEventListener('status', (e) => {
+                    const data = JSON.parse(e.data);
+                    document.getElementById('gen-status').textContent = data.message;
+                    if (data.substep) document.getElementById('gen-substatus').textContent = data.substep;
+                });
+
+                evtSource.addEventListener('chunk', (e) => {
+                    const data = JSON.parse(e.data);
+                    hideGenOverlay();
+                    appendChunk(data.text);
+                });
+
+                evtSource.addEventListener('result', (e) => {
+                    const data = JSON.parse(e.data);
+                    evtSource.close();
+                    hideGenOverlay();
+                    resetRegenBtn();
+                    document.getElementById('doc-feedback').value = '';
+                    renderDocument(data.markdown || '');
+                    if (data.linkedin_post) showLinkedInPost(data.linkedin_post);
+                    if (data.email) showEmail(data.email);
+                });
+
+                evtSource.addEventListener('error_msg', (e) => {
+                    evtSource.close();
+                    hideGenOverlay();
+                    alert('Erreur: ' + JSON.parse(e.data).message);
+                    resetRegenBtn();
+                });
+
+                evtSource.onerror = () => {
+                    evtSource.close();
+                    hideGenOverlay();
+                    alert('Erreur de connexion.');
+                    resetRegenBtn();
+                };
+            } catch (e) {
+                hideGenOverlay();
+                alert('Erreur: ' + e.message);
+                resetRegenBtn();
+            }
+        }
+
+        function resetRegenBtn() {
+            const btn = document.getElementById('btn-regenerate');
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
+        }
+
+        // ====================================
+        // EXPORT ACTIONS
+        // ====================================
+        function copyToClipboard() {
+            navigator.clipboard.writeText(currentMarkdown).then(() => {
+                const btn = event.currentTarget;
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Copie !';
+                setTimeout(() => btn.innerHTML = orig, 2000);
+            });
+        }
+
+        function copyLinkedIn() {
+            navigator.clipboard.writeText(currentLinkedIn).then(() => {
+                const btn = event.currentTarget;
+                btn.textContent = 'Copie !';
+                setTimeout(() => btn.textContent = 'Copier le post LinkedIn', 2000);
+            });
+        }
+
+        function copyEmail() {
+            const subject = document.getElementById('email-subject').textContent;
+            const body = document.getElementById('email-body').textContent;
+            navigator.clipboard.writeText(`Objet : ${subject}\n\n${body}`).then(() => {
+                const btn = event.currentTarget;
+                btn.textContent = 'Copie !';
+                setTimeout(() => btn.textContent = "Copier l'email", 2000);
+            });
+        }
+
+        function downloadMarkdown() {
+            const blob = new Blob([currentMarkdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const topic = document.getElementById('doc-topic').value.trim();
+            const slug = (topic || 'document').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+            a.href = url;
+            a.download = `${slug}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportToGoogleDocs() {
+            if (!currentMarkdown) return;
+
+            const btn = document.getElementById('btn-gdocs');
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Export...';
+
+            try {
+                const topic = document.getElementById('doc-topic').value.trim() || 'Document Consulting Tools';
+                const resp = await fetch('/api/document-editor/export-gdocs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown: currentMarkdown, title: topic })
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert('Erreur: ' + data.error);
+                } else if (data.url) {
+                    window.open(data.url, '_blank');
+                }
+            } catch (e) {
+                alert('Erreur export Google Docs: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
+
+        // ====================================
+        // BOOT
+        // ====================================
+        init();
+    </script>
 
 </body>
+
 </html>
