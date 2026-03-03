@@ -1,0 +1,21 @@
+[tool.bandit]
+exclude_dirs = ["tests", "temp", "output", "cache", ".venv", "venv"]
+skips = [
+    "B101",  # assert used in tests
+    "B105",  # hardcoded password strings - false positives on URL paths and defaults
+    "B110",  # try/except/pass - used intentionally for graceful fallbacks
+    "B113",  # requests without timeout - internal API calls with known latency
+    "B301",  # pickle load - used for Google OAuth token caching
+    "B311",  # random - not used for security/crypto purposes
+    "B403",  # import pickle - required for Google OAuth
+    "B404",  # import subprocess - required for PDF/image conversion
+    "B603",  # subprocess without shell - all calls use list args (safe)
+    "B607",  # partial path in subprocess - known tools (soffice, mmdc)
+    "B104",  # bind 0.0.0.0 - intentional for web server (uvicorn)
+]
+
+[tool.isort]
+profile = "black"
+line_length = 99
+skip_glob = ["temp/*", "output/*", "cache/*", ".venv/*", "venv/*"]
+known_first_party = ["agents", "utils", "config"]

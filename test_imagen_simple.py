@@ -10,16 +10,16 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(__file__))
 
 # Charger .env manuellement
-with open('.env', 'r') as f:
+with open(".env", "r") as f:
     for line in f:
-        if line.startswith('GEMINI_API_KEY'):
-            os.environ['GEMINI_API_KEY'] = line.split('=', 1)[1].strip()
+        if line.startswith("GEMINI_API_KEY"):
+            os.environ["GEMINI_API_KEY"] = line.split("=", 1)[1].strip()
             break
 
 # Importer et tester
 import google.generativeai as genai
 
-api_key = os.getenv('GEMINI_API_KEY')
+api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     print("❌ GEMINI_API_KEY non configurée")
     sys.exit(1)
@@ -54,17 +54,17 @@ try:
     if response.parts:
         for i, part in enumerate(response.parts):
             print(f"   Part {i}: {type(part).__name__}")
-            if hasattr(part, 'inline_data') and part.inline_data:
+            if hasattr(part, "inline_data") and part.inline_data:
                 print(f"   ✅ Image trouvée! Type: {part.inline_data.mime_type}")
                 print(f"   Taille: {len(part.inline_data.data) / 1024:.1f} KB")
 
                 # Sauvegarder
                 output_path = "output/images/test_nano_banana.jpg"
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                with open(output_path, 'wb') as f:
+                with open(output_path, "wb") as f:
                     f.write(part.inline_data.data)
                 print(f"   ✅ Image sauvegardée: {output_path}")
-            elif hasattr(part, 'text'):
+            elif hasattr(part, "text"):
                 print(f"   Texte: {part.text[:100]}...")
     else:
         print("   ⚠️  Aucun part dans la réponse")
@@ -72,4 +72,5 @@ try:
 except Exception as e:
     print(f"❌ Erreur: {e}")
     import traceback
+
     traceback.print_exc()

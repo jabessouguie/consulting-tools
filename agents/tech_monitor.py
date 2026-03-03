@@ -2,25 +2,25 @@
 Agent de veille technologique automatisée
 Collecte et analyse des articles tech pour générer un digest périodique
 """
+
 import os
 import sys
-from typing import Dict, Any, List
-from datetime import datetime, timedelta
 from collections import Counter
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
+
+import feedparser
+import html2text
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+from config import get_consultant_info
+from utils.article_db import ArticleDatabase
+from utils.llm_client import LLMClient
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
-
-import feedparser
-import requests
-from bs4 import BeautifulSoup
-import html2text
-
-from utils.llm_client import LLMClient
-from utils.article_db import ArticleDatabase
-from config import get_consultant_info
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 
 class TechMonitorAgent:
@@ -39,21 +39,35 @@ class TechMonitorAgent:
         # Informations consultant (depuis config centralisee)
         self.consultant_info = get_consultant_info()
 
-        # Sources RSS par défaut (thématiques data/IA)
+        # Sources RSS par defaut (thematiques data/IA/cloud/tech)
         self.default_sources = [
-            'https://www.kdnuggets.com/feed',  # Data Science
-            'https://machinelearningmastery.com/feed/',  # ML
-            'https://www.datanami.com/feed/',  # Big Data
-            'https://hai.stanford.edu/news/rss.xml',  # Stanford AI
-            'https://openai.com/blog/rss/',  # OpenAI
-            'https://www.deeplearning.ai/blog/rss/',  # DeepLearning.AI
+            # Data Science & ML
+            "https://www.kdnuggets.com/feed",
+            "https://machinelearningmastery.com/feed/",
+            "https://www.datanami.com/feed/",
+            # IA - Recherche & Industrie
+            "https://hai.stanford.edu/news/rss.xml",
+            "https://openai.com/blog/rss/",
+            "https://www.deeplearning.ai/blog/rss/",
+            "https://blog.google/technology/ai/rss/",
+            "https://ai.meta.com/blog/rss/",
+            "https://blogs.microsoft.com/ai/feed/",
+            "https://www.anthropic.com/blog/rss.xml",
+            # Tech & Cloud
+            "https://techcrunch.com/category/artificial-intelligence/feed/",
+            "https://thenewstack.io/blog/feed/",
+            "https://www.infoq.com/ai-ml-data-eng/rss",
+            # Data Engineering & Analytics
+            "https://towardsdatascience.com/feed",
+            "https://medium.com/feed/towards-data-science",
+            "https://dataengineering.wiki/feed.xml",
+            # Consulting & Strategy
+            "https://hbr.org/topic/technology/feed",
+            "https://feeds.feedburner.com/mit/technologyreview",
         ]
 
     def collect_articles(
-        self,
-        sources: List[str] = None,
-        keywords: List[str] = None,
-        days: int = 7
+        self, sources: List[str] = None, keywords: List[str] = None, days: int = 7
     ) -> List[Dict[str, Any]]:
         """
         Collecte des articles depuis des flux RSS
@@ -82,36 +96,43 @@ class TechMonitorAgent:
                 for entry in feed.entries:
                     # Parser la date
                     pub_date = None
-                    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    if hasattr(entry, "published_parsed") and entry.published_parsed:
                         pub_date = datetime(*entry.published_parsed[:6])
-                    elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                    elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
                         pub_date = datetime(*entry.updated_parsed[:6])
 
                     # Filtrer par date
                     if pub_date and pub_date < cutoff_date:
                         continue
 
-                    title = entry.get('title', '')
-                    summary = entry.get('summary', '')
-                    link = entry.get('link', '')
+                    title = entry.get("title", "")
+                    summary = entry.get("summary", "")
+                    link = entry.get("link", "")
 
                     # Filtrer par mots-clés si spécifié
                     if keywords:
-                        text = (title + ' ' + summary).lower()
+                        text = (title + " " + summary).lower()
                         if not any(kw.lower() in text for kw in keywords):
                             continue
 
-                    articles.append({
-                        'title': title,
-                        'link': link,
-                        'summary': BeautifulSoup(summary, 'html.parser').get_text()[:500],
-                        'date': pub_date.isoformat() if pub_date else None,
-                        'source': feed.feed.get('title', source_url),
-                    })
+                    articles.append(
+                        {
+                            "title": title,
+                            "link": link,
+                            "summary": BeautifulSoup(summary, "html.parser").get_text()[:500],
+                            "date": pub_date.isoformat() if pub_date else None,
+                            "source": feed.feed.get("title", source_url),
+                        }
+                    )
 
             except Exception as e:
                 from utils.validation import sanitize_error_message
-                print(f"   ⚠️  Erreur sur {source_url}: {sanitize_error_message(str(e))}")
+
+                print(
+                    f"   ⚠️  Erreur sur {source_url}: {
+                        sanitize_error_message(
+                            str(e))}"
+                )
                 continue
 
         print(f"   ✅ {len(articles)} articles collectés")
@@ -138,28 +159,25 @@ class TechMonitorAgent:
         # Extraire les mots-clés des titres
         all_words = []
         for article in articles:
-            title = article['title'].lower()
+            title = article["title"].lower()
             # Mots simples
-            words = [w.strip('.,!?()[]') for w in title.split() if len(w) > 4]
+            words = [w.strip(".,!?()[]") for w in title.split() if len(w) > 4]
             all_words.extend(words)
 
         # Compter les occurrences
         word_counts = Counter(all_words)
         top_keywords = word_counts.most_common(10)
 
-        print(f"   ✅ Tendances identifiées")
+        print("   ✅ Tendances identifiées")
 
         return {
-            'top_keywords': top_keywords,
-            'num_articles': len(articles),
-            'sources_count': len(set(a['source'] for a in articles)),
+            "top_keywords": top_keywords,
+            "num_articles": len(articles),
+            "sources_count": len(set(a["source"] for a in articles)),
         }
 
     def generate_digest(
-        self,
-        articles: List[Dict[str, Any]],
-        trends: Dict[str, Any],
-        period: str = "weekly"
+        self, articles: List[Dict[str, Any]], trends: Dict[str, Any], period: str = "weekly"
     ) -> Dict[str, Any]:
         """
         Génère un digest de veille technologique
@@ -175,26 +193,30 @@ class TechMonitorAgent:
         print(f"✍️  Génération du digest {period}...")
 
         # Trier par date (plus récents d'abord)
-        sorted_articles = sorted(
-            articles,
-            key=lambda x: x['date'] or '',
-            reverse=True
-        )
+        sorted_articles = sorted(articles, key=lambda x: x["date"] or "", reverse=True)
 
         # Limiter à 20 articles max pour le contexte LLM
         top_articles = sorted_articles[:20]
 
         period_label = "hebdomadaire" if period == "weekly" else "mensuel"
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es {
+            self.consultant_info['name']}, {
+            self.consultant_info['title']} chez {
+            self.consultant_info['company']}.
 Tu produis une veille technologique {period_label} pour les consultants data/IA."""
 
         # Préparer le contexte des articles
-        articles_context = "\n\n".join([
-            f"**{i+1}. {a['title']}**\n{a['summary'][:200]}...\nSource: {a['source']}\nLien: {a['link']}"
-            for i, a in enumerate(top_articles)
-        ])
+        articles_context = "\n\n".join(
+            [
+                f"**{i + 1}. {a['title']}**\n{a['summary'][:200]}...\nSource: {a['source']}\nLien: {a['link']}"
+                for i, a in enumerate(top_articles)
+            ]
+        )
 
+        trends_str = ', '.join(
+            [f'{word} ({count})' for word, count in trends['top_keywords'][:8]]
+        )
         prompt = f"""Génère un digest de veille technologique {period_label} à partir de ces articles.
 
 ARTICLES COLLECTÉS ({len(articles)} au total, voici les {len(top_articles)} plus récents):
@@ -202,33 +224,33 @@ ARTICLES COLLECTÉS ({len(articles)} au total, voici les {len(top_articles)} plu
 {articles_context}
 
 TENDANCES (mots-clés fréquents):
-{', '.join([f'{word} ({count})' for word, count in trends['top_keywords'][:8]])}
+{trends_str}
 
 ---
 
 Le digest doit contenir:
 
-# 📊 Veille Tech {period_label.capitalize()} - Data & IA
+# Veille Tech {period_label.capitalize()} - Data & IA
 
-## 🎯 Tendances principales
+## Tendances principales
 
 [2-3 tendances majeures observées cette période, avec explications courtes]
 
-## 📰 Articles clés
+## Articles clés
 
 [5-8 articles les plus pertinents avec :
 - Titre et lien
 - Résumé en 2-3 phrases
 - Pourquoi c'est important pour un consultant data/IA]
 
-## 💡 Insights & Recommandations
+## Insights & Recommandations
 
 [3-4 insights actionnables :
 - Ce qu'on retient
 - Comment ça impacte nos missions
 - Ce qu'on devrait surveiller]
 
-## 🔗 Toutes les sources
+## Toutes les sources
 
 [Liste compacte des {len(articles)} articles avec titres + liens]
 
@@ -247,10 +269,10 @@ Format : Markdown avec emojis."""
         print("   ✅ Digest généré")
 
         return {
-            'content': digest,
-            'period': period,
-            'num_articles': len(articles),
-            'generated_at': datetime.now().isoformat(),
+            "content": digest,
+            "period": period,
+            "num_articles": len(articles),
+            "generated_at": datetime.now().isoformat(),
         }
 
     def run(
@@ -258,7 +280,7 @@ Format : Markdown avec emojis."""
         sources: List[str] = None,
         keywords: List[str] = None,
         days: int = 7,
-        period: str = "weekly"
+        period: str = "weekly",
     ) -> Dict[str, Any]:
         """
         Pipeline complet: collecte -> analyse -> digest
@@ -272,19 +294,24 @@ Format : Markdown avec emojis."""
         Returns:
             Résultat complet
         """
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print(f"📡 VEILLE TECHNOLOGIQUE - {period.upper()}")
-        print(f"{'='*50}\n")
+        print(f"{'=' * 50}\n")
 
         articles = self.collect_articles(sources=sources, keywords=keywords, days=days)
 
         if not articles:
-            print("⚠️  Aucun article collecté")
-            return {
-                'digest': "# ⚠️ Aucun article trouvé\n\nAucun article correspondant aux critères n'a été trouvé pour cette période.",
-                'num_articles': 0,
-                'articles': [],
-            }
+            # Also load persisted articles from DB for the period
+            articles = self.db.get_articles(limit=50, days=days)
+            if not articles:
+                print("⚠️  Aucun article collecté")
+                return {
+                    "content": "# Aucun article trouve\n\nAucun article correspondant aux criteres n'a ete trouve pour cette periode.",
+                    "num_articles": 0,
+                    "articles": [],
+                    "period": period,
+                    "generated_at": datetime.now().isoformat(),
+                }
 
         trends = self.analyze_trends(articles)
         result = self.generate_digest(articles, trends, period=period)
@@ -296,25 +323,22 @@ Format : Markdown avec emojis."""
         os.makedirs(output_dir, exist_ok=True)
 
         md_path = os.path.join(output_dir, f"tech_digest_{period}_{timestamp}.md")
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(f"# Veille Technologique {period.capitalize()}\n\n")
             f.write(f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
             f.write(f"**Période:** {days} derniers jours\n")
             f.write(f"**Articles:** {len(articles)}\n\n")
             f.write("---\n\n")
-            f.write(result['content'])
+            f.write(result["content"])
 
         # Sauvegarder le digest dans la base de données
         digest_id = self.db.save_digest(
-            period=period,
-            content=result['content'],
-            num_articles=len(articles),
-            file_path=md_path
+            period=period, content=result["content"], num_articles=len(articles), file_path=md_path
         )
 
-        result['md_path'] = md_path
-        result['digest_id'] = digest_id
-        result['articles'] = articles[:10]  # Limiter pour la réponse
+        result["md_path"] = md_path
+        result["digest_id"] = digest_id
+        result["articles"] = articles[:10]  # Limiter pour la réponse
 
         print(f"\n✅ Digest sauvegardé: {md_path}")
         print(f"   💾 Digest sauvegardé en BDD (ID: {digest_id})")
@@ -325,22 +349,26 @@ Format : Markdown avec emojis."""
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Veille technologique automatisée')
-    parser.add_argument('--keywords', nargs='+', help='Mots-clés à filtrer (ex: GPT, transformer, RAG)')
-    parser.add_argument('--days', type=int, default=7, help='Articles des X derniers jours (défaut: 7)')
-    parser.add_argument('--period', choices=['weekly', 'monthly'], default='weekly')
+    parser = argparse.ArgumentParser(description="Veille technologique automatisée")
+    parser.add_argument(
+        "--keywords", nargs="+", help="Mots-clés à filtrer (ex: GPT, transformer, RAG)"
+    )
+    parser.add_argument(
+        "--days", type=int, default=7, help="Articles des X derniers jours (défaut: 7)"
+    )
+    parser.add_argument("--period", choices=["weekly", "monthly"], default="weekly")
 
     args = parser.parse_args()
 
     agent = TechMonitorAgent()
     result = agent.run(keywords=args.keywords, days=args.days, period=args.period)
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("DIGEST GÉNÉRÉ")
-    print(f"{'='*50}\n")
-    print(result['content'][:1000] + "...")
+    print(f"{'=' * 50}\n")
+    print(result["content"][:1000] + "...")
     print(f"\n📊 {result['num_articles']} articles analysés")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

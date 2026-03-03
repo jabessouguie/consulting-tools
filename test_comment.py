@@ -1,7 +1,9 @@
 """
 Test rapide de l'agent de commentaires LinkedIn
 """
+
 import sys
+
 from agents.linkedin_commenter import LinkedInCommenterAgent
 
 # Post LinkedIn d'exemple
@@ -30,10 +32,11 @@ Vous l'utilisez comment dans vos équipes data ?
 #DataScience #IA #GenAI
 """
 
+
 def main():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST - Agent de Commentaires LinkedIn")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     agent = LinkedInCommenterAgent()
 
@@ -52,16 +55,17 @@ def main():
         result = agent.run(post_input=sample_post, style=style)
 
         print(f"\n💬 Commentaire COURT ({len(result['short'])} caractères) :")
-        print(result['short'])
+        print(result["short"])
 
         print(f"\n💬 Commentaire MOYEN ({len(result['medium'])} caractères) :")
-        print(result['medium'])
+        print(result["medium"])
 
         print(f"\n💬 Commentaire LONG ({len(result['long'])} caractères) :")
-        print(result['long'])
+        print(result["long"])
 
         print(f"\n✅ Sauvegardé : {result['md_path']}")
-        print("="*60)
+        print("=" * 60)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

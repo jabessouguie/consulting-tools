@@ -2,11 +2,13 @@
 Convertisseur de documents vers PDF
 Supporte PPTX → PDF et Markdown → PDF
 """
+
+import json
 import os
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 class PDFConverter:
@@ -15,6 +17,30 @@ class PDFConverter:
     def __init__(self):
         """Initialise le convertisseur et détecte LibreOffice"""
         self.libreoffice_path = self._find_libreoffice()
+        self.branding = self._load_branding()
+
+    def _load_branding(self) -> Dict[str, Any]:
+        """Charge le branding depuis branding.json"""
+        branding_file = Path(__file__).parent.parent / "data" / "branding.json"
+        try:
+            if branding_file.exists():
+                with open(branding_file, "r") as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        # Fallback Consulting Tools
+        return {
+            "colors": {
+                "blanc": "FFFFFF",
+                "rose-poudre": "F5E6E8",
+                "noir-profond": "1A1A1A",
+                "gris-clair": "F5F5F5",
+                "gris-moyen": "9CA3AF",
+                "corail": "E86F51",
+                "terracotta": "C4624F",
+            },
+            "fonts": {"title": "Chakra Petch", "body": "Inter"},
+        }
 
     def _find_libreoffice(self) -> Optional[str]:
         """
@@ -25,14 +51,14 @@ class PDFConverter:
         """
         # Chemins courants sur macOS
         mac_paths = [
-            '/Applications/LibreOffice.app/Contents/MacOS/soffice',
-            '/usr/local/bin/soffice',
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+            "/usr/local/bin/soffice",
         ]
 
         # Chemins courants sur Linux
         linux_paths = [
-            '/usr/bin/libreoffice',
-            '/usr/bin/soffice',
+            "/usr/bin/libreoffice",
+            "/usr/bin/soffice",
         ]
 
         # Vérifier les chemins
@@ -43,11 +69,7 @@ class PDFConverter:
 
         # Essayer via 'which'
         try:
-            result = subprocess.run(
-                ['which', 'soffice'],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["which", "soffice"], capture_output=True, text=True)
             if result.returncode == 0:
                 path = result.stdout.strip()
                 print(f"✅ LibreOffice trouvé : {path}")
@@ -91,18 +113,17 @@ class PDFConverter:
             # Options pour préserver les couleurs et la qualité
             cmd = [
                 self.libreoffice_path,
-                '--headless',
-                '--convert-to', 'pdf',
-                '--outdir', str(output_dir),
-                '-env:UserInstallation=file:///tmp/LibreOffice_Conversion_${USER}',
-                str(pptx_path)
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                str(output_dir),
+                "-env:UserInstallation=file:///tmp/LibreOffice_Conversion_${USER}",
+                str(pptx_path),
             ]
 
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120  # 2 minutes max
+                cmd, capture_output=True, text=True, timeout=120  # 2 minutes max
             )
 
             if result.returncode == 0:
@@ -112,7 +133,7 @@ class PDFConverter:
                     print(f"✅ PDF créé : {pdf_path}")
                     return str(pdf_path)
                 else:
-                    print(f"❌ PDF non créé (erreur LibreOffice)")
+                    print("❌ PDF non créé (erreur LibreOffice)")
                     return None
             else:
                 print(f"❌ Erreur LibreOffice : {result.stderr}")
@@ -151,23 +172,20 @@ class PDFConverter:
         print(f"🔄 Conversion Markdown → PDF : {md_path.name}")
 
         # Essayer via pandoc (plus commun)
-        pandoc_path = shutil.which('pandoc')
+        pandoc_path = shutil.which("pandoc")
         if pandoc_path:
             try:
                 cmd = [
                     pandoc_path,
                     str(md_path),
-                    '-o', str(output_path),
-                    '--pdf-engine=xelatex',  # ou pdflatex
-                    '-V', 'geometry:margin=1in',
+                    "-o",
+                    str(output_path),
+                    "--pdf-engine=xelatex",  # ou pdflatex
+                    "-V",
+                    "geometry:margin=1in",
                 ]
 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
                 if result.returncode == 0 and output_path.exists():
                     print(f"✅ PDF créé : {output_path}")
@@ -183,8 +201,12 @@ class PDFConverter:
             from weasyprint import HTML
 
             # Convertir MD → HTML
-            with open(md_path, 'r', encoding='utf-8') as f:
+            with open(md_path, "r", encoding="utf-8") as f:
                 md_content = f.read()
+
+            # Palette de couleurs dynamique
+            colors = self.branding.get("colors", {})
+            fonts = self.branding.get("fonts", {})
 
             html_content = f"""
 <!DOCTYPE html>
@@ -192,15 +214,15 @@ class PDFConverter:
 <head>
     <meta charset="UTF-8">
     <style>
-        /* Palette Consulting Tools */
+        /* Palette Dynamique */
         :root {{
-            --blanc: #FFFFFF;
-            --rose-poudre: #F5E6E8;
-            --noir-profond: #1A1A1A;
-            --gris-clair: #F5F5F5;
-            --gris-moyen: #9CA3AF;
-            --corail: #E86F51;
-            --terracotta: #C4624F;
+            --blanc: #{colors.get('blanc', 'FFFFFF')};
+            --rose-poudre: #{colors.get('rose-poudre', 'F5E6E8')};
+            --noir-profond: #{colors.get('noir-profond', '1A1A1A')};
+            --gris-clair: #{colors.get('gris-clair', 'F5F5F5')};
+            --gris-moyen: #{colors.get('gris-moyen', '9CA3AF')};
+            --corail: #{colors.get('corail', 'E86F51')};
+            --terracotta: #{colors.get('terracotta', 'C4624F')};
         }}
 
         @page {{
@@ -209,33 +231,34 @@ class PDFConverter:
             @bottom-right {{
                 content: counter(page);
                 font-size: 10pt;
-                color: #9CA3AF;
+                color: var(--gris-moyen);
             }}
         }}
 
         body {{
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            font-family: '{fonts.get('body', 'Inter')}', -apple-system,
+                         BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             line-height: 1.6;
-            color: #1A1A1A;
-            background: #FFFFFF;
+            color: var(--noir-profond);
+            background: var(--blanc);
             font-size: 11pt;
         }}
 
-        /* Titres avec palette Consulting Tools */
+        /* Titres avec palette */
         h1 {{
-            color: #E86F51;
-            font-family: 'Chakra Petch', Arial, sans-serif;
+            color: var(--corail);
+            font-family: '{fonts.get('title', 'Chakra Petch')}', Arial, sans-serif;
             font-size: 28pt;
             font-weight: 700;
             margin-top: 0;
             margin-bottom: 16pt;
             padding-bottom: 8pt;
-            border-bottom: 3px solid #F5E6E8;
+            border-bottom: 3px solid var(--rose-poudre);
         }}
 
         h2 {{
-            color: #C4624F;
-            font-family: 'Chakra Petch', Arial, sans-serif;
+            color: var(--terracotta);
+            font-family: '{fonts.get('title', 'Chakra Petch')}', Arial, sans-serif;
             font-size: 20pt;
             font-weight: 600;
             margin-top: 24pt;
@@ -243,8 +266,8 @@ class PDFConverter:
         }}
 
         h3 {{
-            color: #1A1A1A;
-            font-family: 'Chakra Petch', Arial, sans-serif;
+            color: var(--noir-profond);
+            font-family: '{fonts.get('title', 'Chakra Petch')}', Arial, sans-serif;
             font-size: 16pt;
             font-weight: 600;
             margin-top: 16pt;
@@ -252,7 +275,7 @@ class PDFConverter:
         }}
 
         h4, h5, h6 {{
-            color: #1A1A1A;
+            color: var(--noir-profond);
             font-weight: 600;
             margin-top: 12pt;
             margin-bottom: 6pt;
@@ -276,19 +299,19 @@ class PDFConverter:
 
         /* Emphase */
         strong {{
-            color: #E86F51;
+            color: var(--corail);
             font-weight: 600;
         }}
 
         em {{
-            color: #C4624F;
+            color: var(--terracotta);
             font-style: italic;
         }}
 
         /* Code */
         code {{
-            background: #F5F5F5;
-            color: #C4624F;
+            background: var(--gris-clair);
+            color: var(--terracotta);
             padding: 2pt 4pt;
             border-radius: 3pt;
             font-family: 'Courier New', monospace;
@@ -296,8 +319,8 @@ class PDFConverter:
         }}
 
         pre {{
-            background: #F5F5F5;
-            border-left: 4px solid #E86F51;
+            background: var(--gris-clair);
+            border-left: 4px solid var(--corail);
             padding: 12pt;
             border-radius: 4pt;
             overflow-x: auto;
@@ -307,16 +330,16 @@ class PDFConverter:
         pre code {{
             background: transparent;
             padding: 0;
-            color: #1A1A1A;
+            color: var(--noir-profond);
         }}
 
         /* Citations */
         blockquote {{
-            border-left: 4px solid #E86F51;
-            background: #F5E6E8;
+            border-left: 4px solid var(--corail);
+            background: var(--rose-poudre);
             padding: 12pt 16pt;
             margin: 12pt 0;
-            color: #1A1A1A;
+            color: var(--noir-profond);
             font-style: italic;
         }}
 
@@ -328,8 +351,8 @@ class PDFConverter:
         }}
 
         th {{
-            background: #E86F51;
-            color: #FFFFFF;
+            background: var(--corail);
+            color: var(--blanc);
             padding: 8pt;
             text-align: left;
             font-weight: 600;
@@ -337,16 +360,16 @@ class PDFConverter:
 
         td {{
             padding: 6pt 8pt;
-            border-bottom: 1px solid #F5F5F5;
+            border-bottom: 1px solid var(--gris-clair);
         }}
 
         tr:nth-child(even) {{
-            background: #F5E6E8;
+            background: var(--rose-poudre);
         }}
 
         /* Liens */
         a {{
-            color: #E86F51;
+            color: var(--corail);
             text-decoration: none;
             font-weight: 500;
         }}
@@ -358,7 +381,7 @@ class PDFConverter:
         /* Séparateurs */
         hr {{
             border: none;
-            border-top: 2px solid #F5E6E8;
+            border-top: 2px solid var(--rose-poudre);
             margin: 24pt 0;
         }}
     </style>
@@ -375,7 +398,7 @@ class PDFConverter:
             return str(output_path)
 
         except ImportError:
-            print("⚠️  weasyprint non installé - conversion MD→PDF indisponible")
+            print("⚠️  weasyprint/markdown non installé - conversion MD→PDF indisponible")
             print("   Installez avec: pip install weasyprint markdown")
         except Exception as e:
             print(f"❌ Erreur weasyprint : {e}")
@@ -390,15 +413,16 @@ class PDFConverter:
             Dict avec les conversions disponibles
         """
         return {
-            'pptx_to_pdf': self.libreoffice_path is not None,
-            'markdown_to_pdf': shutil.which('pandoc') is not None or self._has_weasyprint(),
+            "pptx_to_pdf": self.libreoffice_path is not None,
+            "markdown_to_pdf": shutil.which("pandoc") is not None or self._has_weasyprint(),
         }
 
     @staticmethod
     def _has_weasyprint() -> bool:
         """Vérifie si weasyprint est installé"""
         try:
-            import weasyprint
+            import weasyprint  # noqa: F401
+
             return True
         except ImportError:
             return False

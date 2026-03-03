@@ -1,23 +1,21 @@
 """
 Utilitaires pour interagir avec les API Google (Drive, Docs, Slides, NotebookLM)
 """
+
 import os
-from typing import Optional, Dict, List, Any
-from google.oauth2.credentials import Credentials
-from google.oauth2 import service_account
-from google_auth_oauthlib.flow import InstalledAppFlow
+import pickle
+from typing import Any, Dict, List, Optional
+
 from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import pickle
-import json
-
 
 SCOPES = [
-    'https://www.googleapis.com/auth/drive.file',  # Créer et modifier des fichiers
-    'https://www.googleapis.com/auth/presentations',  # Créer et modifier des présentations
-    'https://www.googleapis.com/auth/documents.readonly',
-    'https://www.googleapis.com/auth/gmail.send',  # Envoyer des emails
+    "https://www.googleapis.com/auth/drive.file",  # Créer et modifier des fichiers
+    "https://www.googleapis.com/auth/presentations",  # Créer et modifier des présentations
+    "https://www.googleapis.com/auth/documents.readonly",
+    "https://www.googleapis.com/auth/gmail.send",  # Envoyer des emails
 ]
 
 
@@ -31,17 +29,17 @@ class GoogleAPIClient:
         Args:
             credentials_path: Chemin vers le fichier credentials.json
         """
-        self.credentials_path = credentials_path or os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        self.credentials_path = credentials_path or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         self.creds = None
         self._authenticate()
 
     def _authenticate(self):
         """Authentifie l'utilisateur avec Google OAuth"""
-        token_path = 'config/token.pickle'
+        token_path = "config/token.pickle"
 
         # Charger les credentials existantes
         if os.path.exists(token_path):
-            with open(token_path, 'rb') as token:
+            with open(token_path, "rb") as token:
                 self.creds = pickle.load(token)
 
         # Si pas de credentials valides, demander l'authentification
@@ -49,13 +47,11 @@ class GoogleAPIClient:
             if self.creds and self.creds.expired and self.creds.refresh_token:
                 self.creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, SCOPES
-                )
+                flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
                 self.creds = flow.run_local_server(port=0)
 
             # Sauvegarder les credentials
-            with open(token_path, 'wb') as token:
+            with open(token_path, "wb") as token:
                 pickle.dump(self.creds, token)
 
     def get_slides_content(self, presentation_id: str) -> Dict[str, Any]:
@@ -69,37 +65,34 @@ class GoogleAPIClient:
             Dictionnaire contenant le contenu de la présentation
         """
         try:
-            service = build('slides', 'v1', credentials=self.creds)
-            presentation = service.presentations().get(
-                presentationId=presentation_id
-            ).execute()
+            service = build("slides", "v1", credentials=self.creds)
+            presentation = service.presentations().get(presentationId=presentation_id).execute()
 
             slides_content = []
-            for i, slide in enumerate(presentation.get('slides', [])):
+            for i, slide in enumerate(presentation.get("slides", [])):
                 slide_data = {
-                    'slide_number': i + 1,
-                    'object_id': slide.get('objectId'),
-                    'elements': []
+                    "slide_number": i + 1,
+                    "object_id": slide.get("objectId"),
+                    "elements": [],
                 }
 
                 # Extraire le texte de chaque élément
-                for element in slide.get('pageElements', []):
-                    if 'shape' in element:
-                        shape = element['shape']
-                        if 'text' in shape:
+                for element in slide.get("pageElements", []):
+                    if "shape" in element:
+                        shape = element["shape"]
+                        if "text" in shape:
                             text_content = self._extract_text_from_shape(shape)
                             if text_content:
-                                slide_data['elements'].append({
-                                    'type': 'text',
-                                    'content': text_content
-                                })
+                                slide_data["elements"].append(
+                                    {"type": "text", "content": text_content}
+                                )
 
                 slides_content.append(slide_data)
 
             return {
-                'title': presentation.get('title'),
-                'slides': slides_content,
-                'total_slides': len(slides_content)
+                "title": presentation.get("title"),
+                "slides": slides_content,
+                "total_slides": len(slides_content),
             }
 
         except HttpError as error:
@@ -109,13 +102,13 @@ class GoogleAPIClient:
     def _extract_text_from_shape(self, shape: Dict) -> str:
         """Extrait le texte d'un shape"""
         text_elements = []
-        text_content = shape.get('text', {})
+        text_content = shape.get("text", {})
 
-        for element in text_content.get('textElements', []):
-            if 'textRun' in element:
-                text_elements.append(element['textRun'].get('content', ''))
+        for element in text_content.get("textElements", []):
+            if "textRun" in element:
+                text_elements.append(element["textRun"].get("content", ""))
 
-        return ''.join(text_elements).strip()
+        return "".join(text_elements).strip()
 
     def get_document_content(self, document_id: str) -> str:
         """
@@ -128,17 +121,17 @@ class GoogleAPIClient:
             Contenu texte du document
         """
         try:
-            service = build('docs', 'v1', credentials=self.creds)
+            service = build("docs", "v1", credentials=self.creds)
             document = service.documents().get(documentId=document_id).execute()
 
             content = []
-            for element in document.get('body', {}).get('content', []):
-                if 'paragraph' in element:
-                    for text_element in element['paragraph'].get('elements', []):
-                        if 'textRun' in text_element:
-                            content.append(text_element['textRun'].get('content', ''))
+            for element in document.get("body", {}).get("content", []):
+                if "paragraph" in element:
+                    for text_element in element["paragraph"].get("elements", []):
+                        if "textRun" in text_element:
+                            content.append(text_element["textRun"].get("content", ""))
 
-            return ''.join(content)
+            return "".join(content)
 
         except HttpError as error:
             print(f"Erreur lors de la récupération du document: {error}")
@@ -155,24 +148,21 @@ class GoogleAPIClient:
             Contenu du fichier ou None
         """
         try:
-            service = build('drive', 'v3', credentials=self.creds)
+            service = build("drive", "v3", credentials=self.creds)
 
             # Récupérer les métadonnées
             file = service.files().get(fileId=file_id).execute()
-            mime_type = file.get('mimeType')
+            mime_type = file.get("mimeType")
 
             # Selon le type, utiliser la bonne méthode
-            if 'presentation' in mime_type:
+            if "presentation" in mime_type:
                 return self.get_slides_content(file_id)
-            elif 'document' in mime_type:
+            elif "document" in mime_type:
                 return self.get_document_content(file_id)
             else:
                 # Export en texte brut
-                content = service.files().export(
-                    fileId=file_id,
-                    mimeType='text/plain'
-                ).execute()
-                return content.decode('utf-8')
+                content = service.files().export(fileId=file_id, mimeType="text/plain").execute()
+                return content.decode("utf-8")
 
         except HttpError as error:
             print(f"Erreur lors de la récupération du fichier: {error}")
@@ -190,15 +180,17 @@ class GoogleAPIClient:
             Liste des fichiers trouvés
         """
         try:
-            service = build('drive', 'v3', credentials=self.creds)
+            service = build("drive", "v3", credentials=self.creds)
 
-            results = service.files().list(
-                q=query,
-                pageSize=max_results,
-                fields="files(id, name, mimeType, modifiedTime)"
-            ).execute()
+            results = (
+                service.files()
+                .list(
+                    q=query, pageSize=max_results, fields="files(id, name, mimeType, modifiedTime)"
+                )
+                .execute()
+            )
 
-            return results.get('files', [])
+            return results.get("files", [])
 
         except HttpError as error:
             print(f"Erreur lors de la recherche: {error}")
@@ -215,14 +207,12 @@ class GoogleAPIClient:
             ID de la présentation créée ou None en cas d'erreur
         """
         try:
-            service = build('slides', 'v1', credentials=self.creds)
+            service = build("slides", "v1", credentials=self.creds)
 
-            presentation = {
-                'title': title
-            }
+            presentation = {"title": title}
 
             response = service.presentations().create(body=presentation).execute()
-            presentation_id = response.get('presentationId')
+            presentation_id = response.get("presentationId")
 
             print(f"✅ Présentation créée: {presentation_id}")
             return presentation_id
@@ -231,7 +221,7 @@ class GoogleAPIClient:
             print(f"❌ Erreur lors de la création de la présentation: {error}")
             return None
 
-    def add_slide(self, presentation_id: str, layout: str = 'BLANK') -> Optional[str]:
+    def add_slide(self, presentation_id: str, layout: str = "BLANK") -> Optional[str]:
         """
         Ajoute une nouvelle slide à une présentation
 
@@ -243,22 +233,17 @@ class GoogleAPIClient:
             ID de la slide créée ou None en cas d'erreur
         """
         try:
-            service = build('slides', 'v1', credentials=self.creds)
+            service = build("slides", "v1", credentials=self.creds)
 
-            requests = [{
-                'createSlide': {
-                    'slideLayoutReference': {
-                        'predefinedLayout': layout
-                    }
-                }
-            }]
+            requests = [{"createSlide": {"slideLayoutReference": {"predefinedLayout": layout}}}]
 
-            response = service.presentations().batchUpdate(
-                presentationId=presentation_id,
-                body={'requests': requests}
-            ).execute()
+            response = (
+                service.presentations()
+                .batchUpdate(presentationId=presentation_id, body={"requests": requests})
+                .execute()
+            )
 
-            slide_id = response.get('replies')[0]['createSlide']['objectId']
+            slide_id = response.get("replies")[0]["createSlide"]["objectId"]
             return slide_id
 
         except HttpError as error:
@@ -273,7 +258,7 @@ class GoogleAPIClient:
         position: Dict[str, float],
         size: Dict[str, float],
         font_size: int = 14,
-        bold: bool = False
+        bold: bool = False,
     ) -> bool:
         """
         Ajoute du texte à une slide
@@ -291,7 +276,7 @@ class GoogleAPIClient:
             True si succès, False sinon
         """
         try:
-            service = build('slides', 'v1', credentials=self.creds)
+            service = build("slides", "v1", credentials=self.creds)
 
             # Sanitize le texte avant insertion
             sanitized_text = self._sanitize_text(text)
@@ -301,49 +286,45 @@ class GoogleAPIClient:
 
             requests = [
                 {
-                    'createShape': {
-                        'objectId': element_id,
-                        'shapeType': 'TEXT_BOX',
-                        'elementProperties': {
-                            'pageObjectId': slide_id,
-                            'size': {
-                                'width': {'magnitude': size['width'], 'unit': 'PT'},
-                                'height': {'magnitude': size['height'], 'unit': 'PT'}
+                    "createShape": {
+                        "objectId": element_id,
+                        "shapeType": "TEXT_BOX",
+                        "elementProperties": {
+                            "pageObjectId": slide_id,
+                            "size": {
+                                "width": {"magnitude": size["width"], "unit": "PT"},
+                                "height": {"magnitude": size["height"], "unit": "PT"},
                             },
-                            'transform': {
-                                'scaleX': 1,
-                                'scaleY': 1,
-                                'translateX': position['x'],
-                                'translateY': position['y'],
-                                'unit': 'PT'
-                            }
-                        }
+                            "transform": {
+                                "scaleX": 1,
+                                "scaleY": 1,
+                                "translateX": position["x"],
+                                "translateY": position["y"],
+                                "unit": "PT",
+                            },
+                        },
                     }
                 },
-                {
-                    'insertText': {
-                        'objectId': element_id,
-                        'text': sanitized_text
-                    }
-                }
+                {"insertText": {"objectId": element_id, "text": sanitized_text}},
             ]
 
             # Ajouter le formatage si nécessaire
             if font_size != 14 or bold:
-                requests.append({
-                    'updateTextStyle': {
-                        'objectId': element_id,
-                        'style': {
-                            'fontSize': {'magnitude': font_size, 'unit': 'PT'},
-                            'bold': bold
-                        },
-                        'fields': 'fontSize,bold'
+                requests.append(
+                    {
+                        "updateTextStyle": {
+                            "objectId": element_id,
+                            "style": {
+                                "fontSize": {"magnitude": font_size, "unit": "PT"},
+                                "bold": bold,
+                            },
+                            "fields": "fontSize,bold",
+                        }
                     }
-                })
+                )
 
             service.presentations().batchUpdate(
-                presentationId=presentation_id,
-                body={'requests': requests}
+                presentationId=presentation_id, body={"requests": requests}
             ).execute()
 
             return True
@@ -369,44 +350,48 @@ class GoogleAPIClient:
             if not presentation_id:
                 return None
 
-            service = build('slides', 'v1', credentials=self.creds)
+            service = build("slides", "v1", credentials=self.creds)
 
             # Supprimer la slide par défaut
-            presentation = service.presentations().get(
-                presentationId=presentation_id
-            ).execute()
+            presentation = service.presentations().get(presentationId=presentation_id).execute()
 
-            default_slide_id = presentation['slides'][0]['objectId']
+            default_slide_id = presentation["slides"][0]["objectId"]
 
-            requests = [{
-                'deleteObject': {
-                    'objectId': default_slide_id
-                }
-            }]
+            requests = [{"deleteObject": {"objectId": default_slide_id}}]
 
             service.presentations().batchUpdate(
-                presentationId=presentation_id,
-                body={'requests': requests}
+                presentationId=presentation_id, body={"requests": requests}
             ).execute()
 
             # Ajouter chaque slide
             for slide_data in slides_data:
-                slide_type = slide_data.get('type', 'content')
+                slide_type = slide_data.get("type", "content")
 
-                if slide_type == 'cover':
+                if slide_type == "cover":
                     self._add_cover_slide(presentation_id, slide_data)
-                elif slide_type == 'section':
+                elif slide_type == "section":
                     self._add_section_slide(presentation_id, slide_data)
-                elif slide_type in ['content', 'context', 'approach']:
-                    self._add_content_slide(presentation_id, slide_data)
-                elif slide_type == 'diagram':
+                elif slide_type == "closing":
+                    self._add_closing_slide(presentation_id, slide_data)
+                elif slide_type == "stat":
+                    self._add_stat_slide(presentation_id, slide_data)
+                elif slide_type == "quote":
+                    self._add_quote_slide(presentation_id, slide_data)
+                elif slide_type == "highlight":
+                    self._add_highlight_slide(presentation_id, slide_data)
+                elif slide_type == "two_column":
+                    self._add_two_column_slide(presentation_id, slide_data)
+                elif slide_type == "diagram":
                     self._add_diagram_slide(presentation_id, slide_data)
+                elif slide_type == "table":
+                    self._add_table_slide(presentation_id, slide_data)
+                else:
+                    self._add_content_slide(presentation_id, slide_data)
 
             # Générer le lien partageable
-            drive_service = build('drive', 'v3', credentials=self.creds)
+            drive_service = build("drive", "v3", credentials=self.creds)
             drive_service.permissions().create(
-                fileId=presentation_id,
-                body={'type': 'anyone', 'role': 'writer'}
+                fileId=presentation_id, body={"type": "anyone", "role": "writer"}
             ).execute()
 
             presentation_url = f"https://docs.google.com/presentation/d/{presentation_id}/edit"
@@ -418,117 +403,410 @@ class GoogleAPIClient:
             print(f"❌ Erreur lors de l'export vers Google Slides: {error}")
             return None
 
-    def _add_cover_slide(self, presentation_id: str, slide_data: Dict):
-        """Ajoute une slide de couverture"""
-        slide_id = self.add_slide(presentation_id, 'TITLE')
-
-        # Ajouter le titre et sous-titre via batchUpdate
-        service = build('slides', 'v1', credentials=self.creds)
-
-        requests = []
-
-        # Récupérer la slide pour obtenir les IDs des placeholders
-        presentation = service.presentations().get(
-            presentationId=presentation_id
-        ).execute()
-
-        current_slide = None
-        for slide in presentation['slides']:
-            if slide['objectId'] == slide_id:
-                current_slide = slide
-                break
-
-        if current_slide:
-            for element in current_slide.get('pageElements', []):
-                if 'shape' in element:
-                    shape = element['shape']
-                    shape_type = shape.get('shapeType')
-
-                    # Trouver le placeholder de titre
-                    if shape_type == 'TEXT_BOX' or 'placeholder' in shape:
-                        object_id = element['objectId']
-
-                        # Insérer le titre ou sous-titre
-                        if slide_data.get('title'):
-                            requests.append({
-                                'insertText': {
-                                    'objectId': object_id,
-                                    'text': self._sanitize_text(slide_data['title'])
-                                }
-                            })
-                        break
-
-        if requests:
+    def _set_slide_background(
+        self, presentation_id: str, slide_id: str, r: float, g: float, b: float
+    ):
+        """Set slide background color (r, g, b in 0.0-1.0)"""
+        try:
+            service = build("slides", "v1", credentials=self.creds)
             service.presentations().batchUpdate(
                 presentationId=presentation_id,
-                body={'requests': requests}
+                body={
+                    "requests": [
+                        {
+                            "updatePageProperties": {
+                                "objectId": slide_id,
+                                "pageProperties": {
+                                    "pageBackgroundFill": {
+                                        "solidFill": {
+                                            "color": {"rgbColor": {"red": r, "green": g, "blue": b}}
+                                        }
+                                    }
+                                },
+                                "fields": "pageBackgroundFill",
+                            }
+                        }
+                    ]
+                },
             ).execute()
+        except Exception as e:
+            print(f"Erreur background slide: {e}")
+
+    def _add_styled_text(
+        self, presentation_id, slide_id, text, position, size, font_size=14, bold=False, color=None
+    ):
+        """Add text with optional color (r, g, b dict)"""
+        try:
+            service = build("slides", "v1", credentials=self.creds)
+            sanitized_text = self._sanitize_text(text)
+            eid = f'tb_{slide_id}_{position["x"]}_{position["y"]}'
+            reqs = [
+                {
+                    "createShape": {
+                        "objectId": eid,
+                        "shapeType": "TEXT_BOX",
+                        "elementProperties": {
+                            "pageObjectId": slide_id,
+                            "size": {
+                                "width": {"magnitude": size["width"], "unit": "PT"},
+                                "height": {"magnitude": size["height"], "unit": "PT"},
+                            },
+                            "transform": {
+                                "scaleX": 1,
+                                "scaleY": 1,
+                                "translateX": position["x"],
+                                "translateY": position["y"],
+                                "unit": "PT",
+                            },
+                        },
+                    }
+                },
+                {"insertText": {"objectId": eid, "text": sanitized_text}},
+            ]
+            style = {"fontSize": {"magnitude": font_size, "unit": "PT"}, "bold": bold}
+            fields = "fontSize,bold"
+            if color:
+                style["foregroundColor"] = {"opaqueColor": {"rgbColor": color}}
+                fields += ",foregroundColor"
+            reqs.append(
+                {
+                    "updateTextStyle": {
+                        "objectId": eid,
+                        "style": style,
+                        "fields": fields,
+                    }
+                }
+            )
+            service.presentations().batchUpdate(
+                presentationId=presentation_id, body={"requests": reqs}
+            ).execute()
+        except Exception as e:
+            print(f"Erreur styled text: {e}")
+
+    def _add_cover_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide de couverture (fond sombre Consulting Tools)"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        # Dark background (#1F1F1F)
+        self._set_slide_background(presentation_id, slide_id, 0.122, 0.122, 0.122)
+
+        white = {"red": 1.0, "green": 1.0, "blue": 1.0}
+        corail = {"red": 1.0, "green": 0.42, "blue": 0.345}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 160},
+                size={"width": 620, "height": 80},
+                font_size=36,
+                bold=True,
+                color=white,
+            )
+        if slide_data.get("subtitle"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["subtitle"],
+                position={"x": 50, "y": 260},
+                size={"width": 620, "height": 50},
+                font_size=18,
+                color=corail,
+            )
 
     def _add_section_slide(self, presentation_id: str, slide_data: Dict):
-        """Ajoute une slide de section"""
-        slide_id = self.add_slide(presentation_id, 'SECTION_HEADER')
+        """Ajoute une slide de section (fond sombre)"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        self._set_slide_background(presentation_id, slide_id, 0.122, 0.122, 0.122)
 
-        if slide_data.get('title'):
-            self.add_text_to_slide(
-                presentation_id, slide_id,
-                slide_data['title'],
-                position={'x': 50, 'y': 200},
-                size={'width': 600, 'height': 100},
+        white = {"red": 1.0, "green": 1.0, "blue": 1.0}
+        corail = {"red": 1.0, "green": 0.42, "blue": 0.345}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 180},
+                size={"width": 620, "height": 80},
                 font_size=36,
-                bold=True
+                bold=True,
+                color=white,
+            )
+        if slide_data.get("subtitle"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["subtitle"],
+                position={"x": 50, "y": 270},
+                size={"width": 620, "height": 50},
+                font_size=16,
+                color=corail,
             )
 
     def _add_content_slide(self, presentation_id: str, slide_data: Dict):
-        """Ajoute une slide de contenu"""
-        slide_id = self.add_slide(presentation_id, 'TITLE_AND_BODY')
+        """Ajoute une slide de contenu (fond blanc)"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
 
-        # Titre
-        if slide_data.get('title'):
-            self.add_text_to_slide(
-                presentation_id, slide_id,
-                slide_data['title'],
-                position={'x': 50, 'y': 50},
-                size={'width': 600, 'height': 60},
-                font_size=28,
-                bold=True
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 30},
+                size={"width": 620, "height": 50},
+                font_size=24,
+                bold=True,
+                color=dark,
             )
 
-        # Bullets
-        if slide_data.get('bullets'):
-            clean_bullets = [self._sanitize_text(b) for b in slide_data['bullets']]
-            bullets_text = '\n'.join([f'• {bullet}' for bullet in clean_bullets])
-            self.add_text_to_slide(
-                presentation_id, slide_id,
-                bullets_text,
-                position={'x': 50, 'y': 150},
-                size={'width': 600, 'height': 350},
-                font_size=14
+        if slide_data.get("bullets"):
+            clean = [self._sanitize_text(b) for b in slide_data["bullets"]]
+            text = "\n".join([f"• {b}" for b in clean])
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                text,
+                position={"x": 50, "y": 100},
+                size={"width": 620, "height": 350},
+                font_size=14,
+                color=dark,
             )
 
     def _add_diagram_slide(self, presentation_id: str, slide_data: Dict):
-        """Ajoute une slide avec diagramme (version simplifiée)"""
-        slide_id = self.add_slide(presentation_id, 'TITLE_AND_BODY')
+        """Ajoute une slide avec diagramme"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
 
-        # Titre
-        if slide_data.get('title'):
-            self.add_text_to_slide(
-                presentation_id, slide_id,
-                self._sanitize_text(slide_data['title']),
-                position={'x': 50, 'y': 50},
-                size={'width': 600, 'height': 60},
-                font_size=28,
-                bold=True
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 30},
+                size={"width": 620, "height": 50},
+                font_size=24,
+                bold=True,
+                color=dark,
             )
 
-        # Éléments du diagramme (version texte pour l'instant)
-        if slide_data.get('elements'):
-            elements_text = '\n'.join([f'{i+1}. {self._sanitize_text(elem)}' for i, elem in enumerate(slide_data['elements'])])
-            self.add_text_to_slide(
-                presentation_id, slide_id,
-                elements_text,
-                position={'x': 100, 'y': 150},
-                size={'width': 500, 'height': 350},
-                font_size=16
+        if slide_data.get("elements"):
+            text = "\n".join(
+                [f"{i + 1}. {self._sanitize_text(e)}" for i, e in enumerate(slide_data["elements"])]
+            )
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                text,
+                position={"x": 80, "y": 100},
+                size={"width": 560, "height": 350},
+                font_size=14,
+                color=dark,
+            )
+
+    def _add_closing_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide de cloture (fond sombre)"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        self._set_slide_background(presentation_id, slide_id, 0.122, 0.122, 0.122)
+
+        white = {"red": 1.0, "green": 1.0, "blue": 1.0}
+        corail = {"red": 1.0, "green": 0.42, "blue": 0.345}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 150},
+                size={"width": 620, "height": 80},
+                font_size=36,
+                bold=True,
+                color=white,
+            )
+        if slide_data.get("subtitle"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["subtitle"],
+                position={"x": 50, "y": 250},
+                size={"width": 620, "height": 50},
+                font_size=16,
+                color=corail,
+            )
+
+    def _add_stat_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide statistique"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
+        corail = {"red": 1.0, "green": 0.42, "blue": 0.345}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 30},
+                size={"width": 620, "height": 50},
+                font_size=24,
+                bold=True,
+                color=dark,
+            )
+        stat_value = slide_data.get("stat_value", "")
+        if stat_value:
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                str(stat_value),
+                position={"x": 100, "y": 130},
+                size={"width": 520, "height": 120},
+                font_size=72,
+                bold=True,
+                color=corail,
+            )
+        stat_label = slide_data.get("stat_label", "")
+        if stat_label:
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                stat_label,
+                position={"x": 100, "y": 270},
+                size={"width": 520, "height": 50},
+                font_size=18,
+                color=dark,
+            )
+
+    def _add_quote_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide citation (fond rose)"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        # Rose Poudre background (#FBF0F4)
+        self._set_slide_background(presentation_id, slide_id, 0.984, 0.941, 0.957)
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
+
+        quote = slide_data.get("quote", slide_data.get("title", ""))
+        if quote:
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                f'"{quote}"',
+                position={"x": 80, "y": 120},
+                size={"width": 560, "height": 150},
+                font_size=22,
+                color=dark,
+            )
+        author = slide_data.get("author", slide_data.get("subtitle", ""))
+        if author:
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                f"— {author}",
+                position={"x": 80, "y": 300},
+                size={"width": 560, "height": 40},
+                font_size=14,
+                color={"red": 0.75, "green": 0.31, "blue": 0.3},
+            )
+
+    def _add_highlight_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide points cles"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
+        corail = {"red": 1.0, "green": 0.42, "blue": 0.345}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 30},
+                size={"width": 620, "height": 50},
+                font_size=24,
+                bold=True,
+                color=corail,
+            )
+        if slide_data.get("bullets"):
+            clean = [self._sanitize_text(b) for b in slide_data["bullets"]]
+            text = "\n".join([f"• {b}" for b in clean])
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                text,
+                position={"x": 50, "y": 100},
+                size={"width": 620, "height": 350},
+                font_size=14,
+                color=dark,
+            )
+
+    def _add_two_column_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide 2 colonnes"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 30},
+                size={"width": 620, "height": 50},
+                font_size=24,
+                bold=True,
+                color=dark,
+            )
+        left = slide_data.get("left_bullets", slide_data.get("bullets", []))
+        right = slide_data.get("right_bullets", [])
+        if left:
+            text = "\n".join([f"• {self._sanitize_text(b)}" for b in left])
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                text,
+                position={"x": 30, "y": 100},
+                size={"width": 310, "height": 340},
+                font_size=12,
+                color=dark,
+            )
+        if right:
+            text = "\n".join([f"• {self._sanitize_text(b)}" for b in right])
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                text,
+                position={"x": 370, "y": 100},
+                size={"width": 310, "height": 340},
+                font_size=12,
+                color=dark,
+            )
+
+    def _add_table_slide(self, presentation_id: str, slide_data: Dict):
+        """Ajoute une slide tableau (rendu texte)"""
+        slide_id = self.add_slide(presentation_id, "BLANK")
+        dark = {"red": 0.122, "green": 0.122, "blue": 0.122}
+
+        if slide_data.get("title"):
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                slide_data["title"],
+                position={"x": 50, "y": 30},
+                size={"width": 620, "height": 50},
+                font_size=24,
+                bold=True,
+                color=dark,
+            )
+        rows = slide_data.get("table_data", slide_data.get("bullets", []))
+        if rows:
+            if isinstance(rows[0], list):
+                text = "\n".join([" | ".join(str(c) for c in row) for row in rows])
+            else:
+                text = "\n".join([f"• {self._sanitize_text(str(r))}" for r in rows])
+            self._add_styled_text(
+                presentation_id,
+                slide_id,
+                text,
+                position={"x": 50, "y": 100},
+                size={"width": 620, "height": 350},
+                font_size=12,
+                color=dark,
             )
 
     @staticmethod
@@ -536,115 +814,349 @@ class GoogleAPIClient:
         """Nettoie le texte avant envoi à l'API Google Slides.
         Supprime les caractères de contrôle qui causent des erreurs JSON."""
         import re
+
         if not text:
             return ""
         # Supprimer les caractères de contrôle (garder \n et \t)
-        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
         return text.strip()
 
     def export_markdown_to_docs(self, markdown_content: str, title: str) -> Optional[str]:
         """
         Exporte du contenu Markdown vers un Google Doc.
-        
+
         Args:
             markdown_content: Contenu markdown à convertir
             title: Titre du document
-            
+
         Returns:
             URL du document créé ou None en cas d'erreur
         """
         try:
-            docs_service = build('docs', 'v1', credentials=self.creds)
-            drive_service = build('drive', 'v3', credentials=self.creds)
-            
+            docs_service = build("docs", "v1", credentials=self.creds)
+            drive_service = build("drive", "v3", credentials=self.creds)
+
             # Créer le document
-            doc = docs_service.documents().create(body={'title': title}).execute()
-            doc_id = doc['documentId']
-            
+            doc = docs_service.documents().create(body={"title": title}).execute()
+            doc_id = doc["documentId"]
+
             # Convertir le markdown en requêtes Google Docs
             requests = self._markdown_to_docs_requests(markdown_content)
-            
+
             if requests:
                 docs_service.documents().batchUpdate(
-                    documentId=doc_id,
-                    body={'requests': requests}
+                    documentId=doc_id, body={"requests": requests}
                 ).execute()
-            
+
             # Rendre le document partageable
             drive_service.permissions().create(
-                fileId=doc_id,
-                body={'type': 'anyone', 'role': 'writer'}
+                fileId=doc_id, body={"type": "anyone", "role": "writer"}
             ).execute()
-            
+
             doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"
             print(f"✅ Google Doc créé: {doc_url}")
             return doc_url
-            
+
         except HttpError as error:
             print(f"❌ Erreur lors de l'export vers Google Docs: {error}")
             return None
 
     def _markdown_to_docs_requests(self, markdown: str) -> List[Dict]:
-        """Convertit du markdown basique en requêtes batchUpdate pour Google Docs."""
+        """Convertit du markdown en requetes batchUpdate pour Google Docs.
+
+        Gere: headings, bold, italic, inline code, blockquotes,
+        listes a puces, listes numerotees, blocs de code, et
+        ignore le front matter YAML.
+        """
+        import re as _re
+
         requests = []
-        lines = markdown.split('\n')
-        index = 1  # Position dans le document (commence à 1)
-        
-        for line in lines:
+        lines = markdown.split("\n")
+        index = 1  # Position dans le document (commence a 1)
+
+        # Skip YAML front matter (--- ... ---)
+        start = 0
+        if lines and lines[0].strip() == "---":
+            for i in range(1, len(lines)):
+                if lines[i].strip() == "---":
+                    start = i + 1
+                    break
+
+        # Skip image placeholder block (> **[IMAGE PLACEHOLDER]**)
+        in_code_block = False
+
+        for line_num in range(start, len(lines)):
+            line = lines[line_num]
             stripped = line.strip()
-            if not stripped:
-                # Ligne vide
-                text = '\n'
-                requests.append({
-                    'insertText': {'location': {'index': index}, 'text': text}
-                })
+
+            # Handle code blocks (``` ... ```)
+            if stripped.startswith("```"):
+                in_code_block = not in_code_block
+                if in_code_block:
+                    # Start of code block - insert a newline
+                    text = "\n"
+                    requests.append({"insertText": {"location": {"index": index}, "text": text}})
+                    index += len(text)
+                continue
+
+            if in_code_block:
+                # Code block content - insert as-is with monospace
+                text = line + "\n"
+                requests.append({"insertText": {"location": {"index": index}, "text": text}})
+                # Apply monospace font
+                requests.append(
+                    {
+                        "updateTextStyle": {
+                            "range": {
+                                "startIndex": index,
+                                "endIndex": index + len(text) - 1,
+                            },
+                            "textStyle": {
+                                "weightedFontFamily": {"fontFamily": "Courier New"},
+                                "backgroundColor": {
+                                    "color": {
+                                        "rgbColor": {
+                                            "red": 0.95,
+                                            "green": 0.95,
+                                            "blue": 0.95,
+                                        }
+                                    }
+                                },
+                            },
+                            "fields": "weightedFontFamily,backgroundColor",
+                        }
+                    }
+                )
                 index += len(text)
                 continue
-            
-            # Déterminer le type de ligne
+
+            # Skip image placeholder lines
+            if stripped.startswith("> **[IMAGE"):
+                continue
+            if stripped.startswith("> **Prompt de generation"):
+                continue
+            if stripped.startswith("> **Dimensions"):
+                continue
+            if stripped.startswith("![]["):
+                continue
+
+            if not stripped:
+                text = "\n"
+                requests.append({"insertText": {"location": {"index": index}, "text": text}})
+                index += len(text)
+                continue
+
+            # Determine line type
             heading_level = 0
-            if stripped.startswith('### '):
+            is_bullet = False
+            is_numbered = False
+            is_blockquote = False
+
+            if stripped.startswith("### "):
                 heading_level = 3
-                text = stripped[4:] + '\n'
-            elif stripped.startswith('## '):
+                clean = stripped[4:]
+            elif stripped.startswith("## "):
                 heading_level = 2
-                text = stripped[3:] + '\n'
-            elif stripped.startswith('# '):
+                clean = stripped[3:]
+            elif stripped.startswith("# "):
                 heading_level = 1
-                text = stripped[2:] + '\n'
-            elif stripped.startswith('- ') or stripped.startswith('* '):
-                text = stripped[2:] + '\n'
+                clean = stripped[2:]
+            elif stripped.startswith("- ") or stripped.startswith("* "):
+                is_bullet = True
+                clean = stripped[2:]
+            elif _re.match(r"^\d+\.\s", stripped):
+                is_numbered = True
+                clean = _re.sub(r"^\d+\.\s", "", stripped)
+            elif stripped.startswith("> "):
+                is_blockquote = True
+                clean = stripped[2:]
             else:
-                text = stripped + '\n'
-            
-            # Insérer le texte
-            requests.append({
-                'insertText': {'location': {'index': index}, 'text': text}
-            })
-            
-            # Appliquer le style de heading si applicable
+                clean = stripped
+
+            # Extract inline formatting spans (bold, italic, code)
+            # We'll insert plain text first, then apply formatting
+            segments = self._parse_inline_formatting(clean)
+            plain_text = "".join(s["text"] for s in segments) + "\n"
+
+            requests.append({"insertText": {"location": {"index": index}, "text": plain_text}})
+
+            # Apply inline formatting
+            pos = index
+            for seg in segments:
+                seg_len = len(seg["text"])
+                if seg_len == 0:
+                    continue
+
+                if seg.get("bold"):
+                    requests.append(
+                        {
+                            "updateTextStyle": {
+                                "range": {
+                                    "startIndex": pos,
+                                    "endIndex": pos + seg_len,
+                                },
+                                "textStyle": {"bold": True},
+                                "fields": "bold",
+                            }
+                        }
+                    )
+                if seg.get("italic"):
+                    requests.append(
+                        {
+                            "updateTextStyle": {
+                                "range": {
+                                    "startIndex": pos,
+                                    "endIndex": pos + seg_len,
+                                },
+                                "textStyle": {"italic": True},
+                                "fields": "italic",
+                            }
+                        }
+                    )
+                if seg.get("code"):
+                    requests.append(
+                        {
+                            "updateTextStyle": {
+                                "range": {
+                                    "startIndex": pos,
+                                    "endIndex": pos + seg_len,
+                                },
+                                "textStyle": {
+                                    "weightedFontFamily": {"fontFamily": "Courier New"},
+                                    "backgroundColor": {
+                                        "color": {
+                                            "rgbColor": {
+                                                "red": 0.93,
+                                                "green": 0.93,
+                                                "blue": 0.93,
+                                            }
+                                        }
+                                    },
+                                },
+                                "fields": "weightedFontFamily,backgroundColor",
+                            }
+                        }
+                    )
+                pos += seg_len
+
+            # Apply heading style
             if heading_level > 0:
-                heading_map = {1: 'HEADING_1', 2: 'HEADING_2', 3: 'HEADING_3'}
-                requests.append({
-                    'updateParagraphStyle': {
-                        'range': {'startIndex': index, 'endIndex': index + len(text)},
-                        'paragraphStyle': {'namedStyleType': heading_map[heading_level]},
-                        'fields': 'namedStyleType'
+                heading_map = {
+                    1: "HEADING_1",
+                    2: "HEADING_2",
+                    3: "HEADING_3",
+                }
+                requests.append(
+                    {
+                        "updateParagraphStyle": {
+                            "range": {
+                                "startIndex": index,
+                                "endIndex": index + len(plain_text),
+                            },
+                            "paragraphStyle": {"namedStyleType": heading_map[heading_level]},
+                            "fields": "namedStyleType",
+                        }
                     }
-                })
-            
-            # Appliquer le style de liste si applicable
-            if stripped.startswith('- ') or stripped.startswith('* '):
-                requests.append({
-                    'createParagraphBullets': {
-                        'range': {'startIndex': index, 'endIndex': index + len(text)},
-                        'bulletPreset': 'BULLET_DISC_CIRCLE_SQUARE'
+                )
+
+            # Apply bullet list
+            if is_bullet:
+                requests.append(
+                    {
+                        "createParagraphBullets": {
+                            "range": {
+                                "startIndex": index,
+                                "endIndex": index + len(plain_text),
+                            },
+                            "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
+                        }
                     }
-                })
-            
-            index += len(text)
-        
+                )
+
+            # Apply numbered list
+            if is_numbered:
+                requests.append(
+                    {
+                        "createParagraphBullets": {
+                            "range": {
+                                "startIndex": index,
+                                "endIndex": index + len(plain_text),
+                            },
+                            "bulletPreset": "NUMBERED_DECIMAL_NESTED",
+                        }
+                    }
+                )
+
+            # Apply blockquote indent
+            if is_blockquote:
+                requests.append(
+                    {
+                        "updateParagraphStyle": {
+                            "range": {
+                                "startIndex": index,
+                                "endIndex": index + len(plain_text),
+                            },
+                            "paragraphStyle": {
+                                "indentFirstLine": {"magnitude": 36, "unit": "PT"},
+                                "indentStart": {"magnitude": 36, "unit": "PT"},
+                            },
+                            "fields": "indentFirstLine,indentStart",
+                        }
+                    }
+                )
+                requests.append(
+                    {
+                        "updateTextStyle": {
+                            "range": {
+                                "startIndex": index,
+                                "endIndex": index + len(plain_text) - 1,
+                            },
+                            "textStyle": {"italic": True},
+                            "fields": "italic",
+                        }
+                    }
+                )
+
+            index += len(plain_text)
+
         return requests
+
+    @staticmethod
+    def _parse_inline_formatting(text: str) -> List[Dict]:
+        """Parse inline markdown: **bold**, *italic*, `code`.
+
+        Returns list of segments with text + formatting flags.
+        """
+        import re as _re
+
+        segments = []
+        # Pattern order matters: bold before italic
+        pattern = _re.compile(
+            r"(\*\*(.+?)\*\*)"  # bold
+            r"|(\*(.+?)\*)"  # italic
+            r"|(`(.+?)`)"  # inline code
+        )
+        last_end = 0
+
+        for m in pattern.finditer(text):
+            # Plain text before match
+            if m.start() > last_end:
+                segments.append({"text": text[last_end : m.start()]})
+
+            if m.group(2):  # bold
+                segments.append({"text": m.group(2), "bold": True})
+            elif m.group(4):  # italic
+                segments.append({"text": m.group(4), "italic": True})
+            elif m.group(6):  # code
+                segments.append({"text": m.group(6), "code": True})
+
+            last_end = m.end()
+
+        # Remaining text
+        if last_end < len(text):
+            segments.append({"text": text[last_end:]})
+
+        return segments if segments else [{"text": text}]
 
 
 def extract_notebooklm_content(notebook_url: str) -> str:

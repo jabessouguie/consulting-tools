@@ -4,10 +4,12 @@ Script de test pour Imagen 3 (Nano Banana Pro) via google-genai SDK
 """
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Charger les variables d'environnement
 load_dotenv()
+
 
 def test_imagen():
     """Test de generation d'image avec Imagen 3"""
@@ -16,7 +18,7 @@ def test_imagen():
     print("=" * 60)
 
     # Verifier les variables d'environnement
-    api_key = os.getenv('GEMINI_API_KEY')
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         print("❌ GEMINI_API_KEY: NON DEFINIE")
         print("\n⚠️  Configurez GEMINI_API_KEY dans votre fichier .env")
@@ -53,7 +55,9 @@ def test_imagen():
     except Exception as e:
         print(f"\n❌ Erreur: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_imagen()

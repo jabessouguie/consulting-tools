@@ -6,7 +6,7 @@ Durée du cours (en jours et en heures) : 1 jour (7 heures)
 
 # Description
 
-Dans un marché de l'IT ultra-concurrentiel, la capacité des directeurs marketing à extraire des insights exploitables en un temps record est devenue un avantage stratégique majeur. Cette formation intensive, conçue par Consulting Tools, dépasse le simple cadre de la création de contenu pour se focaliser sur le véritable moteur de votre ROI : la donnée marketing. 
+Dans un marché de l'IT ultra-concurrentiel, la capacité des directeurs marketing à extraire des insights exploitables en un temps record est devenue un avantage stratégique majeur. Cette formation intensive, conçue par Consulting Tools, dépasse le simple cadre de la création de contenu pour se focaliser sur le véritable moteur de votre ROI : la donnée marketing.
 
 Fini les rapports statiques et les allers-retours incessants avec les équipes data. Apprenez à instaurer un dialogue direct avec vos données ("Talk to my data") pour révolutionner votre segmentation et décrypter avec précision le parcours digital de vos clients. Nous aborderons concrètement comment les LLM (Large Language Models) transforment l'analyse prédictive et comportementale sans nécessiter de compétences en code. Ce programme pragmatique vous offre les clés pour passer de la donnée brute à la décision stratégique, en utilisant des outils accessibles et immédiatement activables. Optimisez votre stratégie marketing, identifiez vos segments à haute valeur et automatisez l'analyse de vos tunnels de conversion grâce aux "hacks" de l'IA générative. Une journée pour transformer votre vision de la data-driven stratégie et booster votre efficacité opérationnelle.
 
@@ -52,7 +52,7 @@ La formation est animée par un consultant expert en Stratégie Data & IA de che
 
 # Programme
 
-**Jour 1** 
+**Jour 1**
 
 L'IA Générative pour l'Analyse Marketing : De la donnée à l'insight
 

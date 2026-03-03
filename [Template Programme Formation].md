@@ -28,27 +28,27 @@ Durée du cours (en jours et en heures) : {{course-duration}}
 
 Ce cours permet aux participants d'acquérir les compétences suivantes:
 
-* {objectif-1}.  
+* {objectif-1}.
 * {objectif-n}
 
 *Note: Entre 3 et 5 objectifs. Compléter la phrase suivante ‘à la fin de la formation les participants sont capables de…’*
 
 # Prérequis
 
-* {prérequis-1}  
+* {prérequis-1}
 * {prérequis-n}
 
 *Note: Exprimer les connaissances, compétences et niveau souhaité des participants à cette formation. Si aucun prérequis, laisser vide. Il faut être le plus précis possible (connaissance de telle compétence de programmation, gestion de tel framework, outils, ….). On peut aussi facilement cité nos autres formations, “pour suivre cette formation, il est indispensable d’avoir le niveau équivalent au contenu donné par la formation XXX”*
 
 # Prérequis techniques
 
-*Note: lister très précisément l’ensemble des prérequis techniques nécessaires au bon déroulement de la formation: machines (cpu, ram, os,...), écrans, connexion internet (débit, port devant être ouverts), accès admin ou non, logiciels à installer (version supportées), licenses à acquérir,...*   
-*Liste basique et souvent commune :* 
+*Note: lister très précisément l’ensemble des prérequis techniques nécessaires au bon déroulement de la formation: machines (cpu, ram, os,...), écrans, connexion internet (débit, port devant être ouverts), accès admin ou non, logiciels à installer (version supportées), licenses à acquérir,...*
+*Liste basique et souvent commune :*
 
-* *Une machine*  
-* *Git installé*  
-* *Accès à Github ou gitlab*  
-* *Un IDE*  
+* *Une machine*
+* *Git installé*
+* *Accès à Github ou gitlab*
+* *Un IDE*
 * *XX Go de Ram*
 
 # Public cible
@@ -65,39 +65,38 @@ La documentation sera remise aux stagiaires par le formateur le premier jour, so
 
 Dans le cas où la formation se déroule sur le site du client, il doit être prévu 1 ordinateur par stagiaire avec accès internet et droits d’installation des logiciels utilisés pour la formation, un vidéo projecteur ainsi qu’un accès internet pour le formateur.}
 
-# 
+#
 
 # Programme
 
-**Jour {numéro jour}** 
+**Jour {numéro jour}**
 
 { Thème journée }
 
 **Module { numéro module }: {titre module} \- { durée module en min/h }**
 
-* {theme-1}  
-* {theme-2}  
+* {theme-1}
+* {theme-2}
 * {theme-n}
 
 Ateliers:
 
-* {atelier-1}  
+* {atelier-1}
 * {atelier-n}
 
 **Module { numéro module }: {titre module} \- { durée module en min/h }**
 
-* {theme-1}  
-* {theme-2}  
+* {theme-1}
+* {theme-2}
 * {theme-n}
 
 Ateliers:
 
-* {atelier-1}  
+* {atelier-1}
 * {atelier-n}
 
 *Bien se projeter niveau timing sur le fait que les apprenant·es viennent pour apprendre et prendrons toujours plus de temps que ce qu’on a prévu. Se prévoir assez souvent une marge haute quitte à ce que la formation bascule sur plus de jours.*
 
 *Il est préférable d’intégrer au moins un atelier par modules*
 
-*La description des modules évoque les grandes notions apprises dans le module là ou pour les ateliers, on précise quel type d’exercice on va faire : “prise en main de …” / “implementation de …” / “déploiement de ….”* 
-
+*La description des modules évoque les grandes notions apprises dans le module là ou pour les ateliers, on précise quel type d’exercice on va faire : “prise en main de …” / “implementation de …” / “déploiement de ….”*

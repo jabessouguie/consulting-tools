@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slide Editor - Consulting Tools</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -41,20 +44,23 @@
             position: relative;
             overflow: hidden;
             border-radius: 8px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
             transition: box-shadow 0.3s, transform 0.3s;
             cursor: pointer;
         }
+
         .slide-card:hover {
-            box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
             transform: translateY(-2px);
         }
+
         .slide-card.active {
             ring: 3px solid #FF6B58;
-            box-shadow: 0 0 0 3px #FF6B58, 0 12px 48px rgba(0,0,0,0.25);
+            box-shadow: 0 0 0 3px #FF6B58, 0 12px 48px rgba(0, 0, 0, 0.25);
         }
+
         .slide-card [contenteditable]:focus {
-            outline: 2px dashed rgba(255,107,88,0.5);
+            outline: 2px dashed rgba(255, 107, 88, 0.5);
             outline-offset: 2px;
             border-radius: 4px;
         }
@@ -65,88 +71,185 @@
         /* 10% Accent: Terracotta #C0504D / Corail #FF6B58 */
 
         /* -- Light slides (default) -- */
-        .slide-content, .slide-stat, .slide-highlight,
-        .slide-diagram, .slide-image, .slide-table, .slide-two-column {
+        .slide-content,
+        .slide-stat,
+        .slide-highlight,
+        .slide-diagram,
+        .slide-image,
+        .slide-table,
+        .slide-two-column {
             background: #FFFFFF;
         }
-        .slide-quote { background: #FBF0F4; }
+
+        .slide-quote {
+            background: #FBF0F4;
+        }
 
         /* -- Dark slides (cover, section, closing) -- */
-        .slide-cover { background: #1F1F1F; }
-        .slide-section { background: #1F1F1F; }
-        .slide-closing { background: #1F1F1F; }
+        .slide-cover {
+            background: #1F1F1F;
+        }
+
+        .slide-section {
+            background: #1F1F1F;
+        }
+
+        .slide-closing {
+            background: #1F1F1F;
+        }
 
         /* -- Default text colors (light slides) -- */
-        .slide-card .text-primary { color: #1F1F1F; }
-        .slide-card .text-secondary { color: #474747; }
-        .slide-card .text-muted { color: #999999; }
-        .slide-card .accent { color: #FF6B58; }
-        .slide-card .accent-bg { background: #FF6B58; }
-        .slide-card .accent-bg-alt { background: #C0504D; }
-        .slide-card .divider { background: #FF6B58; }
-        .slide-card .box-bg { background: #FBF0F4; }
-        .slide-card .table-header-bg { background: #1F1F1F; color: #FFFFFF; }
-        .slide-card .table-row-alt { background: #FBF0F4; }
+        .slide-card .text-primary {
+            color: #1F1F1F;
+        }
+
+        .slide-card .text-secondary {
+            color: #474747;
+        }
+
+        .slide-card .text-muted {
+            color: #999999;
+        }
+
+        .slide-card .accent {
+            color: #FF6B58;
+        }
+
+        .slide-card .accent-bg {
+            background: #FF6B58;
+        }
+
+        .slide-card .accent-bg-alt {
+            background: #C0504D;
+        }
+
+        .slide-card .divider {
+            background: #FF6B58;
+        }
+
+        .slide-card .box-bg {
+            background: #FBF0F4;
+        }
+
+        .slide-card .table-header-bg {
+            background: #1F1F1F;
+            color: #FFFFFF;
+        }
+
+        .slide-card .table-row-alt {
+            background: #FBF0F4;
+        }
 
         /* -- Override for dark slides -- */
         .slide-cover .text-primary,
         .slide-section .text-primary,
-        .slide-closing .text-primary { color: #FFFFFF; }
+        .slide-closing .text-primary {
+            color: #FFFFFF;
+        }
+
         .slide-cover .text-secondary,
         .slide-section .text-secondary,
-        .slide-closing .text-secondary { color: rgba(255,255,255,0.7); }
+        .slide-closing .text-secondary {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         .slide-cover .text-muted,
         .slide-section .text-muted,
-        .slide-closing .text-muted { color: rgba(255,255,255,0.5); }
+        .slide-closing .text-muted {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
         .slide-cover .divider,
-        .slide-closing .divider { background: #FF6B58; }
+        .slide-closing .divider {
+            background: #FF6B58;
+        }
 
         /* -- Vertical marker -- */
         .wv-marker {
-            position: absolute; bottom: 4%; right: 3%;
-            writing-mode: vertical-rl; text-orientation: mixed;
+            position: absolute;
+            bottom: 4%;
+            right: 3%;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
             font-family: 'Chakra Petch', sans-serif;
-            letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.25;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            opacity: 0.25;
         }
+
         /* -- Tags -- */
         .wv-tags {
-            position: absolute; top: 4%; left: 4%;
-            display: flex; gap: 4px;
+            position: absolute;
+            top: 4%;
+            left: 4%;
+            display: flex;
+            gap: 4px;
         }
+
         .wv-tag {
             font-family: 'Chakra Petch', sans-serif;
-            font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
-            background: #FBF0F4; color: #C0504D; border-radius: 2px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #FBF0F4;
+            color: #C0504D;
+            border-radius: 2px;
         }
-        .slide-cover .wv-tag, .slide-section .wv-tag, .slide-closing .wv-tag {
-            background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6);
+
+        .slide-cover .wv-tag,
+        .slide-section .wv-tag,
+        .slide-closing .wv-tag {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
         }
 
         /* ============ SLIDE THUMBNAILS ============ */
         .thumb-list .slide-card {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
         }
+
         .thumb-list .slide-card:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
 
         /* ============ SCROLLBAR ============ */
-        .slide-panel::-webkit-scrollbar { width: 6px; }
-        .slide-panel::-webkit-scrollbar-track { background: transparent; }
-        .slide-panel::-webkit-scrollbar-thumb { background: #3A3A3B; border-radius: 3px; }
+        .slide-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .slide-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .slide-panel::-webkit-scrollbar-thumb {
+            background: #3A3A3B;
+            border-radius: 3px;
+        }
 
         /* ============ ANIMATIONS ============ */
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .slide-animate { animation: fadeInUp 0.4s ease-out; }
+
+        .slide-animate {
+            animation: fadeInUp 0.4s ease-out;
+        }
     </style>
 </head>
+
 <body class="bg-gray-950 text-white font-inter min-h-screen">
 
     <!-- ===== TOP BAR ===== -->
-    <header class="h-14 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center px-4 gap-4 sticky top-0 z-50">
+    <header
+        class="h-14 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center px-4 gap-4 sticky top-0 z-50">
         <a href="/" class="flex items-center gap-2 text-white no-underline">
             <span class="text-wv-corail font-chakra font-bold text-xl">W</span>
             <span class="font-chakra font-semibold text-sm">Envision</span>
@@ -160,35 +263,59 @@
             <span class="text-xs text-gray-500">Modele:</span>
             <select id="model-selector" onchange="changeModel(this.value)"
                 class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white focus:border-wv-corail focus:outline-none">
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-3.1-pro-preview" selected>Gemini 3.1 Pro</option>
                 <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
             </select>
         </div>
 
         <!-- Actions -->
-        <button onclick="addSlide()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium transition flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        <button onclick="addSlide()"
+            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
             Ajouter
         </button>
 
+        <!-- Google Slides link (shown after export) -->
+        <div id="google-slides-link" class="hidden items-center gap-2">
+            <a id="google-slides-url" href="#" target="_blank"
+                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1 no-underline">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                </svg>
+                <span id="google-slides-label">Ouvrir Google Slides</span>
+            </a>
+        </div>
+
         <!-- Download buttons (hidden until slides exist) -->
         <div id="download-buttons" class="flex items-center gap-2 hidden">
-            <button onclick="exportPPTX()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                PPTX
-            </button>
-            <button onclick="exportToGoogleSlides()" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1" title="Exporter vers Google Slides">
+            <button onclick="exportToGoogleSlides()"
+                class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1"
+                title="Exporter vers Google Slides">
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    <path
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2z" />
                 </svg>
                 Google Slides
             </button>
-            <button onclick="exportPDF()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <button onclick="exportPDF()"
+                class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
                 PDF
+            </button>
+            <button onclick="downloadHTML()"
+                class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-xs font-medium text-white transition flex items-center gap-1"
+                title="Telecharger le HTML Premium">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                HTML
             </button>
         </div>
     </header>
@@ -197,25 +324,41 @@
     <div class="flex h-[calc(100vh-56px)]">
 
         <!-- LEFT: Slide thumbnails -->
-        <aside class="w-52 bg-gray-900/50 border-r border-gray-800 p-3 overflow-y-auto slide-panel thumb-list flex-shrink-0">
+        <aside
+            class="w-52 bg-gray-900/50 border-r border-gray-800 p-3 overflow-y-auto slide-panel thumb-list flex-shrink-0">
             <div id="thumb-list" class="flex flex-col gap-2"></div>
         </aside>
 
         <!-- CENTER: Main slide view -->
-        <main class="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto relative" id="main-canvas">
-            <div id="slide-canvas" class="w-full max-w-4xl"></div>
+        <main class="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden relative" id="main-canvas">
+            <!-- Mini progress bar (shown after first slide arrives) -->
+            <div id="gen-minibar" class="absolute top-0 left-0 right-0 z-20 hidden">
+                <div class="h-1 bg-gray-800">
+                    <div id="minibar-fill" class="h-full bg-wv-corail rounded-r-full transition-all duration-300"
+                        style="width: 0%"></div>
+                </div>
+                <div class="flex items-center justify-between px-3 py-1 bg-gray-900/80 backdrop-blur-sm">
+                    <span id="minibar-text" class="text-[10px] text-gray-400 font-chakra">Generation en cours...</span>
+                    <span id="minibar-counter" class="text-[10px] text-wv-corail font-chakra font-semibold"></span>
+                </div>
+            </div>
+            <div id="slide-canvas" class="w-full max-w-6xl" style="aspect-ratio: 16/9;"></div>
             <!-- Generation progress overlay -->
-            <div id="gen-overlay" class="absolute inset-0 bg-gray-950/80 backdrop-blur-sm hidden flex-col items-center justify-center z-10">
+            <div id="gen-overlay"
+                class="absolute inset-0 bg-gray-950/80 backdrop-blur-sm hidden flex-col items-center justify-center z-10">
                 <div class="text-center">
                     <div class="relative w-16 h-16 mx-auto mb-4">
                         <div class="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
-                        <div id="gen-spinner" class="absolute inset-0 border-4 border-wv-corail border-t-transparent rounded-full animate-spin"></div>
+                        <div id="gen-spinner"
+                            class="absolute inset-0 border-4 border-wv-corail border-t-transparent rounded-full animate-spin">
+                        </div>
                     </div>
                     <p class="font-chakra font-semibold text-lg text-white" id="gen-status">Initialisation...</p>
                     <p class="text-gray-400 text-sm mt-1" id="gen-substatus"></p>
                     <div class="mt-4 w-64 mx-auto">
                         <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                            <div id="gen-progress" class="h-full bg-wv-corail rounded-full transition-all duration-500" style="width: 0%"></div>
+                            <div id="gen-progress" class="h-full bg-wv-corail rounded-full transition-all duration-500"
+                                style="width: 0%"></div>
                         </div>
                         <p class="text-gray-500 text-xs mt-1" id="gen-counter"></p>
                     </div>
@@ -224,12 +367,16 @@
         </main>
 
         <!-- RIGHT: Properties + Generation panel -->
-        <aside class="w-80 bg-gray-900/50 border-l border-gray-800 overflow-y-auto slide-panel flex-shrink-0 flex flex-col">
+        <aside
+            class="w-80 bg-gray-900/50 border-l border-gray-800 overflow-y-auto slide-panel flex-shrink-0 flex flex-col">
 
             <!-- Generation IA section -->
             <div class="p-4 border-b border-gray-800">
                 <h3 class="font-chakra font-semibold text-sm text-wv-corail mb-3 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                     Generation IA
                 </h3>
                 <div class="space-y-3">
@@ -252,15 +399,22 @@
                         <span class="text-xs text-gray-500 block mb-1">Document source (optionnel)</span>
                         <label for="ai-file"
                             class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
-                            <input id="ai-file" type="file" accept=".txt,.md,.pdf,.docx,.doc" onchange="handleFileUpload(this)"
-                                class="sr-only">
-                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <input id="ai-file" type="file" accept=".txt,.md,.pdf,.docx,.doc,.pptx,.html"
+                                onchange="handleFileUpload(this)" class="sr-only">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
                             <span id="file-label">Importer .txt .md .pdf .docx</span>
                         </label>
                         <div id="file-info" class="hidden mt-1 flex items-center gap-1 text-xs text-emerald-400">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
                             <span id="file-info-text"></span>
-                            <span onclick="clearUploadedFile()" class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
+                            <span onclick="clearUploadedFile()"
+                                class="ml-auto text-gray-500 hover:text-red-400 transition cursor-pointer">x</span>
                         </div>
                     </div>
                     <div id="audience-field" class="hidden">
@@ -274,23 +428,32 @@
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-wv-corail focus:outline-none">
                     </div>
                     <div id="proposal-hint" class="hidden">
-                        <p class="text-[11px] text-wv-corail/70 leading-snug">10 slides : Couverture, Comprehension, Approche, Demarche, Roadmap, Gouvernance, FCS, Pourquoi Consulting Tools, Equipe, Cloture</p>
+                        <p class="text-[11px] text-wv-corail/70 leading-snug">10 slides : Couverture, Comprehension,
+                            Approche, Demarche, Roadmap, Gouvernance, FCS, Pourquoi Consulting Tools, Equipe, Cloture</p>
                     </div>
                     <div id="rex-hint" class="hidden">
-                        <p class="text-[11px] text-wv-corail/70 leading-snug">10 slides : Couverture, Contexte, Enjeux, Demarche, Timeline, Realisations, Resultats, Apprentissages, Recommandations, Cloture</p>
+                        <p class="text-[11px] text-wv-corail/70 leading-snug">10 slides : Couverture, Contexte, Enjeux,
+                            Demarche, Timeline, Realisations, Resultats, Apprentissages, Recommandations, Cloture</p>
                     </div>
                     <button onclick="generateFromAI()" id="btn-generate"
                         class="w-full py-2.5 bg-wv-corail hover:bg-wv-terracotta rounded-lg text-sm font-semibold text-white transition flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                         Generer
                     </button>
                     <div id="feedback-section" class="hidden mt-3 pt-3 border-t border-gray-700">
                         <label class="text-xs text-gray-500 block mb-1">Corriger / Affiner</label>
-                        <textarea id="ai-feedback" rows="2" placeholder="Ex: Ajoute plus de chiffres, change le ton, reformule la slide 3..."
+                        <textarea id="ai-feedback" rows="2"
+                            placeholder="Ex: Ajoute plus de chiffres, change le ton, reformule la slide 3..."
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-wv-corail focus:outline-none resize-none"></textarea>
                         <button onclick="regenerateWithFeedback()" id="btn-regenerate"
                             class="w-full mt-2 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium text-white transition flex items-center justify-center gap-2">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
                             Regenerer avec feedback
                         </button>
                     </div>
@@ -309,151 +472,168 @@
         </aside>
     </div>
 
-<script>
-// ====================================
-// STATE
-// ====================================
-let slides = [];
-let currentSlideIndex = 0;
+    <script>
+        // ====================================
+        // STATE
+        // ====================================
+        let slides = [];
+        let currentSlideIndex = 0;
+        let headHtml = '';
+        let htmlSections = [];
 
-// Charger slides CV/Reference depuis localStorage si present
-(function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const source = urlParams.get('source');
-    console.log(`📍 Slide Editor - source param: ${source}`);
-    if (source === 'cv_reference') {
-        console.log('📋 Mode CV/Reference detecte, chargement...');
-        const storedSlides = localStorage.getItem('cv_reference_slides');
-        const docType = localStorage.getItem('cv_reference_type') || 'CV';
-        if (storedSlides) {
-            try {
-                slides = JSON.parse(storedSlides);
-                console.log(`✓ CV/Reference Adapter: ${slides.length} slides chargees (${docType})`);
-                // Nettoyer localStorage
-                localStorage.removeItem('cv_reference_slides');
-                localStorage.removeItem('cv_reference_type');
-                // init() appellera renderAll() automatiquement
-                console.log('✓ Slides chargees, init() va les afficher');
-            } catch (e) {
-                console.error('✗ Erreur chargement slides CV/Reference:', e);
-                alert('Erreur chargement slides: ' + e.message);
+        // Charger slides CV/Reference depuis localStorage si present
+        (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const source = urlParams.get('source');
+            console.log(`📍 Slide Editor - source param: ${source}`);
+            if (source === 'cv_reference') {
+                console.log('📋 Mode CV/Reference detecte, chargement...');
+                const storedSlides = localStorage.getItem('cv_reference_slides');
+                const docType = localStorage.getItem('cv_reference_type') || 'CV';
+                if (storedSlides) {
+                    try {
+                        slides = JSON.parse(storedSlides);
+                        console.log(`✓ CV/Reference Adapter: ${slides.length} slides chargees (${docType})`);
+                        // Nettoyer localStorage
+                        localStorage.removeItem('cv_reference_slides');
+                        localStorage.removeItem('cv_reference_type');
+                        // init() appellera renderAll() automatiquement
+                        console.log('✓ Slides chargees, init() va les afficher');
+                    } catch (e) {
+                        console.error('✗ Erreur chargement slides CV/Reference:', e);
+                        alert('Erreur chargement slides: ' + e.message);
+                    }
+                } else {
+                    console.warn('⚠ Aucune slide CV/Reference trouvee dans localStorage');
+                    alert('Aucune slide trouvee. Verifiez que la generation est terminee.');
+                }
             }
-        } else {
-            console.warn('⚠ Aucune slide CV/Reference trouvee dans localStorage');
-            alert('Aucune slide trouvee. Verifiez que la generation est terminee.');
+        })();
+
+        // Demo data
+        const DEMO_SLIDES = [
+            {
+                type: 'cover',
+                title: 'Strategie Data & IA 2026',
+                subtitle: 'Feuille de route pour la transformation digitale',
+                meta: 'Consulting Tools | Janvier 2026'
+            },
+            {
+                type: 'section',
+                title: 'Contexte & Enjeux',
+                number: '01'
+            },
+            {
+                type: 'stat',
+                stat_value: '73%',
+                stat_label: 'des projets IA echouent en production',
+                context: 'Source : Gartner, 2025',
+                subtitle: 'Le defi de la mise en production'
+            },
+            {
+                type: 'content',
+                title: 'Les 3 piliers de la reussite',
+                bullets: [
+                    'Gouvernance des donnees : qualite, accessibilite, conformite',
+                    'Architecture scalable : cloud-native, APIs, data mesh',
+                    'Adoption utilisateur : change management, formation, KPIs'
+                ]
+            },
+            {
+                type: 'highlight',
+                title: 'Nos convictions',
+                key_points: [
+                    'La data avant l\'IA : pas de modele sans donnees fiables',
+                    'Le ROI avant la tech : chaque projet doit prouver sa valeur',
+                    'L\'humain au centre : l\'IA augmente, elle ne remplace pas',
+                    'L\'iteration rapide : MVP en 6 semaines, pas 6 mois'
+                ]
+            },
+            {
+                type: 'diagram',
+                title: 'Architecture Data Cible',
+                diagram_type: 'flow',
+                elements: ['Sources', 'Ingestion', 'Data Lake', 'Processing', 'Analytics', 'IA/ML']
+            },
+            {
+                type: 'two_column',
+                title: 'Approche Build vs Buy',
+                left_title: 'Build (Custom)',
+                left_points: ['Controle total', 'Adapte au metier', 'Investissement long terme'],
+                right_title: 'Buy (SaaS)',
+                right_points: ['Deploiement rapide', 'Maintenance reduite', 'Scalabilite immediate']
+            },
+            {
+                type: 'quote',
+                quote_text: 'La donnee est le nouveau petrole, mais comme le petrole, elle doit etre raffinee pour avoir de la valeur.',
+                author: 'Clive Humby',
+                title: 'Principe directeur'
+            },
+            {
+                type: 'table',
+                title: 'Planning de deploiement',
+                headers: ['Phase', 'Livrable', 'Echeance'],
+                rows: [
+                    ['Phase 1', 'Audit & cadrage', 'T1 2026'],
+                    ['Phase 2', 'Data platform MVP', 'T2 2026'],
+                    ['Phase 3', 'Cas d\'usage IA', 'T3 2026'],
+                    ['Phase 4', 'Industrialisation', 'T4 2026']
+                ]
+            },
+            {
+                type: 'closing',
+                title: 'Merci',
+                subtitle: 'Jean-Sebastien Abessouguie | Consulting Tools\njean-sebastien@consulting-tools.com'
+            }
+        ];
+
+        // ====================================
+        // INITIALIZATION
+        // ====================================
+        function init() {
+            // Ne pas ecraser les slides si elles viennent du CV/Reference Adapter
+            if (slides.length === 0) {
+                slides = JSON.parse(JSON.stringify(DEMO_SLIDES));
+            }
+            initModelSelector();
+            renderAll();
+            showDownloadButtons();
         }
-    }
-})();
 
-// Demo data
-const DEMO_SLIDES = [
-    {
-        type: 'cover',
-        title: 'Strategie Data & IA 2026',
-        subtitle: 'Feuille de route pour la transformation digitale',
-        meta: 'Consulting Tools | Janvier 2026'
-    },
-    {
-        type: 'section',
-        title: 'Contexte & Enjeux',
-        number: '01'
-    },
-    {
-        type: 'stat',
-        stat_value: '73%',
-        stat_label: 'des projets IA echouent en production',
-        context: 'Source : Gartner, 2025',
-        subtitle: 'Le defi de la mise en production'
-    },
-    {
-        type: 'content',
-        title: 'Les 3 piliers de la reussite',
-        bullets: [
-            'Gouvernance des donnees : qualite, accessibilite, conformite',
-            'Architecture scalable : cloud-native, APIs, data mesh',
-            'Adoption utilisateur : change management, formation, KPIs'
-        ]
-    },
-    {
-        type: 'highlight',
-        title: 'Nos convictions',
-        key_points: [
-            'La data avant l\'IA : pas de modele sans donnees fiables',
-            'Le ROI avant la tech : chaque projet doit prouver sa valeur',
-            'L\'humain au centre : l\'IA augmente, elle ne remplace pas',
-            'L\'iteration rapide : MVP en 6 semaines, pas 6 mois'
-        ]
-    },
-    {
-        type: 'diagram',
-        title: 'Architecture Data Cible',
-        diagram_type: 'flow',
-        elements: ['Sources', 'Ingestion', 'Data Lake', 'Processing', 'Analytics', 'IA/ML']
-    },
-    {
-        type: 'two_column',
-        title: 'Approche Build vs Buy',
-        left_title: 'Build (Custom)',
-        left_points: ['Controle total', 'Adapte au metier', 'Investissement long terme'],
-        right_title: 'Buy (SaaS)',
-        right_points: ['Deploiement rapide', 'Maintenance reduite', 'Scalabilite immediate']
-    },
-    {
-        type: 'quote',
-        quote_text: 'La donnee est le nouveau petrole, mais comme le petrole, elle doit etre raffinee pour avoir de la valeur.',
-        author: 'Clive Humby',
-        title: 'Principe directeur'
-    },
-    {
-        type: 'table',
-        title: 'Planning de deploiement',
-        headers: ['Phase', 'Livrable', 'Echeance'],
-        rows: [
-            ['Phase 1', 'Audit & cadrage', 'T1 2026'],
-            ['Phase 2', 'Data platform MVP', 'T2 2026'],
-            ['Phase 3', 'Cas d\'usage IA', 'T3 2026'],
-            ['Phase 4', 'Industrialisation', 'T4 2026']
-        ]
-    },
-    {
-        type: 'closing',
-        title: 'Merci',
-        subtitle: 'Jean-Sebastien Abessouguie | Consulting Tools\njean-sebastien@consulting-tools.com'
-    }
-];
+        // ====================================
+        // RENDER ALL
+        // ====================================
+        function renderAll() {
+            renderThumbnails();
+            renderMainSlide();
+            renderPropsPanel();
+        }
 
-// ====================================
-// INITIALIZATION
-// ====================================
-function init() {
-    // Ne pas ecraser les slides si elles viennent du CV/Reference Adapter
-    if (slides.length === 0) {
-        slides = JSON.parse(JSON.stringify(DEMO_SLIDES));
-    }
-    initModelSelector();
-    renderAll();
-    showDownloadButtons();
-}
+        // ====================================
+        // THUMBNAILS
+        // ====================================
+        function renderThumbnails() {
+            const container = document.getElementById('thumb-list');
+            container.innerHTML = '';
+            slides.forEach((slide, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative group';
 
-// ====================================
-// RENDER ALL
-// ====================================
-function renderAll() {
-    renderThumbnails();
-    renderMainSlide();
-    renderPropsPanel();
-}
+                let thumbContent;
+                if (htmlSections[i] && headHtml) {
+                    const thumbDoc = '<!DOCTYPE html><html><head>' + headHtml +
+                        '<style>body{margin:0;overflow:hidden;} .slide{transform:scale(0.18);transform-origin:top left;}</style>' +
+                        '</head><body>' + htmlSections[i] + '</body></html>';
+                    const blob = new Blob([thumbDoc], { type: 'text/html' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    thumbContent = '<iframe src="' + blobUrl + '" ' +
+                        'style="width:100%;height:100%;border:none;pointer-events:none;" ' +
+                        'onload="URL.revokeObjectURL(this.src)"></iframe>';
+                } else {
+                    thumbContent = renderSlideHTML(slide, true);
+                }
 
-// ====================================
-// THUMBNAILS
-// ====================================
-function renderThumbnails() {
-    const container = document.getElementById('thumb-list');
-    container.innerHTML = '';
-    slides.forEach((slide, i) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'relative group';
-        wrapper.innerHTML = `
+                wrapper.innerHTML = `
             <div class="text-[10px] text-gray-500 mb-1 flex items-center justify-between">
                 <span>${i + 1}</span>
                 <button onclick="event.stopPropagation(); removeSlide(${i})"
@@ -461,66 +641,84 @@ function renderThumbnails() {
             </div>
             <div class="slide-card ${i === currentSlideIndex ? 'active' : ''}"
                  onclick="selectSlide(${i})">
-                ${renderSlideHTML(slide, true)}
+                ${thumbContent}
             </div>
         `;
-        container.appendChild(wrapper);
-    });
-}
+                container.appendChild(wrapper);
+            });
+        }
 
-// ====================================
-// MAIN SLIDE
-// ====================================
-function renderMainSlide() {
-    const canvas = document.getElementById('slide-canvas');
-    if (!slides[currentSlideIndex]) {
-        canvas.innerHTML = '<p class="text-gray-500 text-center">Aucune slide</p>';
-        return;
-    }
-    canvas.innerHTML = `
-        <div class="slide-card slide-animate" style="font-size: 1rem;">
-            ${renderSlideHTML(slides[currentSlideIndex], false)}
-        </div>
-    `;
-}
+        // ====================================
+        // MAIN SLIDE
+        // ====================================
+        function renderMainSlide() {
+            const canvas = document.getElementById('slide-canvas');
+            if (!slides[currentSlideIndex]) {
+                canvas.innerHTML = '<p class="text-gray-500 text-center">Aucune slide</p>';
+                return;
+            }
 
-// ====================================
-// SLIDE HTML RENDERER
-// ====================================
-function renderSlideHTML(slide, isThumbnail) {
-    const t = isThumbnail;
-    const pad = t ? 'p-2' : 'p-[8%]';
-    const titleSize = t ? 'text-[6px]' : 'text-[clamp(1.2rem,2.5vw,2rem)]';
-    const subtitleSize = t ? 'text-[5px]' : 'text-[clamp(0.7rem,1.2vw,1rem)]';
-    const bodySize = t ? 'text-[4px]' : 'text-[clamp(0.7rem,1.1vw,0.95rem)]';
-    const statSize = t ? 'text-[12px]' : 'text-[clamp(3rem,8vw,6rem)]';
-    const statLabelSize = t ? 'text-[5px]' : 'text-[clamp(0.8rem,1.5vw,1.2rem)]';
-    const quoteSize = t ? 'text-[4px]' : 'text-[clamp(0.8rem,1.4vw,1.1rem)]';
-    const numSize = t ? 'text-[10px]' : 'text-[clamp(2rem,5vw,4rem)]';
-    const edit = !isThumbnail ? 'contenteditable="true"' : '';
-    const badgeSize = t ? 'text-[3px] px-1' : 'text-[10px] px-2 py-0.5';
+            // Si on a du HTML premium, afficher dans une iframe via Blob URL
+            if (htmlSections.length > 0 && htmlSections[currentSlideIndex] && headHtml) {
+                const sectionHtml = htmlSections[currentSlideIndex];
+                const fullDoc = '<!DOCTYPE html><html><head>' + headHtml +
+                    '<style>' +
+                    'body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f4f4f4; }' +
+                    '.slide { margin: 0 auto; }' +
+                    '.notes { display: none !important; }' +
+                    '</style></head><body>' + sectionHtml + '</body></html>';
+                const blob = new Blob([fullDoc], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
+                canvas.innerHTML = '<iframe src="' + blobUrl + '" ' +
+                    'style="width:100%; aspect-ratio:16/9; border:none; border-radius:12px;" ' +
+                    'onload="URL.revokeObjectURL(this.src)"></iframe>';
+            } else {
+                // Fallback : rendu JSON/Tailwind
+                canvas.innerHTML = `
+            <div class="slide-card slide-animate" style="font-size: 1rem;">
+                ${renderSlideHTML(slides[currentSlideIndex], false)}
+            </div>
+        `;
+            }
+        }
 
-    const typeLabels = {
-        cover: 'Couverture', section: 'Section', content: 'Contenu', stat: 'Statistique',
-        quote: 'Citation', highlight: 'Points cles', diagram: 'Diagramme', image: 'Image',
-        table: 'Tableau', two_column: '2 Colonnes', closing: 'Cloture', cv: 'CV'
-    };
+        // ====================================
+        // SLIDE HTML RENDERER
+        // ====================================
+        function renderSlideHTML(slide, isThumbnail) {
+            const t = isThumbnail;
+            const pad = t ? 'p-2' : 'p-[8%]';
+            const titleSize = t ? 'text-[6px]' : 'text-[clamp(1.2rem,2.5vw,2rem)]';
+            const subtitleSize = t ? 'text-[5px]' : 'text-[clamp(0.7rem,1.2vw,1rem)]';
+            const bodySize = t ? 'text-[4px]' : 'text-[clamp(0.7rem,1.1vw,0.95rem)]';
+            const statSize = t ? 'text-[12px]' : 'text-[clamp(3rem,8vw,6rem)]';
+            const statLabelSize = t ? 'text-[5px]' : 'text-[clamp(0.8rem,1.5vw,1.2rem)]';
+            const quoteSize = t ? 'text-[4px]' : 'text-[clamp(0.8rem,1.4vw,1.1rem)]';
+            const numSize = t ? 'text-[10px]' : 'text-[clamp(2rem,5vw,4rem)]';
+            const edit = !isThumbnail ? 'contenteditable="true"' : '';
+            const badgeSize = t ? 'text-[3px] px-1' : 'text-[10px] px-2 py-0.5';
 
-    const isDark = ['cover', 'section', 'closing'].includes(slide.type);
-    const badgeBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(31,31,31,0.06)';
-    const badge = `<div class="absolute top-[4%] right-[4%] ${badgeSize} rounded-sm font-semibold uppercase tracking-wider text-muted" style="background:${badgeBg};">${typeLabels[slide.type] || slide.type}</div>`;
+            const typeLabels = {
+                cover: 'Couverture', section: 'Section', content: 'Contenu', stat: 'Statistique',
+                quote: 'Citation', highlight: 'Points cles', diagram: 'Diagramme', image: 'Image',
+                table: 'Tableau', two_column: '2 Colonnes', closing: 'Cloture', cv: 'CV'
+            };
 
-    // Tags
-    const tags = (slide.tags || []);
-    const tagsHtml = tags.length ? `<div class="wv-tags">${tags.map(tag => `<span class="wv-tag ${t ? 'text-[3px] px-0.5' : 'text-[9px] px-1.5 py-0.5'}">#${tag}</span>`).join('')}</div>` : '';
+            const isDark = ['cover', 'section', 'closing'].includes(slide.type);
+            const badgeBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(31,31,31,0.06)';
+            const badge = `<div class="absolute top-[4%] right-[4%] ${badgeSize} rounded-sm font-semibold uppercase tracking-wider text-muted" style="background:${badgeBg};">${typeLabels[slide.type] || slide.type}</div>`;
 
-    // Vertical marker
-    const markerColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(31,31,31,0.15)';
-    const marker = t ? '' : `<div class="wv-marker" style="color:${markerColor}; font-size:8px;">Consulting Tools | 2025-2026</div>`;
+            // Tags
+            const tags = (slide.tags || []);
+            const tagsHtml = tags.length ? `<div class="wv-tags">${tags.map(tag => `<span class="wv-tag ${t ? 'text-[3px] px-0.5' : 'text-[9px] px-1.5 py-0.5'}">#${tag}</span>`).join('')}</div>` : '';
 
-    switch (slide.type) {
-        case 'cover':
-            return `<div class="slide-cover ${pad} flex flex-col justify-center h-full relative">
+            // Vertical marker
+            const markerColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(31,31,31,0.15)';
+            const marker = t ? '' : `<div class="wv-marker" style="color:${markerColor}; font-size:8px;">Consulting Tools | 2025-2026</div>`;
+
+            switch (slide.type) {
+                case 'cover':
+                    return `<div class="slide-cover ${pad} flex flex-col justify-center h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div class="accent font-chakra font-bold ${t ? 'text-[4px]' : 'text-[clamp(0.6rem,1vw,0.85rem)]'} tracking-[0.2em] uppercase mb-2">Consulting Tools</div>
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} leading-tight mb-3">${slide.title || ''}</div>
@@ -529,28 +727,28 @@ function renderSlideHTML(slide, isThumbnail) {
                 ${slide.meta ? `<div class="text-muted ${t ? 'text-[3px] mt-1' : 'text-xs mt-6'}">${slide.meta}</div>` : ''}
             </div>`;
 
-        case 'section':
-            return `<div class="slide-section ${pad} flex flex-col justify-center h-full relative">
+                case 'section':
+                    return `<div class="slide-section ${pad} flex flex-col justify-center h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div class="accent font-chakra font-bold ${numSize} leading-none mb-2">${slide.number || ''}</div>
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} uppercase tracking-wide">${slide.title || ''}</div>
             </div>`;
 
-        case 'content':
-            const bullets = (slide.bullets || []).map(b =>
-                `<li class="flex items-start gap-2 ${bodySize} text-secondary">
+                case 'content':
+                    const bullets = (slide.bullets || []).map(b =>
+                        `<li class="flex items-start gap-2 ${bodySize} text-secondary">
                     <span class="accent-bg ${t ? 'w-1 h-1 mt-0.5' : 'w-1.5 h-1.5 mt-2'} rounded-full flex-shrink-0"></span>
                     <span ${edit}>${b}</span>
                 </li>`
-            ).join('');
-            return `<div class="slide-content ${pad} flex flex-col h-full relative">
+                    ).join('');
+                    return `<div class="slide-content ${pad} flex flex-col h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} mb-4">${slide.title || ''}</div>
                 <ul class="space-y-${t ? '0.5' : '3'} flex-1">${bullets}</ul>
             </div>`;
 
-        case 'stat':
-            return `<div class="slide-stat ${pad} flex flex-col items-center justify-center text-center h-full relative">
+                case 'stat':
+                    return `<div class="slide-stat ${pad} flex flex-col items-center justify-center text-center h-full relative">
                 ${badge}${tagsHtml}${marker}
                 ${slide.subtitle ? `<div ${edit} class="text-secondary ${subtitleSize} mb-2">${slide.subtitle}</div>` : ''}
                 <div ${edit} class="accent font-chakra font-bold ${statSize} leading-none">${slide.stat_value || ''}</div>
@@ -558,8 +756,8 @@ function renderSlideHTML(slide, isThumbnail) {
                 ${slide.context ? `<div class="text-muted ${t ? 'text-[3px] mt-1' : 'text-xs mt-4'}">${slide.context}</div>` : ''}
             </div>`;
 
-        case 'quote':
-            return `<div class="slide-quote ${pad} flex flex-col items-center justify-center text-center h-full relative">
+                case 'quote':
+                    return `<div class="slide-quote ${pad} flex flex-col items-center justify-center text-center h-full relative">
                 ${badge}${tagsHtml}${marker}
                 ${slide.title ? `<div ${edit} class="text-secondary font-chakra font-semibold ${subtitleSize} mb-3">${slide.title}</div>` : ''}
                 <div class="accent font-chakra ${t ? 'text-[10px]' : 'text-5xl'} leading-none mb-2">&ldquo;</div>
@@ -567,24 +765,24 @@ function renderSlideHTML(slide, isThumbnail) {
                 ${slide.author ? `<div class="text-secondary font-semibold ${t ? 'text-[4px] mt-1' : 'text-sm mt-4'}">&mdash; ${slide.author}</div>` : ''}
             </div>`;
 
-        case 'highlight': {
-            const kp = (slide.key_points || []).slice(0, 4);
-            const cols = kp.length <= 2 ? 2 : kp.length === 3 ? 3 : 2;
-            const boxes = kp.map((p, i) =>
-                `<div class="accent-bg ${i % 2 === 1 ? 'accent-bg-alt' : ''} rounded-lg ${t ? 'p-1' : 'p-5'} text-white flex flex-col">
+                case 'highlight': {
+                    const kp = (slide.key_points || []).slice(0, 4);
+                    const cols = kp.length <= 2 ? 2 : kp.length === 3 ? 3 : 2;
+                    const boxes = kp.map((p, i) =>
+                        `<div class="accent-bg ${i % 2 === 1 ? 'accent-bg-alt' : ''} rounded-lg ${t ? 'p-1' : 'p-5'} text-white flex flex-col">
                     <div class="font-chakra font-bold ${t ? 'text-[6px]' : 'text-2xl'} opacity-50">${String(i + 1).padStart(2, '0')}</div>
                     <div ${edit} class="font-semibold ${t ? 'text-[3px]' : 'text-sm'} mt-1 leading-snug flex-1">${p}</div>
                 </div>`
-            ).join('');
-            return `<div class="slide-highlight ${pad} flex flex-col h-full relative">
+                    ).join('');
+                    return `<div class="slide-highlight ${pad} flex flex-col h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} mb-4">${slide.title || ''}</div>
                 <div class="grid grid-cols-${cols} gap-${t ? '0.5' : '3'} flex-1">${boxes}</div>
             </div>`;
-        }
+                }
 
-        case 'diagram':
-            return `<div class="slide-diagram ${pad} flex flex-col h-full relative">
+                case 'diagram':
+                    return `<div class="slide-diagram ${pad} flex flex-col h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} mb-4">${slide.title || ''}</div>
                 <div class="flex-1 flex items-center justify-center">
@@ -593,14 +791,14 @@ function renderSlideHTML(slide, isThumbnail) {
                 ${slide.description ? `<div class="text-muted text-center ${t ? 'text-[3px]' : 'text-xs'} mt-2 italic">${slide.description}</div>` : ''}
             </div>`;
 
-        case 'image': {
-            const imgBullets = (slide.bullets || []).map(b =>
-                `<li class="flex items-start gap-2 ${bodySize} text-secondary">
+                case 'image': {
+                    const imgBullets = (slide.bullets || []).map(b =>
+                        `<li class="flex items-start gap-2 ${bodySize} text-secondary">
                     <span class="accent-bg ${t ? 'w-1 h-1' : 'w-1.5 h-1.5 mt-2'} rounded-full flex-shrink-0"></span>
                     <span ${edit}>${b}</span>
                 </li>`
-            ).join('');
-            return `<div class="slide-image h-full relative">
+                    ).join('');
+                    return `<div class="slide-image h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div class="grid grid-cols-2 h-full" style="grid-template-columns: 55% 1fr;">
                     <div class="box-bg flex items-center justify-center overflow-hidden ${slide.image_prompt ? 'p-4' : ''}">
@@ -622,38 +820,38 @@ function renderSlideHTML(slide, isThumbnail) {
                     </div>
                 </div>
             </div>`;
-        }
+                }
 
-        case 'table': {
-            const ths = (slide.headers || []).map(h => `<th class="table-header-bg ${t ? 'px-0.5 py-0.5 text-[3px]' : 'px-4 py-2.5 text-sm'} text-left font-chakra font-semibold">${h}</th>`).join('');
-            const trs = (slide.rows || []).map((r, ri) =>
-                `<tr class="${ri % 2 === 1 ? 'table-row-alt' : ''}">` +
-                r.map(c => `<td class="text-secondary ${t ? 'px-0.5 py-0.5 text-[3px]' : 'px-4 py-2 text-sm'} border-b border-gray-700/20">${c}</td>`).join('') +
-                '</tr>'
-            ).join('');
-            return `<div class="slide-table ${pad} flex flex-col h-full relative">
+                case 'table': {
+                    const ths = (slide.headers || []).map(h => `<th class="table-header-bg ${t ? 'px-0.5 py-0.5 text-[3px]' : 'px-4 py-2.5 text-sm'} text-left font-chakra font-semibold">${h}</th>`).join('');
+                    const trs = (slide.rows || []).map((r, ri) =>
+                        `<tr class="${ri % 2 === 1 ? 'table-row-alt' : ''}">` +
+                        r.map(c => `<td class="text-secondary ${t ? 'px-0.5 py-0.5 text-[3px]' : 'px-4 py-2 text-sm'} border-b border-gray-700/20">${c}</td>`).join('') +
+                        '</tr>'
+                    ).join('');
+                    return `<div class="slide-table ${pad} flex flex-col h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} mb-4">${slide.title || ''}</div>
                 <div class="flex-1 overflow-hidden rounded-lg">
                     <table class="w-full border-collapse"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>
                 </div>
             </div>`;
-        }
+                }
 
-        case 'two_column': {
-            const leftBullets = (slide.left_points || []).map(b =>
-                `<li class="flex items-start gap-1.5 ${bodySize} text-secondary">
+                case 'two_column': {
+                    const leftBullets = (slide.left_points || []).map(b =>
+                        `<li class="flex items-start gap-1.5 ${bodySize} text-secondary">
                     <span class="accent-bg ${t ? 'w-0.5 h-0.5' : 'w-1.5 h-1.5 mt-2'} rounded-full flex-shrink-0"></span>
                     <span ${edit}>${b}</span>
                 </li>`
-            ).join('');
-            const rightBullets = (slide.right_points || []).map(b =>
-                `<li class="flex items-start gap-1.5 ${bodySize} text-secondary">
+                    ).join('');
+                    const rightBullets = (slide.right_points || []).map(b =>
+                        `<li class="flex items-start gap-1.5 ${bodySize} text-secondary">
                     <span class="accent-bg-alt ${t ? 'w-0.5 h-0.5' : 'w-1.5 h-1.5 mt-2'} rounded-full flex-shrink-0"></span>
                     <span ${edit}>${b}</span>
                 </li>`
-            ).join('');
-            return `<div class="slide-two-column ${pad} flex flex-col h-full relative">
+                    ).join('');
+                    return `<div class="slide-two-column ${pad} flex flex-col h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} mb-4">${slide.title || ''}</div>
                 <div class="grid grid-cols-2 gap-${t ? '1' : '6'} flex-1">
@@ -667,23 +865,23 @@ function renderSlideHTML(slide, isThumbnail) {
                     </div>
                 </div>
             </div>`;
-        }
+                }
 
-        case 'closing':
-            const subLines = (slide.subtitle || '').split('\n');
-            return `<div class="slide-closing ${pad} flex flex-col items-center justify-center text-center h-full relative">
+                case 'closing':
+                    const subLines = (slide.subtitle || '').split('\n');
+                    return `<div class="slide-closing ${pad} flex flex-col items-center justify-center text-center h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div class="accent font-chakra font-bold ${t ? 'text-[10px]' : 'text-[clamp(2.5rem,6vw,4.5rem)]'} leading-none">${slide.title || 'Merci'}</div>
                 <div class="divider h-0.5 ${t ? 'w-4' : 'w-16'} rounded-full my-${t ? '1' : '4'}"></div>
                 ${subLines.map(l => `<div class="text-secondary ${t ? 'text-[3px]' : 'text-sm'}">${l}</div>`).join('')}
             </div>`;
 
-        case 'cv': {
-            const skills = (slide.skills || []).map(s =>
-                `<span class="accent-bg text-white ${t ? 'text-[3px] px-1 py-0.5' : 'text-xs px-2 py-1'} rounded font-semibold">${s}</span>`
-            ).join('');
-            const experiences = (slide.experiences || []).map(exp =>
-                `<div class="${t ? 'mb-0.5' : 'mb-2'}">
+                case 'cv': {
+                    const skills = (slide.skills || []).map(s =>
+                        `<span class="accent-bg text-white ${t ? 'text-[3px] px-1 py-0.5' : 'text-xs px-2 py-1'} rounded font-semibold">${s}</span>`
+                    ).join('');
+                    const experiences = (slide.experiences || []).map(exp =>
+                        `<div class="${t ? 'mb-0.5' : 'mb-2'}">
                     <div class="flex items-baseline gap-1">
                         <span ${edit} class="text-primary font-semibold ${t ? 'text-[3px]' : 'text-sm'}">${exp.role || ''}</span>
                         <span class="text-muted ${t ? 'text-[2px]' : 'text-xs'}">\u2022</span>
@@ -693,8 +891,8 @@ function renderSlideHTML(slide, isThumbnail) {
                     </div>
                     ${exp.description ? `<div ${edit} class="text-secondary ${t ? 'text-[2px]' : 'text-xs'} italic mt-0.5">${exp.description}</div>` : ''}
                 </div>`
-            ).join('');
-            return `<div class="slide-content ${pad} h-full relative grid grid-cols-3 gap-${t ? '1' : '4'}">
+                    ).join('');
+                    return `<div class="slide-content ${pad} h-full relative grid grid-cols-3 gap-${t ? '1' : '4'}">
                 ${badge}${tagsHtml}${marker}
                 <div class="col-span-1 flex flex-col items-center ${t ? 'gap-0.5' : 'gap-2'}">
                     <div class="box-bg rounded-lg ${t ? 'w-8 h-8' : 'w-32 h-32'} flex items-center justify-center overflow-hidden">
@@ -721,44 +919,44 @@ function renderSlideHTML(slide, isThumbnail) {
                     </div>
                 </div>
             </div>`;
-        }
+                }
 
-        default:
-            return `<div class="slide-content ${pad} flex flex-col h-full relative">
+                default:
+                    return `<div class="slide-content ${pad} flex flex-col h-full relative">
                 ${badge}${tagsHtml}${marker}
                 <div class="text-primary font-chakra font-bold ${titleSize}">${slide.title || 'Slide'}</div>
             </div>`;
-    }
-}
+            }
+        }
 
-// ====================================
-// DIAGRAM RENDERER
-// ====================================
-function renderDiagram(slide, isThumbnail) {
-    const elements = slide.elements || [];
-    const t = isThumbnail;
-    const boxClass = `accent-bg text-white rounded-lg ${t ? 'px-1 py-0.5 text-[3px]' : 'px-4 py-2.5 text-xs'} font-semibold text-center min-w-[${t ? '2em' : '5em'}]`;
-    const arrowClass = `text-secondary font-bold ${t ? 'text-[5px]' : 'text-lg'}`;
+        // ====================================
+        // DIAGRAM RENDERER
+        // ====================================
+        function renderDiagram(slide, isThumbnail) {
+            const elements = slide.elements || [];
+            const t = isThumbnail;
+            const boxClass = `accent-bg text-white rounded-lg ${t ? 'px-1 py-0.5 text-[3px]' : 'px-4 py-2.5 text-xs'} font-semibold text-center min-w-[${t ? '2em' : '5em'}]`;
+            const arrowClass = `text-secondary font-bold ${t ? 'text-[5px]' : 'text-lg'}`;
 
-    switch (slide.diagram_type) {
-        case 'flow':
-            return `<div class="flex items-center gap-${t ? '0.5' : '2'} flex-wrap justify-center">
+            switch (slide.diagram_type) {
+                case 'flow':
+                    return `<div class="flex items-center gap-${t ? '0.5' : '2'} flex-wrap justify-center">
                 ${elements.map((el, i) =>
-                    `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : ''}">${el}</div>` +
-                    (i < elements.length - 1 ? `<div class="${arrowClass}">&rarr;</div>` : '')
-                ).join('')}
+                        `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : ''}">${el}</div>` +
+                        (i < elements.length - 1 ? `<div class="${arrowClass}">&rarr;</div>` : '')
+                    ).join('')}
             </div>`;
 
-        case 'pyramid':
-            return `<div class="flex flex-col items-center gap-${t ? '0.5' : '1'} w-full">
+                case 'pyramid':
+                    return `<div class="flex flex-col items-center gap-${t ? '0.5' : '1'} w-full">
                 ${elements.map((el, i) => {
-                    const w = 25 + (elements.length - i) / elements.length * 65;
-                    return `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : ''}" style="width:${w}%">${el}</div>`;
-                }).join('')}
+                        const w = 25 + (elements.length - i) / elements.length * 65;
+                        return `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : ''}" style="width:${w}%">${el}</div>`;
+                    }).join('')}
             </div>`;
 
-        case 'timeline':
-            return `<div class="relative w-full ${t ? 'py-2' : 'py-6'}">
+                case 'timeline':
+                    return `<div class="relative w-full ${t ? 'py-2' : 'py-6'}">
                 <div class="absolute top-1/2 left-[5%] right-[5%] ${t ? 'h-0.5' : 'h-1'} rounded accent-bg opacity-30"></div>
                 <div class="flex justify-between relative z-10 px-[5%]">
                     ${elements.map((el, i) => `
@@ -770,49 +968,49 @@ function renderDiagram(slide, isThumbnail) {
                 </div>
             </div>`;
 
-        case 'cycle':
-            return `<div class="flex flex-wrap justify-center items-center gap-${t ? '0.5' : '2'}">
+                case 'cycle':
+                    return `<div class="flex flex-wrap justify-center items-center gap-${t ? '0.5' : '2'}">
                 ${elements.map((el, i) =>
-                    `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : ''}">${el}</div>` +
-                    (i < elements.length - 1 ? `<div class="${arrowClass}">&circlearrowright;</div>` : '')
-                ).join('')}
+                        `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : ''}">${el}</div>` +
+                        (i < elements.length - 1 ? `<div class="${arrowClass}">&circlearrowright;</div>` : '')
+                    ).join('')}
             </div>`;
 
-        case 'matrix':
-        case 'grid':
-            return `<div class="grid grid-cols-2 gap-${t ? '0.5' : '3'} w-[80%]">
+                case 'matrix':
+                case 'grid':
+                    return `<div class="grid grid-cols-2 gap-${t ? '0.5' : '3'} w-[80%]">
                 ${elements.map((el, i) =>
-                    `<div class="box-bg rounded-lg ${t ? 'p-1 text-[3px]' : 'p-4 text-xs'} text-secondary font-semibold text-center border border-gray-700/20">${el}</div>`
-                ).join('')}
+                        `<div class="box-bg rounded-lg ${t ? 'p-1 text-[3px]' : 'p-4 text-xs'} text-secondary font-semibold text-center border border-gray-700/20">${el}</div>`
+                    ).join('')}
             </div>`;
 
-        case 'hierarchy':
-            return `<div class="flex flex-col items-center gap-${t ? '0.5' : '2'}">
+                case 'hierarchy':
+                    return `<div class="flex flex-col items-center gap-${t ? '0.5' : '2'}">
                 <div class="${boxClass} accent-bg">${elements[0] || 'Root'}</div>
                 ${elements.length > 1 ? `
                     <div class="${arrowClass}">&#8595;</div>
                     <div class="flex gap-${t ? '0.5' : '2'} flex-wrap justify-center">
                         ${elements.slice(1).map((el, i) =>
-                            `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : 'box-bg text-secondary border border-gray-700/20'}">${el}</div>`
-                        ).join('')}
+                        `<div class="${boxClass} ${i % 2 ? 'accent-bg-alt' : 'box-bg text-secondary border border-gray-700/20'}">${el}</div>`
+                    ).join('')}
                     </div>
                 ` : ''}
             </div>`;
 
-        case 'process':
-            return `<div class="flex flex-col gap-${t ? '0.5' : '2'} w-full items-center">
+                case 'process':
+                    return `<div class="flex flex-col gap-${t ? '0.5' : '2'} w-full items-center">
                 ${elements.map((el, i) =>
-                    `<div class="flex items-center gap-${t ? '0.5' : '2'} w-[80%]">
+                        `<div class="flex items-center gap-${t ? '0.5' : '2'} w-[80%]">
                         <div class="accent-bg text-white ${t ? 'w-3 h-3 text-[3px]' : 'w-8 h-8 text-sm'} rounded-full flex items-center justify-center font-bold flex-shrink-0">${i + 1}</div>
                         <div class="${t ? 'flex-1 px-1 py-0.5 text-[3px]' : 'flex-1 px-3 py-2 text-xs'} box-bg rounded-lg text-secondary font-semibold border border-gray-700/20">${el}</div>
                     </div>`
-                ).join('')}
+                    ).join('')}
             </div>`;
 
-        case 'relations':
-            const center = elements[0] || 'Centre';
-            const satellites = elements.slice(1);
-            return `<div class="relative w-full h-full flex items-center justify-center">
+                case 'relations':
+                    const center = elements[0] || 'Centre';
+                    const satellites = elements.slice(1);
+                    return `<div class="relative w-full h-full flex items-center justify-center">
                 <div class="${boxClass} accent-bg z-10">${center}</div>
                 <div class="absolute inset-0 flex items-center justify-center">
                     ${satellites.map((el, i) => {
@@ -826,48 +1024,48 @@ function renderDiagram(slide, isThumbnail) {
                 </div>
             </div>`;
 
-        default:
-            return `<div class="flex flex-wrap gap-${t ? '0.5' : '2'} justify-center">
+                default:
+                    return `<div class="flex flex-wrap gap-${t ? '0.5' : '2'} justify-center">
                 ${elements.map(el => `<div class="${boxClass}">${el}</div>`).join('')}
             </div>`;
-    }
-}
+            }
+        }
 
-// ====================================
-// SLIDE SELECTION & ACTIONS
-// ====================================
-function selectSlide(index) {
-    currentSlideIndex = index;
-    renderAll();
-}
+        // ====================================
+        // SLIDE SELECTION & ACTIONS
+        // ====================================
+        function selectSlide(index) {
+            currentSlideIndex = index;
+            renderAll();
+        }
 
-function addSlide() {
-    const newSlide = { type: 'content', title: 'Nouvelle slide', bullets: ['Point 1', 'Point 2', 'Point 3'] };
-    slides.splice(currentSlideIndex + 1, 0, newSlide);
-    currentSlideIndex = currentSlideIndex + 1;
-    renderAll();
-}
+        function addSlide() {
+            const newSlide = { type: 'content', title: 'Nouvelle slide', bullets: ['Point 1', 'Point 2', 'Point 3'] };
+            slides.splice(currentSlideIndex + 1, 0, newSlide);
+            currentSlideIndex = currentSlideIndex + 1;
+            renderAll();
+        }
 
-function removeSlide(index) {
-    if (slides.length <= 1) return;
-    slides.splice(index, 1);
-    if (currentSlideIndex >= slides.length) currentSlideIndex = slides.length - 1;
-    renderAll();
-}
+        function removeSlide(index) {
+            if (slides.length <= 1) return;
+            slides.splice(index, 1);
+            if (currentSlideIndex >= slides.length) currentSlideIndex = slides.length - 1;
+            renderAll();
+        }
 
-// ====================================
-// PROPERTIES PANEL
-// ====================================
-function renderPropsPanel() {
-    const panel = document.getElementById('props-content');
-    if (!slides[currentSlideIndex]) {
-        panel.innerHTML = '<p class="text-gray-500 text-xs">Aucune slide</p>';
-        return;
-    }
-    const slide = slides[currentSlideIndex];
-    const types = ['cover','section','content','stat','quote','highlight','diagram','image','table','two_column','cv','closing'];
+        // ====================================
+        // PROPERTIES PANEL
+        // ====================================
+        function renderPropsPanel() {
+            const panel = document.getElementById('props-content');
+            if (!slides[currentSlideIndex]) {
+                panel.innerHTML = '<p class="text-gray-500 text-xs">Aucune slide</p>';
+                return;
+            }
+            const slide = slides[currentSlideIndex];
+            const types = ['cover', 'section', 'content', 'stat', 'quote', 'highlight', 'diagram', 'image', 'table', 'two_column', 'cv', 'closing'];
 
-    panel.innerHTML = `
+            panel.innerHTML = `
         <div>
             <label class="text-xs text-gray-500 block mb-1">Type</label>
             <select onchange="changeSlideType(this.value)"
@@ -887,704 +1085,710 @@ function renderPropsPanel() {
             <button onclick="duplicateSlide()" class="w-full bg-gray-800 hover:bg-gray-700 rounded-lg px-3 py-1.5 text-xs transition">Dupliquer cette slide</button>
         </div>
     `;
-}
+        }
 
-function changeSlideType(newType) {
-    const slide = slides[currentSlideIndex];
-    const defaults = {
-        cover: { title: slide.title || 'Titre', subtitle: '' },
-        section: { title: slide.title || 'Section', number: '01' },
-        content: { title: slide.title || 'Contenu', bullets: ['Point 1', 'Point 2'] },
-        stat: { stat_value: '42%', stat_label: 'Label', context: 'Source' },
-        quote: { quote_text: 'Citation ici', author: 'Auteur' },
-        highlight: { title: slide.title || 'Points cles', key_points: ['Point 1', 'Point 2', 'Point 3', 'Point 4'] },
-        diagram: { title: slide.title || 'Diagramme', diagram_type: 'flow', elements: ['A', 'B', 'C'] },
-        image: { title: slide.title || 'Image', bullets: ['Point 1'] },
-        table: { title: slide.title || 'Tableau', headers: ['Col 1', 'Col 2'], rows: [['A', 'B'], ['C', 'D']] },
-        two_column: { title: slide.title || '2 Colonnes', left_title: 'Gauche', left_points: ['A'], right_title: 'Droite', right_points: ['B'] },
-        cv: { name: 'Nom Consultant', title: 'Titre Professionnel', photo: 'placeholder', profile: 'Profil du consultant...', skills: ['Competence 1', 'Competence 2', 'Competence 3'], experiences: [{ role: 'Poste', company: 'Client', period: '2020-2024', description: 'Description' }] },
-        closing: { title: 'Merci' }
-    };
-    slides[currentSlideIndex] = { type: newType, ...defaults[newType] };
-    renderAll();
-}
+        function changeSlideType(newType) {
+            const slide = slides[currentSlideIndex];
+            const defaults = {
+                cover: { title: slide.title || 'Titre', subtitle: '' },
+                section: { title: slide.title || 'Section', number: '01' },
+                content: { title: slide.title || 'Contenu', bullets: ['Point 1', 'Point 2'] },
+                stat: { stat_value: '42%', stat_label: 'Label', context: 'Source' },
+                quote: { quote_text: 'Citation ici', author: 'Auteur' },
+                highlight: { title: slide.title || 'Points cles', key_points: ['Point 1', 'Point 2', 'Point 3', 'Point 4'] },
+                diagram: { title: slide.title || 'Diagramme', diagram_type: 'flow', elements: ['A', 'B', 'C'] },
+                image: { title: slide.title || 'Image', bullets: ['Point 1'] },
+                table: { title: slide.title || 'Tableau', headers: ['Col 1', 'Col 2'], rows: [['A', 'B'], ['C', 'D']] },
+                two_column: { title: slide.title || '2 Colonnes', left_title: 'Gauche', left_points: ['A'], right_title: 'Droite', right_points: ['B'] },
+                cv: { name: 'Nom Consultant', title: 'Titre Professionnel', photo: 'placeholder', profile: 'Profil du consultant...', skills: ['Competence 1', 'Competence 2', 'Competence 3'], experiences: [{ role: 'Poste', company: 'Client', period: '2020-2024', description: 'Description' }] },
+                closing: { title: 'Merci' }
+            };
+            slides[currentSlideIndex] = { type: newType, ...defaults[newType] };
+            renderAll();
+        }
 
-function moveSlide(dir) {
-    const newIdx = currentSlideIndex + dir;
-    if (newIdx < 0 || newIdx >= slides.length) return;
-    [slides[currentSlideIndex], slides[newIdx]] = [slides[newIdx], slides[currentSlideIndex]];
-    currentSlideIndex = newIdx;
-    renderAll();
-}
+        function moveSlide(dir) {
+            const newIdx = currentSlideIndex + dir;
+            if (newIdx < 0 || newIdx >= slides.length) return;
+            [slides[currentSlideIndex], slides[newIdx]] = [slides[newIdx], slides[currentSlideIndex]];
+            currentSlideIndex = newIdx;
+            renderAll();
+        }
 
-function duplicateSlide() {
-    slides.splice(currentSlideIndex + 1, 0, JSON.parse(JSON.stringify(slides[currentSlideIndex])));
-    currentSlideIndex++;
-    renderAll();
-}
+        function duplicateSlide() {
+            slides.splice(currentSlideIndex + 1, 0, JSON.parse(JSON.stringify(slides[currentSlideIndex])));
+            currentSlideIndex++;
+            renderAll();
+        }
 
-// ====================================
-// MODEL SELECTOR
-// ====================================
-let selectedModel = '';
+        // ====================================
+        // MODEL SELECTOR
+        // ====================================
+        let selectedModel = 'gemini-3.1-pro-preview';
 
-function initModelSelector() {
-    fetch('/api/settings/model')
-        .then(r => r.json())
-        .then(data => {
-            if (data.current_model) {
-                selectedModel = data.current_model;
-                const sel = document.getElementById('model-selector');
-                if (sel) sel.value = data.current_model;
+        function initModelSelector() {
+            const selector = document.getElementById('model-selector');
+            if (selector) selectedModel = selector.value;
+        }
+
+        function changeModel(model) {
+            selectedModel = model;
+        }
+
+        // ====================================
+        // FILE UPLOAD
+        // ====================================
+        let uploadedDocumentText = '';
+        let uploadedImages = [];
+
+        async function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            const fileInfo = document.getElementById('file-info');
+            const fileInfoText = document.getElementById('file-info-text');
+            const fileLabel = document.getElementById('file-label');
+            uploadedImages = [];
+
+            // For text files, read client-side
+            if (['txt', 'md'].includes(ext)) {
+                const text = await file.text();
+                uploadedDocumentText = text;
+                fileLabel.textContent = file.name;
+                fileInfoText.textContent = `${file.name} (${(text.length / 1000).toFixed(1)}k car.)`;
+                fileInfo.classList.remove('hidden');
+                return;
             }
-        })
-        .catch(() => {});
-}
 
-function changeModel(model) {
-    selectedModel = model;
-    fetch('/api/settings/model', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model })
-    }).then(r => r.json()).then(data => {
-        if (data.success) {
-            const sel = document.getElementById('model-selector');
-            sel.style.borderColor = '#4CAF50';
-            setTimeout(() => { sel.style.borderColor = ''; }, 1200);
-        }
-    }).catch(() => {});
-}
-
-// ====================================
-// FILE UPLOAD
-// ====================================
-let uploadedDocumentText = '';
-
-async function handleFileUpload(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const ext = file.name.split('.').pop().toLowerCase();
-    const fileInfo = document.getElementById('file-info');
-    const fileInfoText = document.getElementById('file-info-text');
-    const fileLabel = document.getElementById('file-label');
-
-    // For text files, read client-side
-    if (['txt', 'md'].includes(ext)) {
-        const text = await file.text();
-        uploadedDocumentText = text;
-        fileLabel.textContent = file.name;
-        fileInfoText.textContent = `${file.name} (${(text.length / 1000).toFixed(1)}k car.)`;
-        fileInfo.classList.remove('hidden');
-        return;
-    }
-
-    // For PDF/DOCX, upload to server for parsing
-    fileLabel.textContent = 'Extraction en cours...';
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-        const resp = await fetch('/api/slide-editor/parse-document', {
-            method: 'POST',
-            body: formData
-        });
-        if (resp.status === 401) {
-            alert('Session expiree. Reconnectez-vous.');
-            window.location.href = '/login';
-            return;
-        }
-        const data = await resp.json();
-        if (data.error || data.detail) {
-            alert('Erreur: ' + (data.error || data.detail));
-            fileLabel.textContent = 'Importer .txt .md .pdf .docx';
-            return;
-        }
-        uploadedDocumentText = data.text;
-        fileLabel.textContent = file.name;
-        fileInfoText.textContent = `${data.filename} (${(data.length / 1000).toFixed(1)}k car.)`;
-        fileInfo.classList.remove('hidden');
-    } catch (e) {
-        console.error('File parse error:', e);
-        alert('Erreur lors du parsing du fichier: ' + e.message);
-        fileLabel.textContent = 'Importer .txt .md .pdf .docx';
-    }
-}
-
-function clearUploadedFile() {
-    uploadedDocumentText = '';
-    document.getElementById('ai-file').value = '';
-    document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx';
-    document.getElementById('file-info').classList.add('hidden');
-}
-
-// ====================================
-// AI GENERATION (SSE Streaming)
-// ====================================
-function toggleTypeFields() {
-    const genType = document.getElementById('ai-type').value;
-    const slideCountField = document.getElementById('slide-count-field');
-    const proposalHint = document.getElementById('proposal-hint');
-    const rexHint = document.getElementById('rex-hint');
-    const audienceField = document.getElementById('audience-field');
-    const audienceLabel = audienceField.querySelector('label');
-
-    // Slide count: hide for proposal, rex, and formation (LLM decides)
-    slideCountField.classList.toggle('hidden', genType === 'proposal' || genType === 'rex' || genType === 'formation');
-    // Proposal hint: show only for proposal
-    proposalHint.classList.toggle('hidden', genType !== 'proposal');
-    // Rex hint: show only for rex
-    rexHint.classList.toggle('hidden', genType !== 'rex');
-    // Audience: show for formation and rex
-    audienceField.classList.toggle('hidden', genType !== 'formation' && genType !== 'rex');
-    // Update audience label
-    if (audienceLabel) {
-        audienceLabel.textContent = genType === 'rex' ? 'Client / Mission' : 'Public cible';
-    }
-}
-
-function showGenOverlay(msg, sub) {
-    const overlay = document.getElementById('gen-overlay');
-    overlay.classList.remove('hidden');
-    overlay.classList.add('flex');
-    document.getElementById('gen-status').textContent = msg || 'Initialisation...';
-    document.getElementById('gen-substatus').textContent = sub || '';
-    document.getElementById('gen-progress').style.width = '0%';
-    document.getElementById('gen-counter').textContent = '';
-}
-
-function updateGenOverlay(msg, sub, progress, counter) {
-    if (msg) document.getElementById('gen-status').textContent = msg;
-    if (sub) document.getElementById('gen-substatus').textContent = sub;
-    if (progress !== undefined) document.getElementById('gen-progress').style.width = progress + '%';
-    if (counter) document.getElementById('gen-counter').textContent = counter;
-}
-
-function hideGenOverlay() {
-    const overlay = document.getElementById('gen-overlay');
-    overlay.classList.add('hidden');
-    overlay.classList.remove('flex');
-}
-
-function showDownloadButtons() {
-    document.getElementById('download-buttons').classList.remove('hidden');
-}
-
-async function generateFromAI() {
-    const topic = document.getElementById('ai-topic').value.trim();
-    const audience = document.getElementById('ai-audience').value.trim();
-    const count = document.getElementById('ai-count').value || 10;
-    const genType = document.getElementById('ai-type').value;
-    const model = selectedModel || document.getElementById('model-selector').value;
-
-    if (!topic && !uploadedDocumentText) {
-        document.getElementById('ai-topic').focus();
-        document.getElementById('ai-topic').classList.add('border-wv-corail');
-        setTimeout(() => document.getElementById('ai-topic').classList.remove('border-wv-corail'), 2000);
-        return;
-    }
-
-    // Disable generate button
-    const btn = document.getElementById('btn-generate');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Generation...';
-
-    // Clear slides and show overlay
-    slides = [];
-    currentSlideIndex = 0;
-    renderAll();
-    const typeLabels = { proposal: 'Proposition commerciale', formation: 'Formation', rex: 'REX Mission', presentation: 'Presentation' };
-    showGenOverlay(typeLabels[genType] || 'Presentation', 'Connexion au modele IA...');
-
-    try {
-        // Step 1: POST to start the job
-        const resp = await fetch('/api/slide-editor/start-generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                topic, audience, slide_count: count, type: genType, model,
-                document_text: uploadedDocumentText || ''
-            })
-        });
-        const { job_id } = await resp.json();
-        if (!job_id) throw new Error('Pas de job_id');
-
-        // Step 2: SSE to stream progress + slides
-        const evtSource = new EventSource(`/api/slide-editor/stream/${job_id}`);
-        let totalSlides = 0;
-
-        evtSource.addEventListener('status', (e) => {
-            const data = JSON.parse(e.data);
-            const step = data.step || 0;
-            const progress = Math.min((step / 4) * 60, 60);
-            updateGenOverlay(data.message, null, progress);
-        });
-
-        evtSource.addEventListener('slide', (e) => {
-            const data = JSON.parse(e.data);
-            totalSlides = data.total;
-            const idx = data.index;
-            slides.push(data.slide);
-            currentSlideIndex = idx;
-            renderAll();
-
-            // Hide overlay once first slide arrives - content is visible
-            if (idx === 0) hideGenOverlay();
-
-            const slideProgress = 60 + ((idx + 1) / Math.max(totalSlides, 10)) * 40;
-            updateGenOverlay(
-                `Slide ${idx + 1}...`,
-                data.slide.title || data.slide.type,
-                slideProgress,
-                `${idx + 1} slides`
-            );
-        });
-
-        evtSource.addEventListener('done', (e) => {
-            evtSource.close();
-            hideGenOverlay();
-            showDownloadButtons();
-            currentSlideIndex = 0;
-            renderAll();
-            resetGenerateButton();
-            document.getElementById('feedback-section').classList.remove('hidden');
-        });
-
-        evtSource.addEventListener('error_msg', (e) => {
-            evtSource.close();
-            const data = JSON.parse(e.data);
-            hideGenOverlay();
-            alert('Erreur: ' + data.message);
-            resetGenerateButton();
-        });
-
-        evtSource.onerror = () => {
-            evtSource.close();
-            if (slides.length > 0) {
-                hideGenOverlay();
-                showDownloadButtons();
-                currentSlideIndex = 0;
-                renderAll();
-            } else {
-                hideGenOverlay();
-                alert('Erreur de connexion au serveur.');
-            }
-            resetGenerateButton();
-        };
-
-    } catch (e) {
-        console.error('AI generation error:', e);
-        hideGenOverlay();
-        alert('Erreur lors de la generation.');
-        resetGenerateButton();
-    }
-}
-
-function resetGenerateButton() {
-    const btn = document.getElementById('btn-generate');
-    btn.disabled = false;
-    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Generer`;
-}
-
-async function regenerateWithFeedback() {
-    const feedback = document.getElementById('ai-feedback').value.trim();
-    if (!feedback) {
-        document.getElementById('ai-feedback').focus();
-        return;
-    }
-    if (slides.length === 0) return;
-
-    const genType = document.getElementById('ai-type').value;
-    const topic = document.getElementById('ai-topic').value.trim();
-    const audience = document.getElementById('ai-audience').value.trim();
-    const count = document.getElementById('ai-count').value || 10;
-    const model = selectedModel || document.getElementById('model-selector').value;
-
-    const btn = document.getElementById('btn-regenerate');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Regeneration...';
-
-    const previousSlides = JSON.stringify(slides);
-    slides = [];
-    currentSlideIndex = 0;
-    renderAll();
-    const typeLabels = { proposal: 'Proposition commerciale', formation: 'Formation', rex: 'REX Mission', presentation: 'Presentation' };
-    showGenOverlay(typeLabels[genType] || 'Regeneration', 'Application du feedback...');
-
-    try {
-        const resp = await fetch('/api/slide-editor/start-generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                topic, audience, slide_count: count, type: genType, model,
-                document_text: uploadedDocumentText || '',
-                feedback: feedback,
-                previous_slides: previousSlides
-            })
-        });
-        const { job_id } = await resp.json();
-        if (!job_id) throw new Error('Pas de job_id');
-
-        const evtSource = new EventSource(`/api/slide-editor/stream/${job_id}`);
-        let totalSlides = 0;
-
-        evtSource.addEventListener('status', (e) => {
-            const data = JSON.parse(e.data);
-            const step = data.step || 0;
-            updateGenOverlay(data.message, null, Math.min((step / 4) * 60, 60));
-        });
-
-        evtSource.addEventListener('slide', (e) => {
-            const data = JSON.parse(e.data);
-            totalSlides = data.total;
-            slides.push(data.slide);
-            currentSlideIndex = data.index;
-            renderAll();
-            updateGenOverlay(`Slide ${data.index + 1} / ${totalSlides}`, data.slide.title || data.slide.type, 60 + ((data.index + 1) / totalSlides) * 40, `${data.index + 1} sur ${totalSlides} slides`);
-        });
-
-        evtSource.addEventListener('done', (e) => {
-            evtSource.close();
-            hideGenOverlay();
-            showDownloadButtons();
-            currentSlideIndex = 0;
-            renderAll();
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
-            document.getElementById('ai-feedback').value = '';
-        });
-
-        evtSource.addEventListener('error_msg', (e) => {
-            evtSource.close();
-            const data = JSON.parse(e.data);
-            hideGenOverlay();
-            alert('Erreur: ' + data.message);
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
-        });
-
-        evtSource.onerror = () => {
-            evtSource.close();
-            if (slides.length > 0) {
-                hideGenOverlay();
-                showDownloadButtons();
-                currentSlideIndex = 0;
-                renderAll();
-            } else {
-                hideGenOverlay();
-                alert('Erreur de connexion.');
-            }
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
-        };
-    } catch (e) {
-        console.error('Regeneration error:', e);
-        hideGenOverlay();
-        alert('Erreur lors de la regeneration.');
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
-    }
-}
-
-// ====================================
-// PDF EXPORT
-// ====================================
-function exportPDF() {
-    // Render all slides to a print-friendly layout
-    const printWin = window.open('', '_blank');
-    const slideHtmls = slides.map((slide, i) => {
-        return `<div class="slide-page">
-            <div class="slide-card" style="width:100%;aspect-ratio:16/9;font-size:1rem;page-break-after:always;">
-                ${renderSlideHTML(slide, false)}
-            </div>
-        </div>`;
-    }).join('');
-
-    const styleContent = document.querySelector('style').textContent;
-    const doc = printWin.document;
-    doc.open();
-    doc.write('<!DOCTYPE html><html><head>');
-    doc.write('<title>' + (slides[0]?.title || 'Presentation') + ' - Consulting Tools</title>');
-    doc.write('<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">');
-    doc.write('<scr' + 'ipt src="https://cdn.tailwindcss.com"><\/scr' + 'ipt>');
-    doc.write('<style>');
-    doc.write(`
-        /* Force Consulting Tools color palette for PDF export */
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-
-        /* Consulting Tools Palette - Forced for PDF */
-        .bg-slate-900, [style*="background:#1F1F1F"], [style*="background: #1F1F1F"] { background-color: #1F1F1F !important; }
-        .bg-white, [style*="background:#FFFFFF"], [style*="background: #FFFFFF"] { background-color: #FFFFFF !important; }
-        .bg-rose-50, [style*="background:#F5E6E8"], [style*="background: #F5E6E8"] { background-color: #F5E6E8 !important; }
-        [style*="background:#FF6B58"], [style*="background: #FF6B58"] { background-color: #FF6B58 !important; }
-        [style*="background:#C0504D"], [style*="background: #C0504D"] { background-color: #C0504D !important; }
-        [style*="background:#E86F51"], [style*="background: #E86F51"] { background-color: #E86F51 !important; }
-        [style*="background:#C4624F"], [style*="background: #C4624F"] { background-color: #C4624F !important; }
-
-        [style*="color:#FF6B58"], [style*="color: #FF6B58"] { color: #FF6B58 !important; }
-        [style*="color:#E86F51"], [style*="color: #E86F51"] { color: #E86F51 !important; }
-        [style*="color:#C4624F"], [style*="color: #C4624F"] { color: #C4624F !important; }
-        [style*="color:#FFFFFF"], [style*="color: #FFFFFF"] { color: #FFFFFF !important; }
-        [style*="color:#1F1F1F"], [style*="color: #1F1F1F"] { color: #1F1F1F !important; }
-
-        /* Gradient backgrounds */
-        [style*="linear-gradient"] { -webkit-print-color-adjust: exact !important; }
-    `);
-    doc.write(styleContent);
-    doc.write(`
-        @media print {
-            body { margin: 0; background: #000 !important; }
-            .slide-page { page-break-after: always; display: flex; align-items: center; justify-content: center; height: 100vh; }
-            .slide-card { width: 100% !important; max-width: none; border-radius: 0; box-shadow: none; }
-        }
-        body { background: #000; margin: 0; padding: 0; }
-        .slide-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-        .slide-card { max-width: 960px; width: 100%; border-radius: 8px; overflow: hidden; }
-    </style>');
-    doc.write('</head><body>');
-    doc.write(slideHtmls);
-    doc.write('<scr' + 'ipt>setTimeout(function(){ window.print(); }, 500);<\/scr' + 'ipt>');
-    doc.write('</body></html>');
-    doc.close();
-}
-
-// ====================================
-// PPTX EXPORT (Client-side with PptxGenJS)
-// ====================================
-function exportPPTX() {
-    const pptx = new PptxGenJS();
-    pptx.defineLayout({ name: 'WV', width: 13.333, height: 7.5 });
-    pptx.layout = 'WV';
-
-    // Consulting Tools 60-30-10 palette
-    const c = {
-        bg: '1F1F1F', contentBg: 'FFFFFF', accent: 'FF6B58', accentAlt: 'C0504D',
-        text: 'FFFFFF', textDark: '1F1F1F', textSec: '474747', textMuted: '999999',
-        boxBg: 'FBF0F4', rose: 'FBF0F4'
-    };
-    const isLight = (type) => !['cover','section','closing'].includes(type);
-
-    slides.forEach((slide) => {
-        const s = pptx.addSlide();
-        const isDarkSlide = ['cover','section','closing'].includes(slide.type);
-        const bg = isDarkSlide ? c.bg : (slide.type === 'quote' ? c.rose : c.contentBg);
-        s.background = { color: bg };
-
-        const txtColor = isDarkSlide ? c.text : c.textDark;
-        const secColor = isDarkSlide ? 'BBBBBB' : c.textSec;
-
-        switch (slide.type) {
-            case 'cover':
-                s.addText('Consulting Tools', { x: 0.8, y: 1.5, w: 11, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true, letterSpacing: 5 });
-                s.addText(slide.title || '', { x: 0.8, y: 2.2, w: 11, fontSize: 36, color: c.text, fontFace: 'Chakra Petch', bold: true });
-                s.addShape(pptx.ShapeType.rect, { x: 0.8, y: 3.8, w: 1.5, h: 0.05, fill: { color: c.accent } });
-                s.addText(slide.subtitle || '', { x: 0.8, y: 4.2, w: 11, fontSize: 16, color: secColor, fontFace: 'Inter' });
-                if (slide.meta) s.addText(slide.meta, { x: 0.8, y: 6.2, w: 11, fontSize: 10, color: c.textMuted, fontFace: 'Inter' });
-                break;
-
-            case 'section':
-                s.addText(slide.number || '', { x: 0.8, y: 2, w: 3, fontSize: 60, color: c.accent, fontFace: 'Chakra Petch', bold: true });
-                s.addText((slide.title || '').toUpperCase(), { x: 0.8, y: 3.5, w: 11, fontSize: 32, color: c.text, fontFace: 'Chakra Petch', bold: true });
-                break;
-
-            case 'content':
-                s.addText(slide.title || '', { x: 0.8, y: 0.5, w: 11, fontSize: 24, color: txtColor, fontFace: 'Chakra Petch', bold: true });
-                (slide.bullets || []).forEach((b, i) => {
-                    s.addShape(pptx.ShapeType.ellipse, { x: 0.8, y: 1.6 + i * 0.9, w: 0.12, h: 0.12, fill: { color: c.accent } });
-                    s.addText(b, { x: 1.2, y: 1.4 + i * 0.9, w: 10.5, fontSize: 16, color: secColor, fontFace: 'Inter' });
+            // For PDF/DOCX/PPTX/HTML, upload to server for parsing
+            fileLabel.textContent = 'Extraction en cours...';
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const resp = await fetch('/api/slide-editor/parse-document', {
+                    method: 'POST',
+                    body: formData
                 });
-                break;
-
-            case 'stat':
-                if (slide.subtitle) s.addText(slide.subtitle, { x: 1, y: 1.5, w: 11, fontSize: 14, color: secColor, fontFace: 'Inter', align: 'center' });
-                s.addText(slide.stat_value || '', { x: 1, y: 2.2, w: 11, fontSize: 80, color: c.accent, fontFace: 'Chakra Petch', bold: true, align: 'center' });
-                s.addText(slide.stat_label || '', { x: 1, y: 4.5, w: 11, fontSize: 20, color: txtColor, fontFace: 'Chakra Petch', bold: true, align: 'center' });
-                if (slide.context) s.addText(slide.context, { x: 1, y: 5.5, w: 11, fontSize: 10, color: c.textMuted, fontFace: 'Inter', align: 'center' });
-                break;
-
-            case 'quote':
-                if (slide.title) s.addText(slide.title, { x: 1, y: 1, w: 11, fontSize: 16, color: secColor, fontFace: 'Chakra Petch', bold: true, align: 'center' });
-                s.addText('\u201C', { x: 1, y: 1.8, w: 11, fontSize: 60, color: c.accent, fontFace: 'Chakra Petch', align: 'center' });
-                s.addText(slide.quote_text || '', { x: 2, y: 3, w: 9, fontSize: 18, color: txtColor, fontFace: 'Inter', italic: true, align: 'center' });
-                if (slide.author) s.addText('\u2014 ' + slide.author, { x: 2, y: 5, w: 9, fontSize: 12, color: secColor, fontFace: 'Inter', bold: true, align: 'center' });
-                break;
-
-            case 'highlight':
-                s.addText(slide.title || '', { x: 0.8, y: 0.5, w: 11, fontSize: 24, color: txtColor, fontFace: 'Chakra Petch', bold: true });
-                (slide.key_points || []).forEach((p, i) => {
-                    const col = i % 2;
-                    const row = Math.floor(i / 2);
-                    const bx = 0.8 + col * 5.8;
-                    const by = 1.8 + row * 2.5;
-                    s.addShape(pptx.ShapeType.roundRect, { x: bx, y: by, w: 5.3, h: 2, fill: { color: i % 2 ? c.accentAlt : c.accent }, rectRadius: 0.15 });
-                    s.addText(String(i + 1).padStart(2, '0'), { x: bx + 0.3, y: by + 0.2, w: 1, fontSize: 28, color: 'FFFFFF', fontFace: 'Chakra Petch', bold: true, transparency: 50 });
-                    s.addText(p, { x: bx + 0.3, y: by + 0.8, w: 4.7, fontSize: 13, color: 'FFFFFF', fontFace: 'Inter', bold: true });
-                });
-                break;
-
-            case 'diagram':
-                s.addText(slide.title || '', { x: 0.8, y: 0.5, w: 11, fontSize: 24, color: txtColor, fontFace: 'Chakra Petch', bold: true });
-                const els = slide.elements || [];
-                if (slide.diagram_type === 'flow') {
-                    const boxW = Math.min(2, 10 / els.length);
-                    const gap = (12 - els.length * boxW) / (els.length + 1);
-                    els.forEach((el, i) => {
-                        const bx = gap + i * (boxW + gap);
-                        s.addShape(pptx.ShapeType.roundRect, { x: bx, y: 3, w: boxW, h: 1, fill: { color: i % 2 ? c.accentAlt : c.accent }, rectRadius: 0.1 });
-                        s.addText(el, { x: bx, y: 3, w: boxW, h: 1, fontSize: 11, color: 'FFFFFF', fontFace: 'Inter', bold: true, align: 'center', valign: 'middle' });
-                        if (i < els.length - 1) {
-                            s.addShape(pptx.ShapeType.rightArrow, { x: bx + boxW + 0.05, y: 3.3, w: gap - 0.1, h: 0.4, fill: { color: c.textMuted } });
-                        }
-                    });
-                } else {
-                    els.forEach((el, i) => {
-                        s.addShape(pptx.ShapeType.roundRect, { x: 1 + (i % 3) * 3.8, y: 2 + Math.floor(i / 3) * 2, w: 3.3, h: 1.5, fill: { color: i % 2 ? c.accentAlt : c.accent }, rectRadius: 0.1 });
-                        s.addText(el, { x: 1 + (i % 3) * 3.8, y: 2 + Math.floor(i / 3) * 2, w: 3.3, h: 1.5, fontSize: 12, color: 'FFFFFF', fontFace: 'Inter', bold: true, align: 'center', valign: 'middle' });
-                    });
+                if (resp.status === 401) {
+                    alert('Session expiree. Reconnectez-vous.');
+                    window.location.href = '/login';
+                    return;
                 }
-                break;
+                const data = await resp.json();
+                if (data.error || data.detail) {
+                    alert('Erreur: ' + (data.error || data.detail));
+                    fileLabel.textContent = 'Importer .txt .md .pdf .docx .pptx .html';
+                    return;
+                }
+                uploadedDocumentText = data.text;
+                uploadedImages = data.images || [];
+                const imgInfo = data.image_count ? ` + ${data.image_count} images` : '';
+                fileLabel.textContent = file.name;
+                fileInfoText.textContent = `${data.filename} (${(data.length / 1000).toFixed(1)}k car.${imgInfo})`;
+                fileInfo.classList.remove('hidden');
+            } catch (e) {
+                console.error('File parse error:', e);
+                alert('Erreur lors du parsing du fichier: ' + e.message);
+                fileLabel.textContent = 'Importer .txt .md .pdf .docx .pptx .html';
+            }
+        }
 
-            case 'table':
-                s.addText(slide.title || '', { x: 0.8, y: 0.5, w: 11, fontSize: 24, color: txtColor, fontFace: 'Chakra Petch', bold: true });
-                const tableRows = [];
-                tableRows.push((slide.headers || []).map(h => ({ text: h, options: { bold: true, color: 'FFFFFF', fill: { color: c.bg }, fontSize: 12, fontFace: 'Chakra Petch' } })));
-                (slide.rows || []).forEach((r, ri) => {
-                    tableRows.push(r.map(cell => ({ text: cell, options: { fontSize: 11, color: c.textDark, fontFace: 'Inter', fill: { color: ri % 2 ? c.boxBg : c.contentBg } } })));
-                });
-                s.addTable(tableRows, { x: 0.8, y: 1.6, w: 11.5, fontSize: 12, border: { pt: 0.5, color: c.textMuted } });
-                break;
+        function clearUploadedFile() {
+            uploadedDocumentText = '';
+            uploadedImages = [];
+            document.getElementById('ai-file').value = '';
+            document.getElementById('file-label').textContent = 'Importer .txt .md .pdf .docx .pptx .html';
+            document.getElementById('file-info').classList.add('hidden');
+        }
 
-            case 'two_column':
-                s.addText(slide.title || '', { x: 0.8, y: 0.5, w: 11, fontSize: 24, color: txtColor, fontFace: 'Chakra Petch', bold: true });
-                s.addText(slide.left_title || '', { x: 0.8, y: 1.5, w: 5.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
-                (slide.left_points || []).forEach((b, i) => {
-                    s.addText('\u2022 ' + b, { x: 0.8, y: 2.2 + i * 0.7, w: 5.5, fontSize: 13, color: secColor, fontFace: 'Inter' });
-                });
-                s.addText(slide.right_title || '', { x: 6.8, y: 1.5, w: 5.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
-                (slide.right_points || []).forEach((b, i) => {
-                    s.addText('\u2022 ' + b, { x: 6.8, y: 2.2 + i * 0.7, w: 5.5, fontSize: 13, color: secColor, fontFace: 'Inter' });
-                });
-                break;
+        // ====================================
+        // AI GENERATION (SSE Streaming)
+        // ====================================
+        function toggleTypeFields() {
+            const genType = document.getElementById('ai-type').value;
+            const slideCountField = document.getElementById('slide-count-field');
+            const proposalHint = document.getElementById('proposal-hint');
+            const rexHint = document.getElementById('rex-hint');
+            const audienceField = document.getElementById('audience-field');
+            const audienceLabel = audienceField.querySelector('label');
 
-            case 'cv':
-                // Photo placeholder
-                s.addShape(pptx.ShapeType.roundRect, { x: 0.8, y: 0.8, w: 2.5, h: 2.5, fill: { color: c.boxBg }, rectRadius: 0.1 });
-                s.addText('[Photo]', { x: 0.8, y: 1.8, w: 2.5, h: 0.5, fontSize: 10, color: c.textMuted, fontFace: 'Inter', align: 'center', valign: 'middle' });
-                // Name and title
-                s.addText(slide.name || '', { x: 0.8, y: 3.5, w: 2.5, fontSize: 16, color: txtColor, fontFace: 'Chakra Petch', bold: true, align: 'center' });
-                s.addText(slide.title || '', { x: 0.8, y: 4, w: 2.5, fontSize: 12, color: c.accent, fontFace: 'Inter', bold: true, align: 'center' });
-                // Profile
-                s.addText('Profil', { x: 3.8, y: 0.8, w: 8.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
-                s.addText(slide.profile || '', { x: 3.8, y: 1.2, w: 8.5, fontSize: 11, color: secColor, fontFace: 'Inter' });
-                // Skills
-                s.addText('Competences', { x: 3.8, y: 2.4, w: 8.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
-                let skillY = 2.8;
-                (slide.skills || []).forEach((skill, i) => {
-                    if (i > 0 && i % 4 === 0) skillY += 0.4;
-                    s.addShape(pptx.ShapeType.roundRect, { x: 3.8 + (i % 4) * 2.1, y: skillY, w: 2, h: 0.35, fill: { color: c.accent }, rectRadius: 0.05 });
-                    s.addText(skill, { x: 3.8 + (i % 4) * 2.1, y: skillY, w: 2, h: 0.35, fontSize: 10, color: 'FFFFFF', fontFace: 'Inter', bold: true, align: 'center', valign: 'middle' });
+            // Slide count: hide for proposal, rex, and formation (LLM decides)
+            slideCountField.classList.toggle('hidden', genType === 'proposal' || genType === 'rex' || genType === 'formation');
+            // Proposal hint: show only for proposal
+            proposalHint.classList.toggle('hidden', genType !== 'proposal');
+            // Rex hint: show only for rex
+            rexHint.classList.toggle('hidden', genType !== 'rex');
+            // Audience: show for formation and rex
+            audienceField.classList.toggle('hidden', genType !== 'formation' && genType !== 'rex');
+            // Update audience label
+            if (audienceLabel) {
+                audienceLabel.textContent = genType === 'rex' ? 'Client / Mission' : 'Public cible';
+            }
+        }
+
+        function showGenOverlay(msg, sub) {
+            const overlay = document.getElementById('gen-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            document.getElementById('gen-status').textContent = msg || 'Initialisation...';
+            document.getElementById('gen-substatus').textContent = sub || '';
+            document.getElementById('gen-progress').style.width = '0%';
+            document.getElementById('gen-counter').textContent = '';
+        }
+
+        function updateGenOverlay(msg, sub, progress, counter) {
+            if (msg) document.getElementById('gen-status').textContent = msg;
+            if (sub) document.getElementById('gen-substatus').textContent = sub;
+            if (progress !== undefined) document.getElementById('gen-progress').style.width = progress + '%';
+            if (counter) document.getElementById('gen-counter').textContent = counter;
+        }
+
+        function hideGenOverlay() {
+            const overlay = document.getElementById('gen-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        function showMinibar() {
+            document.getElementById('gen-minibar').classList.remove('hidden');
+        }
+
+        function updateMinibar(text, counter, progress) {
+            if (text) document.getElementById('minibar-text').textContent = text;
+            if (counter) document.getElementById('minibar-counter').textContent = counter;
+            if (progress !== undefined) document.getElementById('minibar-fill').style.width = progress + '%';
+        }
+
+        function hideMinibar() {
+            document.getElementById('gen-minibar').classList.add('hidden');
+            document.getElementById('minibar-fill').style.width = '0%';
+        }
+
+        function showDownloadButtons() {
+            document.getElementById('download-buttons').classList.remove('hidden');
+        }
+
+        async function generateFromAI() {
+            const topic = document.getElementById('ai-topic').value.trim();
+            const audience = document.getElementById('ai-audience').value.trim();
+            const count = document.getElementById('ai-count').value || 10;
+            const genType = document.getElementById('ai-type').value;
+            const model = selectedModel || document.getElementById('model-selector').value;
+
+            if (!topic && !uploadedDocumentText) {
+                document.getElementById('ai-topic').focus();
+                document.getElementById('ai-topic').classList.add('border-wv-corail');
+                setTimeout(() => document.getElementById('ai-topic').classList.remove('border-wv-corail'), 2000);
+                return;
+            }
+
+            // Disable generate button
+            const btn = document.getElementById('btn-generate');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Generation...';
+
+            // Clear slides and show overlay
+            slides = [];
+            headHtml = '';
+            htmlSections = [];
+            currentSlideIndex = 0;
+            renderAll();
+            const typeLabels = { proposal: 'Proposition commerciale', formation: 'Formation', rex: 'REX Mission', presentation: 'Presentation' };
+            const modelLabel = document.getElementById('model-selector').selectedOptions[0].text;
+            showGenOverlay(typeLabels[genType] || 'Presentation', modelLabel + ' - HTML Premium...');
+
+            try {
+                // Step 1: POST to start the job
+                const resp = await fetch('/api/slide-editor/start-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic, audience, slide_count: count, type: genType,
+                        model: model,
+                        document_text: uploadedDocumentText || ''
+                    })
                 });
-                // Experiences
-                s.addText('Experiences', { x: 3.8, y: 3.8, w: 8.5, fontSize: 14, color: c.accent, fontFace: 'Chakra Petch', bold: true });
-                (slide.experiences || []).forEach((exp, i) => {
-                    const expY = 4.2 + i * 0.9;
-                    s.addText(`${exp.role || ''} - ${exp.company || ''} (${exp.period || ''})`, { x: 3.8, y: expY, w: 8.5, fontSize: 11, color: txtColor, fontFace: 'Inter', bold: true });
-                    if (exp.description) {
-                        s.addText(exp.description, { x: 3.8, y: expY + 0.3, w: 8.5, fontSize: 9, color: secColor, fontFace: 'Inter', italic: true });
+                const { job_id } = await resp.json();
+                if (!job_id) throw new Error('Pas de job_id');
+
+                // Step 2: SSE to stream progress + slides
+                const evtSource = new EventSource(`/api/slide-editor/stream/${job_id}`);
+                let totalSlides = 0;
+
+                evtSource.addEventListener('status', (e) => {
+                    const data = JSON.parse(e.data);
+                    const step = data.step || 0;
+                    const progress = Math.min((step / 4) * 60, 60);
+                    updateGenOverlay(data.message, data.substep || null, progress);
+                });
+
+                evtSource.addEventListener('slide', (e) => {
+                    const data = JSON.parse(e.data);
+                    totalSlides = data.total;
+                    const idx = data.index;
+
+                    // Capture HTML data
+                    if (data.head_html) headHtml = data.head_html;
+                    if (data.slide && data.slide.html_section) {
+                        htmlSections.push(data.slide.html_section);
                     }
+
+                    slides.push(data.slide);
+                    currentSlideIndex = idx;
+                    renderAll();
+
+                    // First slide: hide full overlay, show mini bar
+                    if (idx === 0) {
+                        hideGenOverlay();
+                        showMinibar();
+                    }
+
+                    const pct = Math.round(((idx + 1) / Math.max(totalSlides, 1)) * 100);
+                    updateMinibar(
+                        data.slide.title || `Slide ${idx + 1}`,
+                        `${idx + 1} / ${totalSlides || '?'}`,
+                        pct
+                    );
                 });
-                break;
 
-            case 'closing':
-                s.addText(slide.title || 'Merci', { x: 1, y: 2, w: 11, fontSize: 64, color: c.accent, fontFace: 'Chakra Petch', bold: true, align: 'center' });
-                s.addShape(pptx.ShapeType.rect, { x: 5.5, y: 4.2, w: 2, h: 0.05, fill: { color: c.accent } });
-                (slide.subtitle || '').split('\n').forEach((line, i) => {
-                    s.addText(line, { x: 1, y: 4.8 + i * 0.5, w: 11, fontSize: 14, color: secColor, fontFace: 'Inter', align: 'center' });
+                evtSource.addEventListener('done', (e) => {
+                    evtSource.close();
+                    const data = JSON.parse(e.data);
+                    if (data.head_html) headHtml = data.head_html;
+                    hideGenOverlay();
+                    hideMinibar();
+                    showDownloadButtons();
+                    currentSlideIndex = 0;
+                    renderAll();
+                    resetGenerateButton();
+                    document.getElementById('feedback-section').classList.remove('hidden');
                 });
-                break;
-        }
-    });
 
-    const filename = (slides[0]?.title || 'presentation').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-    pptx.writeFile({ fileName: `${filename}_Consulting Tools.pptx` });
-}
+                evtSource.addEventListener('error_msg', (e) => {
+                    evtSource.close();
+                    const data = JSON.parse(e.data);
+                    hideGenOverlay();
+                    hideMinibar();
+                    alert('Erreur: ' + data.message);
+                    resetGenerateButton();
+                });
 
-// ====================================
-// GOOGLE SLIDES EXPORT
-// ====================================
-async function exportToGoogleSlides() {
-    if (!slides || slides.length === 0) {
-        showToast('Aucun slide à exporter', 'warning', 'Export impossible');
-        return;
-    }
+                evtSource.onerror = () => {
+                    evtSource.close();
+                    if (slides.length > 0) {
+                        hideGenOverlay();
+                        hideMinibar();
+                        showDownloadButtons();
+                        currentSlideIndex = 0;
+                        renderAll();
+                    } else {
+                        hideGenOverlay();
+                        hideMinibar();
+                        alert('Erreur de connexion au serveur.');
+                    }
+                    resetGenerateButton();
+                };
 
-    const title = slides[0]?.title || 'Présentation Consulting Tools';
-
-    // Show loading toast
-    const loadingToast = showToast('Export vers Google Slides en cours...', 'info', 'Export', 0);
-
-    try {
-        const formData = new FormData();
-        formData.append('slides_data', JSON.stringify(slides));
-        formData.append('title', title);
-
-        const response = await fetch('/api/training-slides/export-slides', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        // Close loading toast
-        if (loadingToast) {
-            closeToast(loadingToast);
+            } catch (e) {
+                console.error('AI generation error:', e);
+                hideGenOverlay();
+                hideMinibar();
+                alert('Erreur lors de la generation.');
+                resetGenerateButton();
+            }
         }
 
-        if (response.ok && data.presentation_url) {
-            showToast(
-                `Présentation créée avec succès !`,
-                'success',
-                '✓ Google Slides',
-                6000
-            );
-
-            // Open Google Slides in new tab
-            window.open(data.presentation_url, '_blank');
-        } else if (data.setup_required) {
-            showToast(
-                'Google API non configurée. Voir VALIDATION_COMPLETE.md',
-                'warning',
-                'Configuration requise',
-                8000
-            );
-        } else {
-            showToast(
-                data.error || 'Erreur lors de l\'export',
-                'error',
-                'Échec',
-                6000
-            );
-        }
-    } catch (error) {
-        // Close loading toast
-        if (loadingToast) {
-            closeToast(loadingToast);
+        function resetGenerateButton() {
+            const btn = document.getElementById('btn-generate');
+            btn.disabled = false;
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Generer`;
         }
 
-        showToast(
-            `Erreur de connexion : ${error.message}`,
-            'error',
-            'Échec',
-            6000
-        );
-        console.error('Error exporting to Google Slides:', error);
-    }
-}
+        async function regenerateWithFeedback() {
+            const feedback = document.getElementById('ai-feedback').value.trim();
+            if (!feedback) {
+                document.getElementById('ai-feedback').focus();
+                return;
+            }
+            if (slides.length === 0) return;
 
-// ====================================
-// INIT
-// ====================================
-init();
-</script>
+            const genType = document.getElementById('ai-type').value;
+            const topic = document.getElementById('ai-topic').value.trim();
+            const audience = document.getElementById('ai-audience').value.trim();
+            const count = document.getElementById('ai-count').value || 10;
+            const model = selectedModel || document.getElementById('model-selector').value;
+
+            const btn = document.getElementById('btn-regenerate');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Regeneration...';
+
+            const previousSlides = JSON.stringify(slides);
+            slides = [];
+            headHtml = '';
+            htmlSections = [];
+            currentSlideIndex = 0;
+            renderAll();
+            const typeLabels = { proposal: 'Proposition commerciale', formation: 'Formation', rex: 'REX Mission', presentation: 'Presentation' };
+            showGenOverlay(typeLabels[genType] || 'Regeneration', 'Application du feedback...');
+
+            try {
+                const resp = await fetch('/api/slide-editor/start-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic, audience, slide_count: count, type: genType,
+                        model: model,
+                        document_text: uploadedDocumentText || '',
+                        feedback: feedback,
+                        previous_slides: previousSlides
+                    })
+                });
+                const { job_id } = await resp.json();
+                if (!job_id) throw new Error('Pas de job_id');
+
+                const evtSource = new EventSource(`/api/slide-editor/stream/${job_id}`);
+                let totalSlides = 0;
+
+                evtSource.addEventListener('status', (e) => {
+                    const data = JSON.parse(e.data);
+                    const step = data.step || 0;
+                    updateGenOverlay(data.message, data.substep || null, Math.min((step / 4) * 60, 60));
+                });
+
+                evtSource.addEventListener('slide', (e) => {
+                    const data = JSON.parse(e.data);
+                    totalSlides = data.total;
+                    if (data.head_html) headHtml = data.head_html;
+                    if (data.slide && data.slide.html_section) {
+                        htmlSections.push(data.slide.html_section);
+                    }
+                    slides.push(data.slide);
+                    currentSlideIndex = data.index;
+                    renderAll();
+                    if (data.index === 0) {
+                        hideGenOverlay();
+                        showMinibar();
+                    }
+                    const pct = Math.round(((data.index + 1) / Math.max(totalSlides, 1)) * 100);
+                    updateMinibar(
+                        data.slide.title || `Slide ${data.index + 1}`,
+                        `${data.index + 1} / ${totalSlides || '?'}`,
+                        pct
+                    );
+                });
+
+                evtSource.addEventListener('done', (e) => {
+                    evtSource.close();
+                    const doneData = JSON.parse(e.data);
+                    if (doneData.head_html) headHtml = doneData.head_html;
+                    hideGenOverlay();
+                    hideMinibar();
+                    showDownloadButtons();
+                    currentSlideIndex = 0;
+                    renderAll();
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
+                    document.getElementById('ai-feedback').value = '';
+                });
+
+                evtSource.addEventListener('error_msg', (e) => {
+                    evtSource.close();
+                    const data = JSON.parse(e.data);
+                    hideGenOverlay();
+                    hideMinibar();
+                    alert('Erreur: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
+                });
+
+                evtSource.onerror = () => {
+                    evtSource.close();
+                    if (slides.length > 0) {
+                        hideGenOverlay();
+                        hideMinibar();
+                        showDownloadButtons();
+                        currentSlideIndex = 0;
+                        renderAll();
+                    } else {
+                        hideGenOverlay();
+                        hideMinibar();
+                        alert('Erreur de connexion.');
+                    }
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
+                };
+            } catch (e) {
+                console.error('Regeneration error:', e);
+                hideGenOverlay();
+                hideMinibar();
+                alert('Erreur lors de la regeneration.');
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Regenerer avec feedback';
+            }
+        }
+
+        // ====================================
+        // PDF EXPORT (HTML Premium)
+        // ====================================
+        function exportPDF() {
+            const printWin = window.open('', '_blank');
+            const doc = printWin.document;
+            doc.open();
+
+            // If we have HTML Premium content, use it directly (best quality)
+            if (htmlSections.length > 0 && headHtml) {
+                const sectionsHtml = htmlSections.join('\n');
+                doc.write('<!DOCTYPE html><html><head>');
+                doc.write('<title></title>');
+                doc.write(headHtml);
+                doc.write('<style>');
+                doc.write(`
+            @page { size: landscape; margin: 0; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { background: #FFFFFF !important; margin: 0 !important; padding: 0 !important; }
+            .slide { page-break-after: always; margin: 0 !important; box-shadow: none !important; border-radius: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden; }
+            .slide:last-child { page-break-after: auto; }
+            @media print {
+                body { background: #FFFFFF !important; margin: 0 !important; }
+                .slide { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; width: 100vw !important; height: 100vh !important; }
+            }
+            .notes { display: none !important; }
+        `);
+                doc.write('</style></head><body>');
+                doc.write(sectionsHtml);
+                doc.write('<scr' + 'ipt>setTimeout(function(){ window.print(); }, 800);<\/scr' + 'ipt>');
+                doc.write('</body></html>');
+            } else {
+                // Fallback: render from JSON data
+                const slideHtmls = slides.map((slide) => {
+                    return `<div class="slide-page">
+                <div class="slide-card" style="width:100%;height:100%;font-size:1rem;">
+                    ${renderSlideHTML(slide, false)}
+                </div>
+            </div>`;
+                }).join('');
+
+                const styleContent = document.querySelector('style').textContent;
+                doc.write('<!DOCTYPE html><html><head>');
+                doc.write('<title></title>');
+                doc.write('<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">');
+                doc.write('<scr' + 'ipt src="https://cdn.tailwindcss.com"><\/scr' + 'ipt>');
+                doc.write('<style>');
+                doc.write(`
+            @page { size: landscape; margin: 0; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        `);
+                doc.write(styleContent);
+                doc.write(`
+            @media print {
+                body { margin: 0; background: #FFFFFF; }
+                .slide-page { page-break-after: always; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+                .slide-card { width: 100% !important; height: 100% !important; max-width: none; border-radius: 0; box-shadow: none; }
+            }
+            body { background: #FFFFFF; margin: 0; padding: 0; }
+            .slide-page { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; padding: 0; }
+            .slide-card { width: 100%; height: 100%; border-radius: 0; overflow: hidden; }
+        </style>`);
+                doc.write('</head><body>');
+                doc.write(slideHtmls);
+                doc.write('<scr' + 'ipt>setTimeout(function(){ window.print(); }, 500);<\/scr' + 'ipt>');
+                doc.write('</body></html>');
+            }
+            doc.close();
+        }
+
+        // ====================================
+        // HTML DOWNLOAD
+        // ====================================
+        function downloadHTML() {
+            if (!htmlSections.length || !headHtml) {
+                alert('Aucun contenu HTML Premium disponible. Generez des slides d\'abord.');
+                return;
+            }
+            const fullHtml = `<!DOCTYPE html><html><head>${headHtml}</head><body>${htmlSections.join('\n')}</body></html>`;
+            const blob = new Blob([fullHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (slides[0]?.title || 'presentation').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40) + '_Consulting Tools.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ====================================
+        // TOAST NOTIFICATIONS
+        // ====================================
+        function getToastContainer() {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none';
+                document.body.appendChild(container);
+            }
+            return container;
+        }
+
+        function showToast(message, type = 'info', title = '', duration = 3000) {
+            const container = getToastContainer();
+            const toast = document.createElement('div');
+            const toastId = 'toast-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            toast.id = toastId;
+
+            // Styling based on type
+            let bgClass = 'bg-gray-800';
+            let borderClass = 'border-gray-700';
+            let icon = '';
+
+            if (type === 'success') {
+                borderClass = 'border-green-500';
+                icon = '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+            } else if (type === 'error') {
+                borderClass = 'border-red-500';
+                icon = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+            } else if (type === 'warning') {
+                borderClass = 'border-yellow-500';
+                icon = '<svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
+            } else { // info
+                borderClass = 'border-blue-500';
+                icon = '<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+
+                // Add spinner if duration is 0 (meaning it's a loading state)
+                if (duration === 0) {
+                    icon = '<svg class="w-5 h-5 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+                }
+            }
+
+            toast.className = `${bgClass} border-l-4 ${borderClass} text-white px-4 py-3 rounded shadow-lg flex items-start gap-3 min-w-[300px] animate-[fadeInUp_0.3s_ease-out] pointer-events-auto transition-all duration-300`;
+
+            let titleHtml = title ? `<h4 class="font-bold text-sm font-chakra text-white">${title}</h4>` : '';
+
+            toast.innerHTML = `
+        <div class="mt-0.5">${icon}</div>
+        <div class="flex-1">
+            ${titleHtml}
+            <p class="text-sm text-gray-300">${message}</p>
+        </div>
+        <button onclick="closeToast('${toastId}')" class="text-gray-400 hover:text-white transition focus:outline-none">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    `;
+
+            container.appendChild(toast);
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeToast(toastId);
+                }, duration);
+            }
+
+            return toastId;
+        }
+
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+
+        // ====================================
+        // GOOGLE SLIDES EXPORT
+        // ====================================
+        async function exportToGoogleSlides() {
+            if (!slides || slides.length === 0) {
+                showToast('Aucun slide à exporter', 'warning', 'Export impossible');
+                return;
+            }
+
+            const title = slides[0]?.title || 'Présentation Consulting Tools';
+
+            // Show loading toast
+            const loadingToast = showToast('Export vers Google Slides en cours...', 'info', 'Export', 0);
+
+            try {
+                const formData = new FormData();
+                formData.append('slides_data', JSON.stringify(slides));
+                formData.append('title', title);
+
+                const response = await fetch('/api/training-slides/export-slides', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // Close loading toast
+                if (loadingToast) {
+                    closeToast(loadingToast);
+                }
+
+                if (response.ok && data.presentation_url) {
+                    showToast(
+                        `Présentation créée avec succès !`,
+                        'success',
+                        '✓ Google Slides',
+                        6000
+                    );
+
+                    // Open Google Slides in new tab
+                    window.open(data.presentation_url, '_blank');
+
+                    // Show persistent link banner
+                    showGoogleSlidesLink(data.presentation_url);
+                } else if (data.setup_required) {
+                    showToast(
+                        'Google API non configurée. Voir VALIDATION_COMPLETE.md',
+                        'warning',
+                        'Configuration requise',
+                        8000
+                    );
+                } else {
+                    showToast(
+                        data.error || 'Erreur lors de l\'export',
+                        'error',
+                        'Échec',
+                        6000
+                    );
+                }
+            } catch (error) {
+                // Close loading toast
+                if (loadingToast) {
+                    closeToast(loadingToast);
+                }
+
+                showToast(
+                    `Erreur de connexion : ${error.message}`,
+                    'error',
+                    'Échec',
+                    6000
+                );
+                console.error('Error exporting to Google Slides:', error);
+            }
+        }
+
+        // ====================================
+        // GOOGLE SLIDES LINK
+        // ====================================
+        function showGoogleSlidesLink(url) {
+            const container = document.getElementById('google-slides-link');
+            const link = document.getElementById('google-slides-url');
+            link.href = url;
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+        }
+
+        // ====================================
+        // INIT
+        // ====================================
+        init();
+    </script>
 </body>
+
 </html>
