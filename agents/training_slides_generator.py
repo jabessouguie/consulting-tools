@@ -422,18 +422,19 @@ Retourne UNIQUEMENT un JSON listant les titres :
         prompt = f"""Slide Title: {slide_info['title']} 
 Formation: {formation_title}
 
-Génère un prompt ultra-détaillé pour Nano Banana (Imagen 3) afin de créer l'infographie centrale de cette slide.
+Tu es un directeur artistique expert chez Consulting Tools. Ton rôle est de concevoir le prompt visuel pour une infographie pédagogique qui sera générée par Nano Banana Pro.
 
-CONSIGNES POUR LE PROMPT IMAGE :
-- Basé UNIQUEMENT sur le titre : {slide_info['title']}
-- Style : Minimaliste et percutant, inspiré par Seth Godin (une image ou une idée par diapositive).
-- Complexité : Simple et facile à assimiler, maximum de QUATRE éléments visuels (schémas, icônes).
-- Design : Style premium tech-business, ultra-didactique.
-- Couleurs : Fond blanc ou très clair, accentuations avec le Corail (#FF6B58) et le Noir Profond (#1F1F1F).
+DIRECTIVE DE GÉNÉRATION D'IMAGE (Nano Banana Pro) :
+"Génère une infographie très visuelle et didactique basée uniquement sur le contenu de la diapositive : {slide_info['title']}.
+
+Assure-toi que l'infographie respecte le style de la formation Consulting Tools, en étant :
+* Minimaliste et percutante, inspirée par Seth Godin (une image ou une idée par diapositive).
+* Simple et facile à assimiler par le cerveau, en utilisant un maximum de quatre éléments visuels (schémas, icônes).
+* Utilisant le style graphique et les couleurs de la présentation actuelle (Corail #FF6B58, Noir Profond #1F1F1F, Fond blanc)."
 
 Retourne un JSON avec:
 {{
-    "image_prompt": "Le prompt détaillé en anglais pour une génération d'image haute fidélité..."
+    "image_prompt": "Le prompt technique détaillé et optimisé en ANGLAIS pour Nano Banana Pro (Gemini 3 Pro Image) afin d'obtenir ce résultat visuel."
 }}"""
         result = self.llm.generate(
             prompt=prompt, system_prompt="Tu es un directeur artistique expert en pédagogie visuelle."
