@@ -7715,6 +7715,57 @@ async def api_elearning_delete_course(course_id: int):
     return {"ok": True}
 
 
+# --- Entretien: Chat & Simulation ---
+
+
+@app.post("/api/elearning/interview/chat")
+async def api_elearning_interview_chat(
+    topic: str = Form(...),
+    role: str = Form(...),
+    messages: str = Form(...),
+    interviewer_name: str = Form(""),
+    interviewer_linkedin: str = Form(""),
+):
+    """Envoie un message dans la simulation d'entretien"""
+    try:
+        msg_list = json.loads(messages)
+        agent = ElearningAgent()
+        response = agent.interview_chat(
+            topic=topic,
+            role=role,
+            messages=msg_list,
+            interviewer_name=interviewer_name,
+            interviewer_linkedin=interviewer_linkedin,
+        )
+        return {"message": response}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/elearning/interview/analyze")
+async def api_elearning_interview_analyze(
+    topic: str = Form(...),
+    role: str = Form(...),
+    messages: str = Form(...),
+    interviewer_name: str = Form(""),
+    interviewer_linkedin: str = Form(""),
+):
+    """Analyse la performance de l'entretien"""
+    try:
+        msg_list = json.loads(messages)
+        agent = ElearningAgent()
+        analysis = agent.analyze_interview_performance(
+            topic=topic,
+            role=role,
+            messages=msg_list,
+            interviewer_name=interviewer_name,
+            interviewer_linkedin=interviewer_linkedin,
+        )
+        return {"analysis": analysis}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # --- Quiz: Generation ---
 
 
@@ -8249,14 +8300,20 @@ async def api_elearning_interview_chat(request: Request):
 
     topic = str(body.get("topic", ""))[:200]
     role = str(body.get("role", ""))[:200]
+    interviewer_name = str(body.get("interviewer_name", ""))[:200]
+    interviewer_linkedin = str(body.get("interviewer_linkedin", ""))[:500]
 
     try:
         agent = ElearningAgent()
-        reply = agent.interview_chat(messages, topic=topic, role=role)
-    except Exception as e:
-        return JSONResponse(
-            {"error": f"Erreur entretien : {str(e)}"}, status_code=500
+        reply = agent.interview_chat(
+            messages,
+            topic=topic,
+            role=role,
+            interviewer_name=interviewer_name,
+            interviewer_linkedin=interviewer_linkedin,
         )
+    except Exception as e:
+        return JSONResponse({"error": f"Erreur entretien : {str(e)}"}, status_code=500)
 
     return {"reply": reply}
 
@@ -8287,14 +8344,20 @@ async def api_elearning_interview_analyze(request: Request):
 
     topic = str(body.get("topic", ""))[:200]
     role = str(body.get("role", ""))[:200]
+    interviewer_name = str(body.get("interviewer_name", ""))[:200]
+    interviewer_linkedin = str(body.get("interviewer_linkedin", ""))[:500]
 
     try:
         agent = ElearningAgent()
-        analysis = agent.analyze_interview_performance(messages, topic=topic, role=role)
-    except Exception as e:
-        return JSONResponse(
-            {"error": f"Erreur analyse : {str(e)}"}, status_code=500
+        analysis = agent.analyze_interview_performance(
+            messages,
+            topic=topic,
+            role=role,
+            interviewer_name=interviewer_name,
+            interviewer_linkedin=interviewer_linkedin,
         )
+    except Exception as e:
+        return JSONResponse({"error": f"Erreur analyse : {str(e)}"}, status_code=500)
 
     return {"analysis": analysis}
 
