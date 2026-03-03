@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}WEnvision - Meeting Capture AI{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon proposal"></div>
+        <div>
+            <div class="card-title">Meeting Capture AI</div>
+            <div class="card-subtitle">Enregistrez votre réunion, obtenez une transcription, un compte rendu et un brouillon Gmail automatiquement</div>
+        </div>
+    </div>
+
+    <!-- Configuration -->
+    <div style="margin: 1.5rem; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px;">
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label" style="display: block; margin-bottom: 0.5rem;">Modèle Gemini</label>
+                <select id="mc-model-select" class="model-selector" style="width: 100%; padding: 0.6rem 0.8rem; font-size: 0.95rem; border-radius: 8px; border: 1px solid #ccc;">
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Rapide)</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Stable)</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Économique)</option>
+                </select>
+            </div>
+            <div style="flex: 2; min-width: 220px;">
+                <label class="form-label" style="display: block; margin-bottom: 0.5rem;">
+                    Source audio
+                </label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" id="mc-include-mic" checked> Microphone
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" id="mc-include-system"> Audio système
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contrôles enregistrement -->
+    <div style="margin: 0 1.5rem 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <button id="mc-start-btn" class="btn btn-primary" onclick="mcStartRecording()" style="font-size: 1rem; padding: 0.8rem 2rem;">
+            &#9654; Démarrer l'enregistrement
+        </button>
+        <button id="mc-stop-btn" class="btn btn-secondary" onclick="mcStopRecording()" style="font-size: 1rem; padding: 0.8rem 2rem;" disabled>
+            &#9632; Arrêter
+        </button>
+        <div id="mc-state-badge" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; background: #e5e7eb; color: #6b7280;">
+            En attente
+        </div>
+        <div id="mc-timer" style="font-family: monospace; font-size: 1.1rem; color: var(--corail); display: none;">00:00</div>
+    </div>
+
+    <!-- Lecteur de prévisualisation (affiché après enregistrement) -->
+    <div id="mc-preview-wrap" style="margin: 0 1.5rem 1.5rem; display: none;">
+        <video id="mc-preview" controls style="width: 100%; max-height: 300px; border-radius: 8px; background: #000;"></video>
+    </div>
+</div>
+
+<!-- Progression analyse -->
+<div id="mc-progress-section" style="display: none;">
+    <div class="card" style="margin-top: 1rem;">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title" id="mc-progress-title">Analyse en cours…</div>
+                <div class="card-subtitle" id="mc-progress-subtitle">Envoi de la vidéo à Gemini</div>
+            </div>
+        </div>
+        <div style="margin: 1rem 1.5rem 1.5rem;">
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar" id="mc-progress-bar" style="width: 0%;"></div>
+            </div>
+            <ul class="progress-steps" id="mc-steps">
+                <li class="progress-step pending" data-step="upload">
+                    <span class="step-icon">1</span><span>Upload vidéo</span>
+                </li>
+                <li class="progress-step pending" data-step="processing">
+                    <span class="step-icon">2</span><span>Traitement Gemini</span>
+                </li>
+                <li class="progress-step pending" data-step="analyze">
+                    <span class="step-icon">3</span><span>Analyse IA</span>
+                </li>
+                <li class="progress-step pending" data-step="done">
+                    <span class="step-icon">4</span><span>Résultats prêts</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Erreur -->
+<div id="mc-error" style="display: none; margin-top: 1rem; padding: 1rem; background: #fee2e2; border-radius: 8px; color: #b91c1c; font-size: 0.95rem;"></div>
+
+<!-- Résultats -->
+<div id="mc-results" style="display: none; margin-top: 1rem;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title">Résultats de l'analyse</div>
+                <div class="card-subtitle" id="mc-model-used"></div>
+            </div>
+        </div>
+
+        <!-- Onglets -->
+        <div style="margin: 0 1.5rem; display: flex; gap: 0.5rem; border-bottom: 2px solid var(--gris-clair);">
+            <button class="mc-tab active" onclick="mcShowTab('transcript', this)" style="padding: 0.6rem 1.2rem; background: none; border: none; cursor: pointer; font-weight: 600; font-size: 0.95rem; border-bottom: 2px solid var(--corail); margin-bottom: -2px;">Transcription</button>
+            <button class="mc-tab" onclick="mcShowTab('summary', this)" style="padding: 0.6rem 1.2rem; background: none; border: none; cursor: pointer; font-size: 0.95rem; border-bottom: 2px solid transparent; margin-bottom: -2px;">Compte Rendu</button>
+            <button class="mc-tab" onclick="mcShowTab('email', this)" style="padding: 0.6rem 1.2rem; background: none; border: none; cursor: pointer; font-size: 0.95rem; border-bottom: 2px solid transparent; margin-bottom: -2px;">Brouillon Email</button>
+        </div>
+
+        <!-- Transcription -->
+        <div id="mc-tab-transcript" class="mc-tab-content" style="margin: 1.5rem; padding: 1rem; background: var(--gris-clair); border-radius: 8px; max-height: 450px; overflow-y: auto; font-size: 0.93rem; white-space: pre-wrap; line-height: 1.6;"></div>
+
+        <!-- Compte rendu -->
+        <div id="mc-tab-summary" class="mc-tab-content" style="display: none; margin: 1.5rem; padding: 1rem; background: var(--gris-clair); border-radius: 8px; font-size: 0.93rem; line-height: 1.6;"></div>
+
+        <!-- Brouillon email -->
+        <div id="mc-tab-email" class="mc-tab-content" style="display: none; margin: 1.5rem; padding: 1rem; background: var(--gris-clair); border-radius: 8px; font-size: 0.93rem; line-height: 1.6;"></div>
+
+        <!-- Actions Gmail -->
+        <div style="margin: 0 1.5rem 1.5rem; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--noir-profond);">Créer un brouillon Gmail</h3>
+            <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 180px;">
+                    <label class="form-label" style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem;">Destinataire (optionnel)</label>
+                    <input type="email" id="mc-gmail-to" placeholder="email@exemple.com" class="form-input"
+                        style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem;">
+                </div>
+                <div style="flex: 1; min-width: 140px;">
+                    <label class="form-label" style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem;">Chemin credentials.json</label>
+                    <input type="text" id="mc-credentials-path" placeholder="~/.meetingcapture/credentials.json" class="form-input"
+                        style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem;">
+                </div>
+                <button onclick="mcCreateGmailDraft()" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; white-space: nowrap;">
+                    Créer le brouillon
+                </button>
+            </div>
+            <p id="mc-gmail-status" style="margin-top: 0.75rem; font-size: 0.9rem;"></p>
+        </div>
+
+        <!-- Boutons de copie -->
+        <div class="result-actions" style="margin: 0 1.5rem 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button onclick="mcCopyTranscript()" class="btn btn-secondary">Copier la transcription</button>
+            <button onclick="mcCopySummary()" class="btn btn-secondary">Copier le compte rendu</button>
+            <button onclick="mcReset()" class="btn btn-secondary">Nouvelle réunion</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ============================================================
+// MeetingCapture AI — état machine JS
+// États : idle | recording | uploading | processing | done
+// ============================================================
+let mcState = 'idle';
+let mcMediaRecorder = null;
+let mcChunks = [];
+let mcBlob = null;
+let mcJobId = null;
+let mcEvtSource = null;
+let mcTimerInterval = null;
+let mcTimerSeconds = 0;
+let mcResult = null;
+
+// ----------------------------------------------------------
+// Helpers UI
+// ----------------------------------------------------------
+function mcSetState(state, label, color) {
+    mcState = state;
+    const badge = document.getElementById('mc-state-badge');
+    badge.textContent = label;
+    badge.style.background = color + '33';
+    badge.style.color = color;
+}
+
+function mcUpdateStep(stepName, status) {
+    const li = document.querySelector('#mc-steps [data-step="' + stepName + '"]');
+    if (!li) return;
+    li.className = 'progress-step ' + status;
+    const icon = li.querySelector('.step-icon');
+    if (status === 'done') icon.textContent = '✓';
+    else if (status === 'active') icon.textContent = '…';
+}
+
+function mcSetProgress(pct) {
+    document.getElementById('mc-progress-bar').style.width = pct + '%';
+}
+
+function mcShowError(msg) {
+    const el = document.getElementById('mc-error');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+    document.getElementById('mc-progress-section').style.display = 'none';
+    mcSetState('idle', 'Erreur', '#ef4444');
+    mcResetButtons();
+}
+
+function mcResetButtons() {
+    document.getElementById('mc-start-btn').disabled = false;
+    document.getElementById('mc-stop-btn').disabled = true;
+}
+
+function mcStopTimer() {
+    if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
+    document.getElementById('mc-timer').style.display = 'none';
+    mcTimerSeconds = 0;
+}
+
+function mcShowTab(name, btn) {
+    document.querySelectorAll('.mc-tab-content').forEach(el => el.style.display = 'none');
+    document.getElementById('mc-tab-' + name).style.display = 'block';
+    document.querySelectorAll('.mc-tab').forEach(b => {
+        b.style.borderBottomColor = 'transparent';
+        b.classList.remove('active');
+    });
+    btn.style.borderBottomColor = 'var(--corail)';
+    btn.classList.add('active');
+}
+
+// ----------------------------------------------------------
+// Enregistrement
+// ----------------------------------------------------------
+async function mcStartRecording() {
+    mcChunks = [];
+    mcBlob = null;
+    mcResult = null;
+    document.getElementById('mc-error').style.display = 'none';
+    document.getElementById('mc-results').style.display = 'none';
+    document.getElementById('mc-preview-wrap').style.display = 'none';
+
+    try {
+        // Capture écran (avec ou sans audio système)
+        const includeSystemAudio = document.getElementById('mc-include-system').checked;
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: includeSystemAudio,
+        });
+
+        // Microphone optionnel
+        const includeMic = document.getElementById('mc-include-mic').checked;
+        let allTracks = [...displayStream.getTracks()];
+
+        if (includeMic) {
+            try {
+                const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                allTracks = [...allTracks, ...micStream.getAudioTracks()];
+            } catch (_) {
+                // Microphone indisponible, on continue sans
+            }
+        }
+
+        const combinedStream = new MediaStream(allTracks);
+        mcMediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp8,opus' });
+
+        mcMediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) mcChunks.push(e.data);
+        };
+
+        mcMediaRecorder.onstop = () => mcHandleRecordingStop();
+
+        // Arrêt si l'utilisateur clôt le partage d'écran
+        displayStream.getVideoTracks()[0].onended = () => {
+            if (mcState === 'recording') mcStopRecording();
+        };
+
+        mcMediaRecorder.start(1000); // chunk toutes les secondes
+
+        mcSetState('recording', 'Enregistrement…', '#f59e0b');
+        document.getElementById('mc-start-btn').disabled = true;
+        document.getElementById('mc-stop-btn').disabled = false;
+
+        // Timer
+        const timerEl = document.getElementById('mc-timer');
+        timerEl.style.display = 'inline';
+        timerEl.textContent = '00:00';
+        mcTimerSeconds = 0;
+        mcTimerInterval = setInterval(() => {
+            mcTimerSeconds++;
+            const m = String(Math.floor(mcTimerSeconds / 60)).padStart(2, '0');
+            const s = String(mcTimerSeconds % 60).padStart(2, '0');
+            timerEl.textContent = m + ':' + s;
+        }, 1000);
+
+    } catch (err) {
+        mcShowError('Impossible de démarrer l\'enregistrement : ' + err.message);
+    }
+}
+
+function mcStopRecording() {
+    if (mcMediaRecorder && mcMediaRecorder.state !== 'inactive') {
+        mcMediaRecorder.stop();
+        mcMediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    mcStopTimer();
+}
+
+function mcHandleRecordingStop() {
+    mcBlob = new Blob(mcChunks, { type: 'video/webm' });
+
+    // Prévisualisation
+    const previewWrap = document.getElementById('mc-preview-wrap');
+    const preview = document.getElementById('mc-preview');
+    preview.src = URL.createObjectURL(mcBlob);
+    previewWrap.style.display = 'block';
+
+    mcSetState('uploading', 'Envoi…', '#3b82f6');
+    mcUploadVideo();
+}
+
+// ----------------------------------------------------------
+// Upload + SSE
+// ----------------------------------------------------------
+async function mcUploadVideo() {
+    document.getElementById('mc-progress-section').style.display = 'block';
+    const model = document.getElementById('mc-model-select').value;
+
+    document.getElementById('mc-progress-title').textContent = 'Analyse en cours avec ' + document.getElementById('mc-model-select').options[document.getElementById('mc-model-select').selectedIndex].text + '…';
+    document.getElementById('mc-progress-subtitle').textContent = 'Envoi de la vidéo…';
+
+    mcUpdateStep('upload', 'active');
+    mcSetProgress(5);
+
+    const formData = new FormData();
+    formData.append('video', mcBlob, 'meeting.webm');
+    formData.append('gemini_model', model);
+
+    try {
+        const resp = await fetch('/api/meeting-capture/upload', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Erreur réseau' }));
+            mcShowError(err.detail || 'Erreur lors de l\'envoi');
+            return;
+        }
+
+        const data = await resp.json();
+        mcJobId = data.job_id;
+
+        mcUpdateStep('upload', 'done');
+        mcSetProgress(20);
+        mcUpdateStep('processing', 'active');
+        mcSetState('processing', 'Traitement Gemini…', '#8b5cf6');
+        document.getElementById('mc-progress-subtitle').textContent = 'Traitement par Gemini…';
+
+        mcConnectSSE('/api/meeting-capture/stream/' + mcJobId);
+
+    } catch (err) {
+        mcShowError('Erreur réseau : ' + err.message);
+    }
+}
+
+function mcConnectSSE(url) {
+    mcEvtSource = new EventSource(url);
+
+    mcEvtSource.addEventListener('step', (e) => {
+        const d = JSON.parse(e.data);
+        if (d.step) mcUpdateStep(d.step, d.status || 'active');
+        if (d.progress !== undefined) mcSetProgress(d.progress);
+        if (d.message) document.getElementById('mc-progress-subtitle').textContent = d.message;
+    });
+
+    mcEvtSource.addEventListener('result', (e) => {
+        mcEvtSource.close();
+        const d = JSON.parse(e.data);
+        mcResult = d;
+        mcDisplayResults(d);
+    });
+
+    mcEvtSource.addEventListener('error_msg', (e) => {
+        mcEvtSource.close();
+        const d = JSON.parse(e.data);
+        mcShowError(d.message || 'Erreur inconnue');
+    });
+
+    mcEvtSource.onerror = () => {
+        if (mcEvtSource.readyState === EventSource.CLOSED) return;
+        mcShowError('Connexion SSE perdue');
+        mcEvtSource.close();
+    };
+}
+
+// ----------------------------------------------------------
+// Affichage résultats
+// ----------------------------------------------------------
+function mcDisplayResults(data) {
+    mcUpdateStep('analyze', 'done');
+    mcUpdateStep('done', 'done');
+    mcSetProgress(100);
+    document.getElementById('mc-progress-section').style.display = 'none';
+    document.getElementById('mc-results').style.display = 'block';
+    mcSetState('done', 'Terminé', '#22c55e');
+    mcResetButtons();
+
+    const model = document.getElementById('mc-model-select').options[document.getElementById('mc-model-select').selectedIndex].text;
+    document.getElementById('mc-model-used').textContent = 'Analysé avec ' + model;
+
+    // Transcription
+    document.getElementById('mc-tab-transcript').textContent = data.transcript || '';
+
+    // Compte rendu
+    const summary = data.summary || {};
+    let summaryHtml = '';
+    if (summary.resume_executif) {
+        summaryHtml += '<h4 style="margin: 0 0 0.5rem 0;">Résumé exécutif</h4><p>' + escapeHtml(summary.resume_executif) + '</p>';
+    }
+    if (summary.points_cles && summary.points_cles.length) {
+        summaryHtml += '<h4 style="margin: 1rem 0 0.5rem 0;">Points clés</h4><ul>';
+        summary.points_cles.forEach(p => { summaryHtml += '<li>' + escapeHtml(p) + '</li>'; });
+        summaryHtml += '</ul>';
+    }
+    if (summary.plan_action && summary.plan_action.length) {
+        summaryHtml += '<h4 style="margin: 1rem 0 0.5rem 0;">Plan d\'action</h4><ul>';
+        summary.plan_action.forEach(p => { summaryHtml += '<li>' + escapeHtml(p) + '</li>'; });
+        summaryHtml += '</ul>';
+    }
+    document.getElementById('mc-tab-summary').innerHTML = summaryHtml;
+
+    // Email brouillon
+    const email = data.email_brouillon || {};
+    document.getElementById('mc-tab-email').innerHTML =
+        '<strong>Objet :</strong> ' + escapeHtml(email.objet || '') +
+        '<hr style="margin: 0.75rem 0; border: none; border-top: 1px solid #ccc;">' +
+        '<div style="white-space: pre-wrap;">' + escapeHtml(email.corps || '') + '</div>';
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ----------------------------------------------------------
+// Gmail draft
+// ----------------------------------------------------------
+async function mcCreateGmailDraft() {
+    if (!mcResult) return;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Création en cours…';
+
+    const email = mcResult.email_brouillon || {};
+    const to = document.getElementById('mc-gmail-to').value.trim();
+    const credentialsPath = document.getElementById('mc-credentials-path').value.trim();
+
+    try {
+        const resp = await fetch('/api/meeting-capture/gmail-draft', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: to,
+                subject: email.objet || 'Compte rendu de réunion',
+                body: email.corps || '',
+                credentials_path: credentialsPath,
+            }),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+            document.getElementById('mc-gmail-status').textContent = '⚠ ' + (data.detail || 'Erreur');
+            document.getElementById('mc-gmail-status').style.color = '#ef4444';
+        } else {
+            document.getElementById('mc-gmail-status').textContent = '✓ Brouillon créé avec succès (id: ' + data.id + ')';
+            document.getElementById('mc-gmail-status').style.color = '#22c55e';
+        }
+    } catch (err) {
+        document.getElementById('mc-gmail-status').textContent = '⚠ Erreur réseau : ' + err.message;
+        document.getElementById('mc-gmail-status').style.color = '#ef4444';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Créer le brouillon';
+    }
+}
+
+// ----------------------------------------------------------
+// Copie
+// ----------------------------------------------------------
+function mcCopyTranscript() {
+    if (!mcResult) return;
+    navigator.clipboard.writeText(mcResult.transcript || '');
+}
+
+function mcCopySummary() {
+    if (!mcResult) return;
+    const s = mcResult.summary || {};
+    const text = [
+        'Résumé exécutif :\n' + (s.resume_executif || ''),
+        '\nPoints clés :\n' + (s.points_cles || []).map(p => '- ' + p).join('\n'),
+        '\nPlan d\'action :\n' + (s.plan_action || []).map(p => '- ' + p).join('\n'),
+    ].join('\n');
+    navigator.clipboard.writeText(text);
+}
+
+function mcReset() {
+    mcState = 'idle';
+    mcResult = null;
+    mcJobId = null;
+    if (mcEvtSource) { mcEvtSource.close(); mcEvtSource = null; }
+    document.getElementById('mc-results').style.display = 'none';
+    document.getElementById('mc-progress-section').style.display = 'none';
+    document.getElementById('mc-error').style.display = 'none';
+    document.getElementById('mc-preview-wrap').style.display = 'none';
+    document.getElementById('mc-gmail-status').textContent = '';
+    mcSetProgress(0);
+    mcSetState('idle', 'En attente', '#6b7280');
+    mcResetButtons();
+    // Reset steps
+    document.querySelectorAll('#mc-steps .progress-step').forEach((li, i) => {
+        li.className = 'progress-step pending';
+        li.querySelector('.step-icon').textContent = String(i + 1);
+    });
+}
+</script>
+{% endblock %}
