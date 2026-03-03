@@ -94,6 +94,7 @@ class TenderScoutAgent:
 
         for keyword in keywords:
             try:
+                # La version 2.1 de l'API Opendatasoft utilise search() pour le plein texte
                 response = requests.get(
                     BOAMP_API_URL,
                     params={
@@ -118,20 +119,31 @@ class TenderScoutAgent:
                 ) from exc
 
             for record in data.get("results", []):
+                # Utilisation de id ou idweb (idweb est souvent plus stable pour les liens)
                 ref = str(record.get("idweb") or record.get("id") or "")
                 if not ref or ref in seen_refs:
                     continue
                 seen_refs.add(ref)
 
-                # Extraction robuste des champs v2.1
-                titre = record.get("objet") or record.get("titre") or "Sans titre"
-                acheteur = record.get("nomacheteur") or ""
+                # Fonction utilitaire locale pour garantir une chaine (BOAMP renvoie parfois des listes)
+                def to_str(val) -> str:
+                    if val is None:
+                        return ""
+                    if isinstance(val, list):
+                        return " ".join(str(v) for v in val if v)
+                    return str(val)
+
+                # Extraction robuste des champs
+                titre = to_str(record.get("objet") or record.get("titre") or "Sans titre")
+                acheteur = to_str(record.get("nomacheteur") or "")
                 if not acheteur and isinstance(record.get("donnees"), dict):
-                     acheteur = record.get("donnees", {}).get("PA", {}).get("denomination") or ""
+                     acheteur = to_str(record.get("donnees", {}).get("PA", {}).get("denomination"))
                 
-                date_pub = record.get("dateparution") or ""
-                date_limite = record.get("datelimitereponse") or ""
-                description = record.get("descripteur_libelle") or record.get("objet") or ""
+                date_pub = to_str(record.get("dateparution") or "")
+                date_limite = to_str(record.get("datelimitereponse") or "")
+                
+                # 'descripteur_libelle' est souvent une liste de tags/mots-clés
+                description = to_str(record.get("descripteur_libelle") or record.get("objet") or "")
                 url = f"https://www.boamp.fr/avis/detail/{ref}"
 
                 results.append(
