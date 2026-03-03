@@ -2,12 +2,14 @@
 Agent de generation de script de presentation
 Prend un PPTX et genere le discours pour chaque slide
 """
-import os
+
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from pptx import Presentation
-from utils.llm_client import LLMClient
+
 from config import get_consultant_info
+from utils.llm_client import LLMClient
 
 
 class PresentationScriptGenerator:
@@ -32,12 +34,7 @@ class PresentationScriptGenerator:
         slides_content = []
 
         for i, slide in enumerate(prs.slides, start=1):
-            slide_data = {
-                "slide_number": i,
-                "title": "",
-                "content": [],
-                "notes": ""
-            }
+            slide_data = {"slide_number": i, "title": "", "content": [], "notes": ""}
 
             # Extraire titre
             if slide.shapes.title:
@@ -71,10 +68,10 @@ class PresentationScriptGenerator:
         Returns:
             Script markdown pour cette slide
         """
-        consultant_name = self.consultant_info['name']
-        company = self.consultant_info['company']
+        self.consultant_info["name"]
+        self.consultant_info["company"]
 
-        system_prompt = f"""Tu es {consultant_name}, consultant chez {company}.
+        system_prompt = """Tu es {consultant_name}, consultant chez {company}.
 
 TON ROLE : Generer un script de presentation oral pour une slide PowerPoint.
 
@@ -132,7 +129,7 @@ IMPORTANT :
 """
 
         # Construire le contenu de la slide pour le prompt
-        slide_content = f"""SLIDE {slide_data['slide_number']}
+        slide_content = """SLIDE {slide_data['slide_number']}
 
 **Titre** : {slide_data['title']}
 
@@ -146,25 +143,21 @@ IMPORTANT :
 {context if context else "(contexte general)"}
 """
 
-        prompt = f"""{slide_content}
+        prompt = """{slide_content}
 
 Genere le script de presentation pour cette slide.
 
 Retourne UNIQUEMENT le script formate en markdown, sans preambule."""
 
-        result = self.llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.7
-        )
+        result = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
 
         # Nettoyer markdown fences
         result = result.strip()
-        if result.startswith('```markdown'):
-            result = result[len('```markdown'):].strip()
-        if result.startswith('```'):
+        if result.startswith("```markdown"):
+            result = result[len("```markdown") :].strip()
+        if result.startswith("```"):
             result = result[3:].strip()
-        if result.endswith('```'):
+        if result.endswith("```"):
             result = result[:-3].strip()
 
         return result
@@ -180,32 +173,28 @@ Retourne UNIQUEMENT le script formate en markdown, sans preambule."""
         Returns:
             Dict avec script complet, timing estime, conseils generaux
         """
-        print(f"\n🎬 Generation du script de presentation")
+        print("\n🎬 Generation du script de presentation")
         print(f"   📄 Fichier : {Path(pptx_path).name}")
 
         # 1. Extraire contenu des slides
-        print(f"\n   📊 Extraction du contenu des slides...")
+        print("\n   📊 Extraction du contenu des slides...")
         slides = self.extract_slides_content(pptx_path)
         print(f"   ✓ {len(slides)} slides extraites")
 
         # 2. Generer script pour chaque slide
-        print(f"\n   ✍️  Generation du script pour chaque slide...")
+        print("\n   ✍️  Generation du script pour chaque slide...")
         scripts = []
 
         for i, slide_data in enumerate(slides, start=1):
             print(f"      → Slide {i}/{len(slides)} : {slide_data['title'][:50]}...")
 
             script = self.generate_script_for_slide(slide_data, presentation_context)
-            scripts.append({
-                "slide_number": i,
-                "title": slide_data["title"],
-                "script": script
-            })
+            scripts.append({"slide_number": i, "title": slide_data["title"], "script": script})
 
         # 3. Assembler le document final
-        print(f"\n   📝 Assemblage du document final...")
+        print("\n   📝 Assemblage du document final...")
 
-        full_script = f"""# Script de Presentation
+        full_script = """# Script de Presentation
 
 **Presentation** : {Path(pptx_path).stem}
 **Nombre de slides** : {len(slides)}
@@ -268,10 +257,10 @@ Terminez par :
             "markdown": full_script,
             "num_slides": len(slides),
             "estimated_duration": f"{len(slides) * 2.5:.0f}-{len(slides) * 3.5:.0f} min",
-            "slides": slides
+            "slides": slides,
         }
 
-        print(f"\n✅ Script genere avec succes")
+        print("\n✅ Script genere avec succes")
         print(f"   📊 {len(slides)} slides traitees")
         print(f"   ⏱️  Duree estimee : {result['estimated_duration']}")
 
@@ -282,10 +271,10 @@ def main():
     """Test de l agent"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Genere un script de presentation')
-    parser.add_argument('pptx_path', help='Chemin vers le fichier PPTX')
-    parser.add_argument('--context', '-c', default='', help='Contexte de la presentation')
-    parser.add_argument('--output', '-o', help='Fichier de sortie (optionnel)')
+    parser = argparse.ArgumentParser(description="Genere un script de presentation")
+    parser.add_argument("pptx_path", help="Chemin vers le fichier PPTX")
+    parser.add_argument("--context", "-c", default="", help="Contexte de la presentation")
+    parser.add_argument("--output", "-o", help="Fichier de sortie (optionnel)")
 
     args = parser.parse_args()
 
@@ -296,14 +285,14 @@ def main():
     if args.output:
         output_path = Path(args.output)
     else:
-        output_path = Path(args.pptx_path).with_suffix('.script.md')
+        output_path = Path(args.pptx_path).with_suffix(".script.md")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(result['markdown'])
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(result["markdown"])
 
     print(f"\n📄 Script sauvegarde : {output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

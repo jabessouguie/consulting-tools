@@ -2,7 +2,7 @@
 Parser universel pour extraire du texte depuis différents formats de documents
 Supporte : DOCX, PDF, TXT, MD
 """
-import os
+
 from pathlib import Path
 from typing import Optional
 
@@ -29,11 +29,11 @@ class DocumentParser:
 
         suffix = file_path.suffix.lower()
 
-        if suffix in ['.txt', '.md', '.markdown']:
+        if suffix in [".txt", ".md", ".markdown"]:
             return DocumentParser._parse_text(file_path)
-        elif suffix == '.pdf':
+        elif suffix == ".pdf":
             return DocumentParser._parse_pdf(file_path)
-        elif suffix in ['.docx', '.doc']:
+        elif suffix in [".docx", ".doc"]:
             return DocumentParser._parse_docx(file_path)
         else:
             print(f"⚠️  Format non supporté : {suffix}")
@@ -43,7 +43,7 @@ class DocumentParser:
     def _parse_text(file_path: Path) -> Optional[str]:
         """Extrait le texte d'un fichier texte/markdown"""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
             print(f"✅ Texte extrait : {len(content)} caractères")
             return content
@@ -60,7 +60,7 @@ class DocumentParser:
 
             text_content = []
 
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 pdf_reader = PyPDF2.PdfReader(f)
                 num_pages = len(pdf_reader.pages)
 
@@ -70,7 +70,7 @@ class DocumentParser:
                     if text:
                         text_content.append(text)
 
-            content = '\n\n'.join(text_content)
+            content = "\n\n".join(text_content)
 
             if content.strip():
                 print(f"✅ PDF extrait : {len(content)} caractères ({num_pages} pages)")
@@ -102,17 +102,17 @@ class DocumentParser:
             tables_text = []
             for table in doc.tables:
                 for row in table.rows:
-                    row_text = ' | '.join([cell.text.strip() for cell in row.cells])
+                    row_text = " | ".join([cell.text.strip() for cell in row.cells])
                     if row_text.strip():
                         tables_text.append(row_text)
 
             # Combiner tout
             content_parts = paragraphs
             if tables_text:
-                content_parts.append('\n--- TABLEAUX ---\n')
+                content_parts.append("\n--- TABLEAUX ---\n")
                 content_parts.extend(tables_text)
 
-            content = '\n\n'.join(content_parts)
+            content = "\n\n".join(content_parts)
 
             if content.strip():
                 print(f"✅ DOCX extrait : {len(content)} caractères")
@@ -140,10 +140,10 @@ class DocumentParser:
             True si supporté, False sinon
         """
         ext = file_extension.lower()
-        if not ext.startswith('.'):
-            ext = f'.{ext}'
+        if not ext.startswith("."):
+            ext = f".{ext}"
 
-        supported = ['.txt', '.md', '.markdown', '.pdf', '.docx', '.doc']
+        supported = [".txt", ".md", ".markdown", ".pdf", ".docx", ".doc"]
         return ext in supported
 
     @staticmethod
@@ -155,24 +155,22 @@ class DocumentParser:
             Dict avec format → bibliothèque nécessaire
         """
         libraries = {
-            'pdf': 'PyPDF2',
-            'docx': 'python-docx',
-            'txt': 'built-in',
-            'md': 'built-in',
+            "pdf": "PyPDF2",
+            "docx": "python-docx",
+            "txt": "built-in",
+            "md": "built-in",
         }
 
         # Vérifier quelles bibliothèques sont installées
         status = {}
         for fmt, lib in libraries.items():
-            if lib == 'built-in':
+            if lib == "built-in":
                 status[fmt] = True
             else:
                 try:
-                    if fmt == 'pdf':
-                        import PyPDF2
+                    if fmt == "pdf":
                         status[fmt] = True
-                    elif fmt == 'docx':
-                        import docx
+                    elif fmt == "docx":
                         status[fmt] = True
                 except ImportError:
                     status[fmt] = False

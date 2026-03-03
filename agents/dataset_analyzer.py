@@ -2,22 +2,23 @@
 Agent d'analyse de datasets
 Génère un rapport d'analyse exploratoire automatique (EDA) à partir de CSV/Excel
 """
+
 import os
 import sys
-from typing import Dict, Any, List
 from datetime import datetime
-import io
+from typing import Any, Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
-import pandas as pd
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+
 import numpy as np
+import pandas as pd
 
-from utils.llm_client import LLMClient
 from config import get_consultant_info
+from utils.llm_client import LLMClient
 
 
 class DatasetAnalyzerAgent:
@@ -43,18 +44,18 @@ class DatasetAnalyzerAgent:
 
         ext = os.path.splitext(file_path)[1].lower()
 
-        if ext == '.csv':
+        if ext == ".csv":
             # Essayer différents encodages
-            for encoding in ['utf-8', 'latin1', 'iso-8859-1']:
+            for encoding in ["utf-8", "latin1", "iso-8859-1"]:
                 try:
                     df = pd.read_csv(file_path, encoding=encoding)
                     print(f"   ✅ Chargé avec encoding {encoding}")
                     break
                 except UnicodeDecodeError:
                     continue
-        elif ext in ['.xlsx', '.xls']:
+        elif ext in [".xlsx", ".xls"]:
             df = pd.read_excel(file_path)
-            print(f"   ✅ Chargé depuis Excel")
+            print("   ✅ Chargé depuis Excel")
         else:
             raise ValueError(f"Format non supporté: {ext}")
 
@@ -75,23 +76,25 @@ class DatasetAnalyzerAgent:
         print("🔍 Analyse de la structure...")
 
         structure = {
-            'num_rows': len(df),
-            'num_columns': len(df.columns),
-            'columns': list(df.columns),
-            'dtypes': df.dtypes.astype(str).to_dict(),
-            'memory_usage': df.memory_usage(deep=True).sum() / 1024**2,  # MB
+            "num_rows": len(df),
+            "num_columns": len(df.columns),
+            "columns": list(df.columns),
+            "dtypes": df.dtypes.astype(str).to_dict(),
+            "memory_usage": df.memory_usage(deep=True).sum() / 1024**2,  # MB
         }
 
         # Types de colonnes
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        datetime_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
+        categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+        datetime_cols = df.select_dtypes(include=["datetime64"]).columns.tolist()
 
-        structure['numeric_columns'] = numeric_cols
-        structure['categorical_columns'] = categorical_cols
-        structure['datetime_columns'] = datetime_cols
+        structure["numeric_columns"] = numeric_cols
+        structure["categorical_columns"] = categorical_cols
+        structure["datetime_columns"] = datetime_cols
 
-        print(f"   ✅ {len(numeric_cols)} colonnes numériques, {len(categorical_cols)} catégorielles")
+        print(
+            f"   ✅ {len(numeric_cols)} colonnes numériques, {len(categorical_cols)} catégorielles"
+        )
 
         return structure
 
@@ -112,19 +115,22 @@ class DatasetAnalyzerAgent:
         # Valeurs manquantes
         missing = df.isnull().sum()
         missing_pct = (missing / len(df) * 100).round(2)
-        quality['missing_values'] = {
-            col: {'count': int(missing[col]), 'percentage': float(missing_pct[col])}
-            for col in df.columns if missing[col] > 0
+        quality["missing_values"] = {
+            col: {"count": int(missing[col]), "percentage": float(missing_pct[col])}
+            for col in df.columns
+            if missing[col] > 0
         }
 
         # Duplicats
         duplicates = df.duplicated().sum()
-        quality['duplicates'] = {
-            'count': int(duplicates),
-            'percentage': float(round(duplicates / len(df) * 100, 2))
+        quality["duplicates"] = {
+            "count": int(duplicates),
+            "percentage": float(round(duplicates / len(df) * 100, 2)),
         }
 
-        print(f"   ✅ {len(quality['missing_values'])} colonnes avec valeurs manquantes, {duplicates} duplicats")
+        print(
+            f"   ✅ {len(quality['missing_values'])} colonnes avec valeurs manquantes, {duplicates} duplicats"
+        )
 
         return quality
 
@@ -144,39 +150,43 @@ class DatasetAnalyzerAgent:
         stats = {}
 
         # Stats numériques
-        if structure['numeric_columns']:
-            numeric_stats = df[structure['numeric_columns']].describe().round(2).to_dict()
-            stats['numeric'] = numeric_stats
+        if structure["numeric_columns"]:
+            numeric_stats = df[structure["numeric_columns"]].describe().round(2).to_dict()
+            stats["numeric"] = numeric_stats
 
         # Stats catégorielles (top values)
         categorical_stats = {}
-        for col in structure['categorical_columns'][:10]:  # Limiter à 10 cols
+        for col in structure["categorical_columns"][:10]:  # Limiter à 10 cols
             value_counts = df[col].value_counts().head(5)
             categorical_stats[col] = {
-                'unique_values': int(df[col].nunique()),
-                'top_5': value_counts.to_dict()
+                "unique_values": int(df[col].nunique()),
+                "top_5": value_counts.to_dict(),
             }
-        stats['categorical'] = categorical_stats
+        stats["categorical"] = categorical_stats
 
         # Corrélations (top 10)
-        if len(structure['numeric_columns']) > 1:
-            corr_matrix = df[structure['numeric_columns']].corr()
+        if len(structure["numeric_columns"]) > 1:
+            corr_matrix = df[structure["numeric_columns"]].corr()
             # Extraire les corrélations fortes (> 0.5 ou < -0.5)
             strong_corr = []
             for i in range(len(corr_matrix.columns)):
-                for j in range(i+1, len(corr_matrix.columns)):
+                for j in range(i + 1, len(corr_matrix.columns)):
                     val = corr_matrix.iloc[i, j]
                     if abs(val) > 0.5:
-                        strong_corr.append({
-                            'var1': corr_matrix.columns[i],
-                            'var2': corr_matrix.columns[j],
-                            'correlation': round(float(val), 3)
-                        })
+                        strong_corr.append(
+                            {
+                                "var1": corr_matrix.columns[i],
+                                "var2": corr_matrix.columns[j],
+                                "correlation": round(float(val), 3),
+                            }
+                        )
             # Trier par corrélation absolue
-            strong_corr = sorted(strong_corr, key=lambda x: abs(x['correlation']), reverse=True)[:10]
-            stats['correlations'] = strong_corr
+            strong_corr = sorted(strong_corr, key=lambda x: abs(x["correlation"]), reverse=True)[
+                :10
+            ]
+            stats["correlations"] = strong_corr
 
-        print(f"   ✅ Statistiques calculées")
+        print("   ✅ Statistiques calculées")
 
         return stats
 
@@ -186,7 +196,7 @@ class DatasetAnalyzerAgent:
         structure: Dict[str, Any],
         quality: Dict[str, Any],
         stats: Dict[str, Any],
-        filename: str
+        filename: str,
     ) -> Dict[str, Any]:
         """
         Génère un rapport d'analyse avec insights LLM
@@ -203,11 +213,11 @@ class DatasetAnalyzerAgent:
         """
         print("✍️  Génération du rapport avec insights IA...")
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = """Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
 Tu analyses des datasets pour des clients et génères des rapports d'analyse exploratoire."""
 
         # Préparer le contexte
-        context = f"""DATASET: {filename}
+        context = """DATASET: {filename}
 
 STRUCTURE:
 - {structure['num_rows']} lignes, {structure['num_columns']} colonnes
@@ -228,7 +238,7 @@ COLONNES CATÉGORIELLES:
 STATISTIQUES CLÉS (extrait):
 {str(stats)[:1500]}"""
 
-        prompt = f"""À partir de cette analyse de dataset, génère un rapport structuré en Markdown.
+        prompt = """À partir de cette analyse de dataset, génère un rapport structuré en Markdown.
 
 {context}
 
@@ -279,11 +289,11 @@ Ton : professionnel et précis. Concentre-toi sur l'actionnable."""
         print("   ✅ Rapport généré")
 
         return {
-            'report': report,
-            'structure': structure,
-            'quality': quality,
-            'stats': stats,
-            'generated_at': datetime.now().isoformat(),
+            "report": report,
+            "structure": structure,
+            "quality": quality,
+            "stats": stats,
+            "generated_at": datetime.now().isoformat(),
         }
 
     def run(self, file_path: str) -> Dict[str, Any]:
@@ -320,11 +330,11 @@ Ton : professionnel et précis. Concentre-toi sur l'actionnable."""
         os.makedirs(output_dir, exist_ok=True)
 
         md_path = os.path.join(output_dir, f"dataset_analysis_{timestamp}.md")
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(result['report'])
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(result["report"])
 
-        result['md_path'] = md_path
-        result['filename'] = filename
+        result["md_path"] = md_path
+        result["filename"] = filename
 
         print(f"\n✅ Rapport sauvegardé: {md_path}")
 
@@ -334,8 +344,8 @@ Ton : professionnel et précis. Concentre-toi sur l'actionnable."""
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Analyse automatique de dataset')
-    parser.add_argument('file', help='Fichier CSV ou Excel à analyser')
+    parser = argparse.ArgumentParser(description="Analyse automatique de dataset")
+    parser.add_argument("file", help="Fichier CSV ou Excel à analyser")
 
     args = parser.parse_args()
 
@@ -349,8 +359,8 @@ def main():
     print(f"\n{'='*50}")
     print("RAPPORT GÉNÉRÉ")
     print(f"{'='*50}\n")
-    print(result['report'][:1000] + "...")
+    print(result["report"][:1000] + "...")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

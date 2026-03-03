@@ -1,39 +1,40 @@
-"""
-Agent d adaptation de CV et references projets
-Adapte un CV ou une reference a un appel d offre specifique
-Genere des slides de presentation au format JSON
-"""
+import json
 import os
 import sys
-import json
-from typing import Dict, Any, List
-from pathlib import Path
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
-from utils.llm_client import LLMClient
+# Path setup and environment loading
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_PATH not in sys.path:
+    sys.path.append(BASE_PATH)
+
+load_dotenv(os.path.join(BASE_PATH, ".env"))
+
+from utils.llm_client import LLMClient  # noqa: E402
 
 
 class CVReferenceAdapterAgent:
-    """Agent pour adapter des CV et references aux appels d offre - genere des slides"""
+    """Agent pour adapter des CV et references aux AO - genere des slides"""
 
     def __init__(self):
         self.llm = LLMClient(max_tokens=8192)
         self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
-            'company': os.getenv('COMPANY_NAME', 'Consulting Tools')
+            "name": os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha"),
+            "company": os.getenv("COMPANY_NAME", "Consulting Tools"),
         }
 
     def adapt_cv(self, cv_text: str, mission_brief: str) -> List[Dict]:
-        """Adapte un CV au besoin d une mission - retourne des slides JSON"""
+        """Adapte un CV - retourne des slides JSON"""
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, consultant chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es \
+{self.consultant_info['name']}, consultant chez \
+{self.consultant_info['company']}.
 
-TON ROLE : Adapter un CV existant pour repondre precisement aux besoins d un appel d offre.
-Tu dois generer UNE SEULE SLIDE CV qui contient TOUTES les informations condensees.
+TON ROLE : Adapter un CV existant pour repondre precisement aux AO.
+Tu dois generer UNE SEULE SLIDE CV qui contient TOUT.
+ES les informations condensees.
 
 CHARTE GRAPHIQUE Consulting Tools :
 - Palette : Rose Poudre (60%), Noir/Gris (30%), Corail/Terracotta (10%)
@@ -48,11 +49,14 @@ FORMAT SLIDE CV (UNE SEULE SLIDE) :
  "photo": "placeholder",
  "profile": "[Synthese 2-3 lignes ultra pertinente pour la mission]",
  "skills": ["Competence 1", "Competence 2", "Competence 3", "Competence 4"],
- "experiences": [
-   {{"role": "[Poste/Projet court]", "company": "[Client]", "period": "[Annee]", "description": "[1 ligne percutante alignee avec mission]"}},
-   {{"role": "[Poste/Projet court]", "company": "[Client]", "period": "[Annee]", "description": "[1 ligne percutante alignee avec mission]"}},
-   {{"role": "[Poste/Projet court]", "company": "[Client]", "period": "[Annee]", "description": "[1 ligne percutante alignee avec mission]"}}
- ]
+  "experiences": [
+    {{"role": "[Poste]", "company": "[Client]", "period": "[Annee]",
+     "description": "[1 ligne percutante]" }},
+    {{"role": "[Poste]", "company": "[Client]", "period": "[Annee]",
+     "description": "[1 ligne percutante]" }},
+    {{"role": "[Poste]", "company": "[Client]", "period": "[Annee]",
+     "description": "[1 ligne percutante]" }}
+  ]
 }}
 
 REGLES STRICTES :
@@ -60,7 +64,7 @@ REGLES STRICTES :
 - UNE SEULE SLIDE (pas de cover, pas de closing, juste le CV)
 - Le champ "photo": "placeholder" pour inserer la photo du consultant
 - Skills : 4-5 competences MAX, ultra pertinentes pour la mission
-- Experiences : 3-4 experiences MAX, format ULTRA CONDENSE (1 ligne par experience)
+- Experiences : 3-4 experiences MAX, format ULTRA CONDENSE
 - Profile : 2-3 lignes MAX, focus sur adequation avec la mission
 - Chiffres concrets quand possible dans descriptions
 - Ton : professionnel, pragmatique, oriente resultats"""
@@ -81,29 +85,31 @@ OBJECTIF : Maximiser la pertinence percue en reformulant et selectionnant
 les informations qui creent des resonances directes avec le besoin client.
 Format ultra condense pour tenir dans UNE slide.
 
-Retourne UNIQUEMENT un tableau JSON avec UNE seule slide, sans preambule ni explication.
+Retourne UNIQUEMENT un tableau JSON avec UNE seule slide.
 Format : [slide_cv_unique]"""
 
         result = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
 
         # Parser JSON
         result = result.strip()
-        if result.startswith('```json'):
-            result = result[len('```json'):]
-        if result.startswith('```'):
+        if result.startswith("```json"):
+            result = result[len("```json") :]
+        if result.startswith("```"):
             result = result[3:]
-        if result.endswith('```'):
+        if result.endswith("```"):
             result = result[:-3]
 
         return json.loads(result.strip())
 
-    def adapt_reference(self, reference_text: str, mission_brief: str) -> List[Dict]:
-        """Adapte une reference projet au besoin client - retourne des slides JSON"""
+    def adapt_reference(self, reference_text: str, mission_brief: str) -> List:
+        """Adapte une reference projet."""
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, consultant chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es \
+{self.consultant_info['name']}, consultant chez \
+{self.consultant_info['company']}.
 
-TON ROLE : Adapter une reference projet existante pour repondre precisement aux besoins d un appel d offre.
-Tu dois generer une PRESENTATION (slides JSON) qui met en valeur la reference adaptee.
+TON ROLE : Adapter une reference projet existante pour les AO.
+Tu dois generer une PRESENTATION (slides JSON).
 
 CHARTE GRAPHIQUE Consulting Tools :
 - Palette : Rose Poudre (60%), Noir/Gris (30%), Corail/Terracotta (10%)
@@ -113,31 +119,42 @@ CHARTE GRAPHIQUE Consulting Tools :
 STRUCTURE DES SLIDES :
 
 1. Slide COVER
-{{"type": "cover", "title": "Reference Mission : [Titre adapte]", "subtitle": "[Client] - [Annee]"}}
+{{"type": "cover", "title": "Reference : [Titre]",
+ "subtitle": "[Client] - [Annee]"}}
 
 2. Slide CONTEXTE
-{{"type": "content", "title": "Contexte Client", "bullets": ["Secteur : [...]", "Enjeux : [reformules pour creer paralleles avec mission cible]", "Contexte : [...]"]}}
+{{"type": "content", "title": "Contexte Client",
+ "bullets": ["Secteur : [...]", "Enjeux : [...]", "Contexte : [...]"]}}
 
 3. Slide OBJECTIFS
-{{"type": "highlight", "title": "Objectifs de la Mission", "bullets": ["Objectif 1 [align avec nouveau besoin]", "Objectif 2 [...]", "Objectif 3 [...]"]}}
+{{"type": "highlight", "title": "Objectifs Mission",
+ "bullets": ["Objectif 1", "Objectif 2", "Objectif 3"]}}
 
 4. Slide DEMARCHE
-{{"type": "diagram", "title": "Demarche & Methodologie", "diagram_type": "timeline", "elements": ["Phase 1 : [...]", "Phase 2 : [...]", "Phase 3 : [...]"], "description": "Approche methodologique"}}
+{{"type": "diagram", "title": "Demarche", "diagram_type": "timeline",
+ "elements": ["Phase 1", "Phase 2", "Phase 3"],
+ "description": "Approche methodologique"}}
 
 5. Slide RESULTATS
-{{"type": "stat", "title": "Resultats & Impact", "stats": [{{"label": "ROI", "value": "[chiffre]"}}, {{"label": "Performance", "value": "[chiffre]"}}, {{"label": "Delais", "value": "[chiffre]"}}]}}
+{{"type": "stat", "title": "Impact",
+  "stats": [{{"label": "ROI", "value": "..."}}, \
+{{"label": "Delai", "value": "..."}}]}}
 
 6. Slide SIMILITUDES
-{{"type": "two_column", "title": "Similitudes avec votre besoin", "left": {{"title": "Mission realisee", "bullets": ["Point 1", "Point 2"]}}, "right": {{"title": "Votre besoin", "bullets": ["Parallele 1", "Parallele 2"]}}}}
+{{"type": "two_column", "title": "Similitudes",
+ "left": {{"title": "Mission", "bullets": ["Point 1", "Point 2"]}},
+  "right": {{"title": "Votre besoin", "bullets": \
+["Parallele 1", "Parallele 2"]}}}}
 
 7. Slide CLOSING
-{{"type": "closing", "title": "Contact", "content": "Reference disponible sur demande"}}
+{{"type": "closing", "title": "Contact",
+ "content": "Reference disponible sur demande"}}
 
 REGLES :
 - JSON valide OBLIGATOIRE
 - Reformule pour creer resonances avec mission cible
 - Chiffres concrets obligatoires (ROI, KPIs, delais)
-- Ton : professionnel, pragmatique, oriente resultats"""
+- Ton : professionnel, pragmatisme, oriente resultats"""
 
         prompt = f"""DOCUMENT SOURCE (REFERENCE) :
 ---
@@ -149,7 +166,7 @@ MISSION / APPEL D OFFRE CIBLE :
 {mission_brief}
 ---
 
-Genere une presentation professionnelle (slides JSON) qui adapte cette reference a la mission.
+Genere des slides JSON qui adaptent cette reference.
 
 OBJECTIF : Maximiser la pertinence percue en reformulant et selectionnant
 les informations qui creent des resonances directes avec le besoin client.
@@ -161,11 +178,11 @@ Format : [slide1, slide2, ...]"""
 
         # Parser JSON
         result = result.strip()
-        if result.startswith('```json'):
-            result = result[len('```json'):]
-        if result.startswith('```'):
+        if result.startswith("```json"):
+            result = result[len("```json") :]
+        if result.startswith("```"):
             result = result[3:]
-        if result.endswith('```'):
+        if result.endswith("```"):
             result = result[:-3]
 
         return json.loads(result.strip())
@@ -175,10 +192,19 @@ Format : [slide1, slide2, ...]"""
 
         # Auto-detection si doc_type = "auto"
         if doc_type == "auto":
-            is_cv = any(kw in document_text.lower() for kw in [
-                'experience', 'competences', 'formation', 'cv', 'consultant',
-                'diplome', 'certification', 'parcours professionnel'
-            ])
+            is_cv = any(
+                kw in document_text.lower()
+                for kw in [
+                    "experience",
+                    "competences",
+                    "formation",
+                    "cv",
+                    "consultant",
+                    "diplome",
+                    "certification",
+                    "parcours professionnel",
+                ]
+            )
             doc_type = "CV" if is_cv else "Reference"
 
         print(f"\n  ADAPTATION DE {doc_type.upper()}")
@@ -192,11 +218,7 @@ Format : [slide1, slide2, ...]"""
 
         print(f"  {len(slides)} slides generees")
 
-        return {
-            "slides": slides,
-            "doc_type": doc_type,
-            "mission_brief": mission_brief
-        }
+        return {"slides": slides, "doc_type": doc_type, "mission_brief": mission_brief}
 
 
 if __name__ == "__main__":
@@ -222,5 +244,7 @@ Competences : Data Governance, RGPD, Azure"""
     print("\n=== SLIDES GENEREES ===")
     print(f"Type : {result['doc_type']}")
     print(f"Nombre de slides : {len(result['slides'])}")
-    for i, slide in enumerate(result['slides'], 1):
-        print(f"  Slide {i}: {slide.get('type', 'unknown')} - {slide.get('title', 'N/A')}")
+    for i, slide in enumerate(result["slides"], 1):
+        type_s = slide.get("type", "unknown")
+        title_s = slide.get("title", "N/A")
+        print(f"  Slide {i}: {type_s} - {title_s}")

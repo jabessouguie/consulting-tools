@@ -2,13 +2,14 @@
 Profil consultant enrichi pour generation d articles contextualises
 Agrege : articles precedents, veille tech, personnalite, LinkedIn
 """
-import os
-import json
+
 import ast
-from pathlib import Path
-from typing import Dict, Any, List
-from collections import Counter
+import json
 import re
+from collections import Counter
+from pathlib import Path
+from typing import Any, Dict, List
+
 from config import get_consultant_info
 
 
@@ -37,14 +38,12 @@ class ConsultantProfile:
         """
         articles = []
         article_files = sorted(
-            self.output_dir.glob("article_*.md"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True
+            self.output_dir.glob("article_*.md"), key=lambda p: p.stat().st_mtime, reverse=True
         )[:limit]
 
         for article_path in article_files:
             try:
-                with open(article_path, 'r', encoding='utf-8') as f:
+                with open(article_path, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Extraire metadonnees YAML
@@ -53,12 +52,14 @@ class ConsultantProfile:
                 # Extraire un extrait (premiers paragraphes)
                 excerpt = self._extract_excerpt(content, max_chars=800)
 
-                articles.append({
-                    "path": str(article_path.name),
-                    "metadata": metadata,
-                    "excerpt": excerpt,
-                    "full_content": content[:3000]  # Limiter pour contexte LLM
-                })
+                articles.append(
+                    {
+                        "path": str(article_path.name),
+                        "metadata": metadata,
+                        "excerpt": excerpt,
+                        "full_content": content[:3000],  # Limiter pour contexte LLM
+                    }
+                )
             except Exception as e:
                 print(f"Erreur lecture article {article_path}: {e}")
                 continue
@@ -75,7 +76,7 @@ class ConsultantProfile:
         personality_path = self.data_dir / "personality.md"
 
         if personality_path.exists():
-            with open(personality_path, 'r', encoding='utf-8') as f:
+            with open(personality_path, "r", encoding="utf-8") as f:
                 return f.read()
         else:
             # Creer un template si absent
@@ -104,7 +105,7 @@ class ConsultantProfile:
 - GenAI : usages pragmatiques vs hype
 """
             personality_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(personality_path, 'w', encoding='utf-8') as f:
+            with open(personality_path, "w", encoding="utf-8") as f:
                 f.write(default_personality)
 
             return default_personality
@@ -125,14 +126,14 @@ class ConsultantProfile:
         consultant_config = get_consultant_info()
 
         profile = {
-            "name": consultant_config['name'],
-            "title": consultant_config['title'],
-            "company": consultant_config['company'],
+            "name": consultant_config["name"],
+            "title": consultant_config["title"],
+            "company": consultant_config["company"],
             "bio": "",
             "experiences": [],
             "recent_posts": [],
             "persona": "",
-            "additional_docs": []  # Documents additionnels du dossier
+            "additional_docs": [],  # Documents additionnels du dossier
         }
 
         # OPTION 1: Charger depuis le dossier linkedin_profile/ (PRIORITAIRE)
@@ -140,42 +141,45 @@ class ConsultantProfile:
             print(f"     → Chargement depuis dossier: {linkedin_dir}")
 
             # Parcourir tous les fichiers du dossier
-            for file_path in sorted(linkedin_dir.rglob('*')):
+            for file_path in sorted(linkedin_dir.rglob("*")):
                 if not file_path.is_file():
                     continue
 
                 try:
                     # Charger fichiers JSON
-                    if file_path.suffix.lower() == '.json':
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                    if file_path.suffix.lower() == ".json":
+                        with open(file_path, "r", encoding="utf-8") as f:
                             data = json.load(f)
 
                             # Si c est le profil principal, merger
-                            if 'name' in data or 'title' in data or 'bio' in data:
+                            if "name" in data or "title" in data or "bio" in data:
                                 profile.update({k: v for k, v in data.items() if v})
                             else:
                                 # Sinon stocker comme doc additionnel
-                                profile["additional_docs"].append({
-                                    "filename": file_path.name,
-                                    "type": "json",
-                                    "content": data
-                                })
+                                profile["additional_docs"].append(
+                                    {"filename": file_path.name, "type": "json", "content": data}
+                                )
 
                     # Charger fichiers Markdown
-                    elif file_path.suffix.lower() in ('.md', '.txt'):
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                    elif file_path.suffix.lower() in (".md", ".txt"):
+                        with open(file_path, "r", encoding="utf-8") as f:
                             content = f.read()
 
                             # Si c est le persona, stocker separement
-                            if 'persona' in file_path.name.lower() or 'style' in file_path.name.lower():
+                            if (
+                                "persona" in file_path.name.lower()
+                                or "style" in file_path.name.lower()
+                            ):
                                 profile["persona"] += f"\n\n## {file_path.stem}\n\n{content}"
                             else:
                                 # Sinon stocker comme doc additionnel
-                                profile["additional_docs"].append({
-                                    "filename": file_path.name,
-                                    "type": "markdown",
-                                    "content": content[:2000]  # Limiter pour ne pas surcharger
-                                })
+                                profile["additional_docs"].append(
+                                    {
+                                        "filename": file_path.name,
+                                        "type": "markdown",
+                                        "content": content[:2000],  # Limiter pour ne pas surcharger
+                                    }
+                                )
 
                 except Exception as e:
                     print(f"     ⚠️  Erreur lecture {file_path.name}: {e}")
@@ -185,13 +189,13 @@ class ConsultantProfile:
         else:
             # Charger linkedin_profile.json
             if linkedin_json_root.exists():
-                with open(linkedin_json_root, 'r', encoding='utf-8') as f:
+                with open(linkedin_json_root, "r", encoding="utf-8") as f:
                     root_data = json.load(f)
                     profile.update({k: v for k, v in root_data.items() if v})
 
             # Charger linkedin_persona.md
             if linkedin_persona_root.exists():
-                with open(linkedin_persona_root, 'r', encoding='utf-8') as f:
+                with open(linkedin_persona_root, "r", encoding="utf-8") as f:
                     profile["persona"] = f.read()
 
         # Nettoyer persona (enlever espaces multiples)
@@ -212,16 +216,20 @@ class ConsultantProfile:
         """
         try:
             from utils.article_db import ArticleDatabase
+
             db = ArticleDatabase()
 
             articles = db.get_articles(limit=limit, days=days)
 
-            return [{
-                "title": a["title"],
-                "summary": a.get("summary", "")[:200],
-                "source": a.get("source", ""),
-                "date": a.get("date")
-            } for a in articles]
+            return [
+                {
+                    "title": a["title"],
+                    "summary": a.get("summary", "")[:200],
+                    "source": a.get("source", ""),
+                    "date": a.get("date"),
+                }
+                for a in articles
+            ]
         except Exception as e:
             print(f"Erreur chargement tendances veille: {e}")
             return []
@@ -237,17 +245,35 @@ class ConsultantProfile:
             Analyse du style (mots cles, structures, tone)
         """
         if not articles:
-            return {
-                "keywords": [],
-                "avg_length": 0,
-                "common_phrases": []
-            }
+            return {"keywords": [], "avg_length": 0, "common_phrases": []}
 
         all_text = " ".join([a.get("full_content", "") for a in articles])
 
         # Extraire mots cles frequents (hors stop words)
-        stop_words = {'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'et', 'ou', 'mais', 'pour', 'dans', 'sur', 'avec', 'par', 'est', 'sont', 'ont', 'a', 'au'}
-        words = re.findall(r'\b\w{5,}\b', all_text.lower())
+        stop_words = {
+            "le",
+            "la",
+            "les",
+            "un",
+            "une",
+            "des",
+            "de",
+            "du",
+            "et",
+            "ou",
+            "mais",
+            "pour",
+            "dans",
+            "sur",
+            "avec",
+            "par",
+            "est",
+            "sont",
+            "ont",
+            "a",
+            "au",
+        }
+        words = re.findall(r"\b\w{5,}\b", all_text.lower())
         words_filtered = [w for w in words if w not in stop_words]
         word_counts = Counter(words_filtered)
         top_keywords = word_counts.most_common(15)
@@ -258,7 +284,7 @@ class ConsultantProfile:
         return {
             "keywords": [kw for kw, count in top_keywords],
             "avg_length": avg_length,
-            "num_articles_analyzed": len(articles)
+            "num_articles_analyzed": len(articles),
         }
 
     def build_context(self) -> Dict[str, Any]:
@@ -280,7 +306,7 @@ class ConsultantProfile:
 
         # 3. LinkedIn
         linkedin_profile = self.load_linkedin_profile()
-        print(f"     ✓ Profil LinkedIn charge")
+        print("     ✓ Profil LinkedIn charge")
 
         # 4. Tendances veille
         tech_trends = self.load_tech_trends(days=30, limit=10)
@@ -288,14 +314,14 @@ class ConsultantProfile:
 
         # 5. Analyse style
         writing_style = self.analyze_writing_style(previous_articles)
-        print(f"     ✓ Style d ecriture analyse")
+        print("     ✓ Style d ecriture analyse")
 
         return {
             "previous_articles": previous_articles,
             "personality": personality,
             "linkedin_profile": linkedin_profile,
             "tech_trends": tech_trends,
-            "writing_style": writing_style
+            "writing_style": writing_style,
         }
 
     def format_context_for_prompt(self, context: Dict[str, Any]) -> str:
@@ -329,7 +355,10 @@ class ConsultantProfile:
                 excerpt = article["excerpt"][:300]
                 articles_excerpts.append(f"**Article {i} : {title}**\n{excerpt}...")
 
-            sections.append(f"## TES ARTICLES PRECEDENTS (pour reference de style)\n\n" + "\n\n".join(articles_excerpts))
+            sections.append(
+                "## TES ARTICLES PRECEDENTS (pour reference de style)\n\n"
+                + "\n\n".join(articles_excerpts)
+            )
 
         # 4. Tendances tech actuelles
         trends = context.get("tech_trends", [])
@@ -338,7 +367,9 @@ class ConsultantProfile:
             for trend in trends[:8]:
                 trends_list.append(f"- **{trend['title']}** ({trend['source']})")
 
-            sections.append(f"## TENDANCES TECH ACTUELLES (issues de ta veille)\n\n" + "\n".join(trends_list))
+            sections.append(
+                "## TENDANCES TECH ACTUELLES (issues de ta veille)\n\n" + "\n".join(trends_list)
+            )
 
         # 5. Profil LinkedIn
         linkedin = context.get("linkedin_profile", {})
@@ -353,7 +384,7 @@ class ConsultantProfile:
             # Ajouter documents additionnels (posts, experiences detaillees, etc.)
             additional_docs = linkedin.get("additional_docs", [])
             if additional_docs:
-                linkedin_section += f"\n\n### Documents complementaires LinkedIn"
+                linkedin_section += "\n\n### Documents complementaires LinkedIn"
 
                 for doc in additional_docs[:5]:  # Limiter a 5 docs max
                     filename = doc.get("filename", "")
@@ -373,20 +404,20 @@ class ConsultantProfile:
 
     def _extract_yaml_metadata(self, content: str) -> Dict[str, Any]:
         """Extrait les metadonnees YAML du front matter"""
-        match = re.search(r'^---\n(.*?)\n---', content, re.DOTALL)
+        match = re.search(r"^---\n(.*?)\n---", content, re.DOTALL)
         if not match:
             return {}
 
         yaml_content = match.group(1)
         metadata = {}
 
-        for line in yaml_content.split('\n'):
-            if ':' in line:
-                key, value = line.split(':', 1)
+        for line in yaml_content.split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
                 key = key.strip()
                 value = value.strip().strip('"')
 
-                if key == 'tags':
+                if key == "tags":
                     try:
                         metadata[key] = ast.literal_eval(value)
                     except (ValueError, SyntaxError):
@@ -399,14 +430,16 @@ class ConsultantProfile:
     def _extract_excerpt(self, content: str, max_chars: int = 800) -> str:
         """Extrait un extrait de l article (apres metadonnees et image)"""
         # Supprimer front matter YAML
-        content = re.sub(r'^---\n.*?\n---\n', '', content, flags=re.DOTALL)
+        content = re.sub(r"^---\n.*?\n---\n", "", content, flags=re.DOTALL)
 
         # Supprimer image placeholder
-        content = re.sub(r'>\s*\*\*\[IMAGE PLACEHOLDER\].*?\n\n', '', content, flags=re.DOTALL)
+        content = re.sub(r">\s*\*\*\[IMAGE PLACEHOLDER\].*?\n\n", "", content, flags=re.DOTALL)
 
         # Prendre premiers paragraphes
-        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip() and not p.strip().startswith('#')]
-        excerpt = ' '.join(paragraphs[:3])
+        paragraphs = [
+            p.strip() for p in content.split("\n\n") if p.strip() and not p.strip().startswith("#")
+        ]
+        excerpt = " ".join(paragraphs[:3])
 
         return excerpt[:max_chars]
 

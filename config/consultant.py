@@ -2,9 +2,10 @@
 Configuration centralisee du consultant
 Evite les fallbacks hardcodes et force la configuration via .env
 """
+
 import os
-from typing import Dict, Any
 from pathlib import Path
+from typing import Any, Dict
 
 
 class ConsultantConfig:
@@ -36,17 +37,18 @@ class ConsultantConfig:
 
         # Charger depuis .env
         from dotenv import load_dotenv
+
         env_path = Path(__file__).parent.parent / ".env"
         load_dotenv(env_path)
 
         # CONSULTANT_NAME est OBLIGATOIRE (pas de fallback)
-        name = os.getenv('CONSULTANT_NAME')
+        name = os.getenv("CONSULTANT_NAME")
         if not name:
             raise ValueError(
                 "\n"
-                "="*60 + "\n"
+                "=" * 60 + "\n"
                 "❌ ERREUR DE CONFIGURATION\n"
-                "="*60 + "\n"
+                "=" * 60 + "\n"
                 "CONSULTANT_NAME non configure dans votre fichier .env\n\n"
                 "SOLUTION :\n"
                 "1. Copiez .env.example vers .env si ce n est pas deja fait\n"
@@ -54,16 +56,17 @@ class ConsultantConfig:
                 "   CONSULTANT_NAME=Votre Nom Complet\n"
                 "   CONSULTANT_TITLE=Votre titre professionnel\n"
                 "   COMPANY_NAME=Votre entreprise\n\n"
-                "="*60 + "\n"
+                "=" * 60 + "\n"
             )
 
         # Config complete
         cls._config = {
-            'name': name,
-            'title': os.getenv('CONSULTANT_TITLE', 'Consultant'),
-            'company': os.getenv('COMPANY_NAME', 'Company'),
-            'profile': os.getenv('CONSULTANT_PROFILE', ''),
-            'linkedin_email': os.getenv('LINKEDIN_EMAIL', ''),
+            "name": name,
+            "email": os.getenv("CONSULTANT_EMAIL", ""),
+            "title": os.getenv("CONSULTANT_TITLE", "Consultant"),
+            "company": os.getenv("COMPANY_NAME", "Company"),
+            "profile": os.getenv("CONSULTANT_PROFILE", ""),
+            "linkedin_email": os.getenv("LINKEDIN_EMAIL", ""),
         }
 
         return cls._config
@@ -91,8 +94,13 @@ if __name__ == "__main__":
         config = get_consultant_info()
         print("\n✅ Configuration chargee avec succes :")
         print(f"   Nom     : {config['name']}")
+        print(f"   Email   : {config['email']}")
         print(f"   Titre   : {config['title']}")
         print(f"   Company : {config['company']}")
-        print(f"   Profile : {config['profile'][:50]}..." if config['profile'] else "   Profile : (vide)")
+        print(
+            f"   Profile : {config['profile'][:50]}..."
+            if config["profile"]
+            else "   Profile : (vide)"
+        )
     except ValueError as e:
         print(str(e))

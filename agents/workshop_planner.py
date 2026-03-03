@@ -2,18 +2,20 @@
 Agent de préparation de workshops/formations
 Génère un plan pédagogique complet à partir d'un sujet et d'objectifs
 """
+
 import os
 import sys
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any, Dict
+
+from dotenv import load_dotenv
+
+from config import get_consultant_info
+from utils.llm_client import LLMClient
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
-
-from utils.llm_client import LLMClient
-from config import get_consultant_info
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 
 class WorkshopPlannerAgent:
@@ -26,11 +28,7 @@ class WorkshopPlannerAgent:
         self.consultant_info = get_consultant_info()
 
     def generate_workshop_plan(
-        self,
-        topic: str,
-        duration: str,
-        audience: str,
-        objectives: str
+        self, topic: str, duration: str, audience: str, objectives: str
     ) -> Dict[str, Any]:
         """
         Génère un plan de workshop complet
@@ -49,11 +47,14 @@ class WorkshopPlannerAgent:
         duration_labels = {
             "half_day": "Demi-journée (3h30)",
             "full_day": "Journée complète (7h)",
-            "two_days": "2 jours (14h)"
+            "two_days": "2 jours (14h)",
         }
         duration_label = duration_labels.get(duration, duration)
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es {
+            self.consultant_info['name']}, {
+            self.consultant_info['title']} chez {
+            self.consultant_info['company']}.
 Tu conçois des formations et workshops professionnels en data/IA."""
 
         prompt = f"""Conçois un plan de formation/workshop complet pour:
@@ -158,11 +159,11 @@ Ton : professionnel et pédagogique. Sois concret et actionnable."""
         print("   ✅ Plan généré")
 
         return {
-            'plan': plan,
-            'topic': topic,
-            'duration': duration_label,
-            'audience': audience,
-            'generated_at': datetime.now().isoformat(),
+            "plan": plan,
+            "topic": topic,
+            "duration": duration_label,
+            "audience": audience,
+            "generated_at": datetime.now().isoformat(),
         }
 
     def run(
@@ -170,7 +171,7 @@ Ton : professionnel et pédagogique. Sois concret et actionnable."""
         topic: str,
         duration: str = "full_day",
         audience: str = "Professionnels",
-        objectives: str = ""
+        objectives: str = "",
     ) -> Dict[str, Any]:
         """
         Pipeline complet
@@ -184,9 +185,9 @@ Ton : professionnel et pédagogique. Sois concret et actionnable."""
         Returns:
             Résultat complet
         """
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print("📚 PLANIFICATION DE WORKSHOP")
-        print(f"{'='*50}\n")
+        print(f"{'=' * 50}\n")
 
         result = self.generate_workshop_plan(topic, duration, audience, objectives)
 
@@ -197,14 +198,14 @@ Ton : professionnel et pédagogique. Sois concret et actionnable."""
         os.makedirs(output_dir, exist_ok=True)
 
         # Nettoyer le nom du fichier
-        safe_topic = "".join(c for c in topic if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
-        safe_topic = safe_topic.replace(' ', '_')
+        safe_topic = "".join(c for c in topic if c.isalnum() or c in (" ", "-", "_")).strip()[:50]
+        safe_topic = safe_topic.replace(" ", "_")
 
         md_path = os.path.join(output_dir, f"workshop_{safe_topic}_{timestamp}.md")
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(result['plan'])
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(result["plan"])
 
-        result['md_path'] = md_path
+        result["md_path"] = md_path
 
         print(f"\n✅ Plan sauvegardé: {md_path}")
 
@@ -214,11 +215,13 @@ Ton : professionnel et pédagogique. Sois concret et actionnable."""
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Planification de workshop')
-    parser.add_argument('topic', help='Sujet du workshop')
-    parser.add_argument('--duration', choices=['half_day', 'full_day', 'two_days'], default='full_day')
-    parser.add_argument('--audience', default='Professionnels')
-    parser.add_argument('--objectives', default='')
+    parser = argparse.ArgumentParser(description="Planification de workshop")
+    parser.add_argument("topic", help="Sujet du workshop")
+    parser.add_argument(
+        "--duration", choices=["half_day", "full_day", "two_days"], default="full_day"
+    )
+    parser.add_argument("--audience", default="Professionnels")
+    parser.add_argument("--objectives", default="")
 
     args = parser.parse_args()
 
@@ -227,14 +230,14 @@ def main():
         topic=args.topic,
         duration=args.duration,
         audience=args.audience,
-        objectives=args.objectives
+        objectives=args.objectives,
     )
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("PLAN GÉNÉRÉ")
-    print(f"{'='*50}\n")
-    print(result['plan'][:1000] + "...")
+    print(f"{'=' * 50}\n")
+    print(result["plan"][:1000] + "...")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

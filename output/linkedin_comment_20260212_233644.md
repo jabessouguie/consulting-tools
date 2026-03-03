@@ -5,7 +5,7 @@
 
 ## Post original (extrait)
 
-> 
+>
 L'IA générative va révolutionner le travail des data scientists.
 
 Après 6 mois à intégrer ChatGPT et Claude dans nos workflows chez différents clients,

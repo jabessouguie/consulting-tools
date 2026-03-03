@@ -1,18 +1,22 @@
 """
 Client LLM pour interagir avec Claude (Anthropic) ou Gemini (Google)
 """
+
+import json
 import os
 import time
-from typing import Optional, List, Dict, Any
-from anthropic import Anthropic, RateLimitError
-import json
+from typing import Any, Dict, List, Optional
+
 import google.generativeai as genai
+from anthropic import Anthropic, RateLimitError
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Charger les variables d'environnement
 load_dotenv()
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402
+
 SETTINGS_FILE = Path(__file__).parent.parent / "data" / "settings.json"
 
 
@@ -20,7 +24,7 @@ def _get_gemini_model_from_settings():
     """Lit le modele Gemini depuis settings.json"""
     try:
         if SETTINGS_FILE.exists():
-            with open(SETTINGS_FILE, 'r') as f:
+            with open(SETTINGS_FILE, "r") as f:
                 settings = json.load(f)
             return settings.get("gemini_model")
     except Exception:
@@ -36,7 +40,7 @@ class LLMClient:
         api_key: Optional[str] = None,
         model: str = None,
         max_tokens: int = 4096,
-        provider: str = None
+        provider: str = None,
     ):
         """
         Initialise le client LLM
@@ -48,18 +52,32 @@ class LLMClient:
             provider: 'claude' ou 'gemini' (auto-détecté si None)
         """
         # Détecter le provider
-        use_gemini = os.getenv('USE_GEMINI', 'false').lower() == 'true'
-        self.provider = provider or ('gemini' if use_gemini else 'claude')
+        # Priorité : argument explicit > variable d'environnement
+        env_provider = os.getenv(
+            "LLM_PROVIDER",
+            os.getenv("USE_GEMINI", "false").lower() == "true" and "gemini" or "claude",
+        )
+        self.provider = provider or env_provider
 
         # Configuration selon le provider
-        if self.provider == 'gemini':
-            self.api_key = api_key or os.getenv('GEMINI_API_KEY')
-            self.model = model or _get_gemini_model_from_settings() or os.getenv('GEMINI_MODEL', 'gemini-2.5-pro')
+        if self.provider == "gemini":
+            self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+            self.model = (
+                model
+                or _get_gemini_model_from_settings()
+                or os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+            )
             genai.configure(api_key=self.api_key)
             self.client = None
             print(f"  [Gemini] {self.model}")
-        else:
-            self.api_key = api_key or os.getenv('ANTHROPIC_API_KEY')
+        elif self.provider == "openai":
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+            self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o")
+            self.client = OpenAI(api_key=self.api_key)
+            print(f"  [OpenAI] {self.model}")
+        else:  # 'claude' ou fallback
+            self.provider = "claude"
+            self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
             self.model = model or "claude-opus-4-6"
             self.client = Anthropic(api_key=self.api_key)
             print(f"  [Claude] {self.model}")
@@ -81,24 +99,22 @@ class LLMClient:
         for attempt in range(max_retries):
             try:
                 return func(*args, **kwargs)
-            except RateLimitError as e:
+            except RateLimitError:
                 if attempt == max_retries - 1:
                     raise
 
                 # Backoff exponentiel: 2^attempt secondes (2, 4, 8, 16, 32)
-                wait_time = 2 ** attempt
-                print(f"   ⏳ Rate limit atteint. Attente de {wait_time}s avant nouvelle tentative...")
+                wait_time = 2**attempt
+                print(
+                    f"   ⏳ Rate limit atteint. Attente de {wait_time}s avant nouvelle tentative..."
+                )
                 time.sleep(wait_time)
-            except Exception as e:
+            except Exception:
                 # Pour les autres erreurs, ne pas retry
                 raise
 
     def generate(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 1.0,
-        **kwargs
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1.0, **kwargs
     ) -> str:
         """
         Génère une réponse depuis le LLM (Claude ou Gemini)
@@ -112,26 +128,24 @@ class LLMClient:
         Returns:
             La réponse générée
         """
-        if self.provider == 'gemini':
+        if self.provider == "gemini":
             return self._generate_gemini(prompt, system_prompt, temperature, **kwargs)
+        elif self.provider == "openai":
+            return self._generate_openai(prompt, system_prompt, temperature, **kwargs)
         else:
             return self._generate_claude(prompt, system_prompt, temperature, **kwargs)
 
     def _generate_claude(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 1.0,
-        **kwargs
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1.0, **kwargs
     ) -> str:
         """Génère une réponse avec Claude"""
         messages = [{"role": "user", "content": prompt}]
 
         params = {
             "model": self.model,
-            "max_tokens": kwargs.get('max_tokens', self.max_tokens),
+            "max_tokens": kwargs.get("max_tokens", self.max_tokens),
             "temperature": temperature,
-            "messages": messages
+            "messages": messages,
         }
 
         if system_prompt:
@@ -140,12 +154,25 @@ class LLMClient:
         response = self._retry_with_backoff(self.client.messages.create, **params)
         return response.content[0].text
 
+    def _generate_openai(
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1.0, **kwargs
+    ) -> str:
+        """Génère une réponse avec OpenAI"""
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=kwargs.get("max_tokens", self.max_tokens),
+        )
+        return response.choices[0].message.content
+
     def _generate_gemini(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 1.0,
-        **kwargs
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1.0, **kwargs
     ) -> str:
         """Génère une réponse avec Gemini"""
         # Construire le prompt complet
@@ -156,28 +183,23 @@ class LLMClient:
         # Configuration de génération
         generation_config = {
             "temperature": temperature,
-            "max_output_tokens": kwargs.get('max_tokens', self.max_tokens),
+            "max_output_tokens": kwargs.get("max_tokens", self.max_tokens),
         }
 
         # Créer le modèle et générer
         model = genai.GenerativeModel(self.model)
-        response = model.generate_content(
-            full_prompt,
-            generation_config=generation_config
-        )
+        response = model.generate_content(full_prompt, generation_config=generation_config)
 
         return response.text
 
     def generate_stream(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 1.0,
-        **kwargs
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1.0, **kwargs
     ):
         """Yields text chunks as they arrive from the LLM"""
-        if self.provider == 'gemini':
+        if self.provider == "gemini":
             yield from self._stream_gemini(prompt, system_prompt, temperature, **kwargs)
+        elif self.provider == "openai":
+            yield from self._stream_openai(prompt, system_prompt, temperature, **kwargs)
         else:
             yield from self._stream_claude(prompt, system_prompt, temperature, **kwargs)
 
@@ -186,9 +208,9 @@ class LLMClient:
         messages = [{"role": "user", "content": prompt}]
         params = {
             "model": self.model,
-            "max_tokens": kwargs.get('max_tokens', self.max_tokens),
+            "max_tokens": kwargs.get("max_tokens", self.max_tokens),
             "temperature": temperature,
-            "messages": messages
+            "messages": messages,
         }
         if system_prompt:
             params["system"] = system_prompt
@@ -196,6 +218,24 @@ class LLMClient:
         with self.client.messages.stream(**params) as stream:
             for text in stream.text_stream:
                 yield text
+
+    def _stream_openai(self, prompt, system_prompt=None, temperature=1.0, **kwargs):
+        """Stream response from OpenAI"""
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=kwargs.get("max_tokens", self.max_tokens),
+            stream=True,
+        )
+        for chunk in stream:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     def _stream_gemini(self, prompt, system_prompt=None, temperature=1.0, **kwargs):
         """Stream response from Gemini"""
@@ -205,14 +245,12 @@ class LLMClient:
 
         generation_config = {
             "temperature": temperature,
-            "max_output_tokens": kwargs.get('max_tokens', self.max_tokens),
+            "max_output_tokens": kwargs.get("max_tokens", self.max_tokens),
         }
 
         model = genai.GenerativeModel(self.model)
         response = model.generate_content(
-            full_prompt,
-            generation_config=generation_config,
-            stream=True
+            full_prompt, generation_config=generation_config, stream=True
         )
 
         for chunk in response:
@@ -220,10 +258,7 @@ class LLMClient:
                 yield chunk.text
 
     def generate_with_context(
-        self,
-        messages: List[Dict[str, str]],
-        system_prompt: Optional[str] = None,
-        **kwargs
+        self, messages: List[Dict[str, str]], system_prompt: Optional[str] = None, **kwargs
     ) -> str:
         """
         Génère une réponse avec un contexte de conversation
@@ -236,7 +271,7 @@ class LLMClient:
         Returns:
             La réponse générée
         """
-        if self.provider == 'gemini':
+        if self.provider == "gemini":
             # Pour Gemini, convertir le format de messages
             chat_history = []
             for msg in messages[:-1]:  # Tous sauf le dernier
@@ -245,8 +280,7 @@ class LLMClient:
 
             # Créer le modèle avec le system prompt
             model = genai.GenerativeModel(
-                self.model,
-                system_instruction=system_prompt if system_prompt else None
+                self.model, system_instruction=system_prompt if system_prompt else None
             )
 
             # Démarrer le chat
@@ -257,19 +291,32 @@ class LLMClient:
             response = chat.send_message(
                 last_message,
                 generation_config={
-                    "temperature": kwargs.get('temperature', 1.0),
-                    "max_output_tokens": kwargs.get('max_tokens', self.max_tokens)
-                }
+                    "temperature": kwargs.get("temperature", 1.0),
+                    "max_output_tokens": kwargs.get("max_tokens", self.max_tokens),
+                },
             )
 
             return response.text
+        elif self.provider == "openai":
+            messages_openai = []
+            if system_prompt:
+                messages_openai.append({"role": "system", "content": system_prompt})
+            messages_openai.extend(messages)
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages_openai,
+                temperature=kwargs.get("temperature", 1.0),
+                max_tokens=kwargs.get("max_tokens", self.max_tokens),
+            )
+            return response.choices[0].message.content
         else:
             # Claude
             params = {
                 "model": self.model,
-                "max_tokens": kwargs.get('max_tokens', self.max_tokens),
-                "temperature": kwargs.get('temperature', 1.0),
-                "messages": messages
+                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                "temperature": kwargs.get("temperature", 1.0),
+                "messages": messages,
             }
 
             if system_prompt:
@@ -278,11 +325,55 @@ class LLMClient:
             response = self._retry_with_backoff(self.client.messages.create, **params)
             return response.content[0].text
 
+    def stream_with_context(
+        self, messages: List[Dict[str, str]], system_prompt: Optional[str] = None, **kwargs
+    ):
+        """
+        Stream une reponse avec system_instruction Gemini.
+        Yield les chunks de texte au fur et a mesure.
+        """
+        if self.provider == "gemini":
+            chat_history = []
+            for msg in messages[:-1]:
+                role = "user" if msg["role"] == "user" else "model"
+                chat_history.append({"role": role, "parts": [msg["content"]]})
+
+            model = genai.GenerativeModel(
+                self.model, system_instruction=system_prompt if system_prompt else None
+            )
+            chat = model.start_chat(history=chat_history)
+            last_message = messages[-1]["content"]
+            timeout = kwargs.get("timeout", 300)
+
+            response = chat.send_message(
+                last_message,
+                generation_config={
+                    "temperature": kwargs.get("temperature", 1.0),
+                    "max_output_tokens": kwargs.get("max_tokens", self.max_tokens),
+                },
+                request_options={"timeout": timeout},
+                stream=True,
+            )
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+        else:
+            # Claude streaming
+            params = {
+                "model": self.model,
+                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                "temperature": kwargs.get("temperature", 1.0),
+                "messages": messages,
+            }
+            if system_prompt:
+                params["system"] = system_prompt
+
+            with self.client.messages.stream(**params) as stream:
+                for text in stream.text_stream:
+                    yield text
+
     def extract_structured_data(
-        self,
-        prompt: str,
-        output_schema: Dict[str, Any],
-        **kwargs
+        self, prompt: str, output_schema: Dict[str, Any], **kwargs
     ) -> Dict[str, Any]:
         """
         Extrait des données structurées depuis le LLM
@@ -301,29 +392,27 @@ class LLMClient:
 Ne fournis aucune explication, uniquement le JSON."""
 
         response = self.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.3,
-            **kwargs
+            prompt=prompt, system_prompt=system_prompt, temperature=0.3, **kwargs
         )
 
         # Nettoyer la réponse pour extraire le JSON
         response = response.strip()
-        
+
         # Suppr les blocs Markdown
-        if response.startswith('```json'):
+        if response.startswith("```json"):
             response = response[7:]
-        elif response.startswith('```'):
+        elif response.startswith("```"):
             response = response[3:]
-        if response.endswith('```'):
+        if response.endswith("```"):
             response = response[:-3]
-            
+
         response = response.strip()
-        
+
         # Sanitization basique (control chars)
         import re
-        response = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', response)
-        
+
+        response = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", response)
+
         try:
             return json.loads(response)
         except json.JSONDecodeError as e:
@@ -334,12 +423,11 @@ Ne fournis aucune explication, uniquement le JSON."""
             try:
                 # On essaie de remplacer les newlines par \\n si ce n'est pas déjà fait
                 # C'est risqué mais peut sauver des cas simples
-                fixed = response.replace('\n', '\\n')
+                fixed = response.replace("\n", "\\n")
                 return json.loads(fixed)
-            except:
+            except Exception:
                 pass
             return {}  # Retour vide en cas d'échec total pour éviter le crash 500
-
 
     def summarize(self, text: str, max_length: int = 200) -> str:
         """

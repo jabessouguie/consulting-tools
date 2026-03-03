@@ -1,11 +1,11 @@
 """
 Utilitaire pour lire et extraire le contenu de fichiers PowerPoint (PPTX)
 """
+
 import os
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List
+
 from pptx import Presentation
-from pptx.util import Inches, Pt
-import json
 
 
 def extract_text_from_shape(shape, depth: int = 0) -> List[str]:
@@ -53,11 +53,13 @@ def read_pptx_template(pptx_path: str) -> Dict[str, Any]:
             extracted = extract_text_from_shape(shape)
             texts.extend(extracted)
 
-        slides_data.append({
-            "slide_number": i,
-            "layout": layout_name,
-            "content": texts,
-        })
+        slides_data.append(
+            {
+                "slide_number": i,
+                "layout": layout_name,
+                "content": texts,
+            }
+        )
 
     return {
         "title": os.path.basename(pptx_path),
@@ -107,7 +109,7 @@ def read_all_references(references_dir: str) -> List[Dict[str, Any]]:
         return references
 
     for filename in os.listdir(references_dir):
-        if filename.endswith('.pptx'):
+        if filename.endswith(".pptx"):
             filepath = os.path.join(references_dir, filename)
             try:
                 ref = read_pptx_reference(filepath)
@@ -136,7 +138,9 @@ def extract_template_structure(pptx_path: str) -> str:
     for slide in template["slides"]:
         content = slide["content"]
         if content:
-            slide_text = f"### Slide {slide['slide_number']} ({slide['layout']})\n"
+            slide_text = f"### Slide {
+                slide['slide_number']} ({
+                slide['layout']})\n"
             slide_text += "\n".join(f"- {t}" for t in content[:10])
             sections.append(slide_text)
 

@@ -2,10 +2,10 @@
 Script d'audit de sécurité pour Consulting Tools Agents
 Vérifie la configuration des variables d'environnement et la sécurité du code
 """
-import os
+
 import re
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 # Couleurs pour l'affichage
 GREEN = "\033[92m"
@@ -21,7 +21,7 @@ def check_env_file() -> Dict[str, any]:
 
     base_dir = Path(__file__).parent.parent
     env_file = base_dir / ".env"
-    env_example = base_dir / ".env.example"
+    base_dir / ".env.example"
 
     results = {"status": "ok", "issues": []}
 
@@ -36,12 +36,14 @@ def check_env_file() -> Dict[str, any]:
 
     # Vérifier les permissions du fichier .env
     env_stat = env_file.stat()
-    if oct(env_stat.st_mode)[-3:] not in ['600', '640']:
+    if oct(env_stat.st_mode)[-3:] not in ["600", "640"]:
         results["issues"].append("Permissions .env trop permissives")
-        print(f"  {YELLOW}⚠{RESET}  Permissions .env: {oct(env_stat.st_mode)[-3:]} (recommandé: 600)")
+        print(
+            f"  {YELLOW}⚠{RESET}  Permissions .env: {oct(env_stat.st_mode)[-3:]} (recommandé: 600)"
+        )
 
     # Lire les variables
-    with open(env_file, 'r') as f:
+    with open(env_file, "r") as f:
         env_content = f.read()
 
     # Variables critiques requises
@@ -60,7 +62,10 @@ def check_env_file() -> Dict[str, any]:
     if missing_vars:
         results["status"] = "warning"
         results["issues"].extend([f"Variable manquante: {v}" for v in missing_vars])
-        print(f"  {YELLOW}⚠{RESET}  Variables manquantes: {', '.join(missing_vars)}")
+        print(
+            f"  {YELLOW}⚠{RESET}  Variables manquantes: {
+                ', '.join(missing_vars)}"
+        )
     else:
         print(f"  {GREEN}✓{RESET} Toutes les variables critiques sont présentes")
 
@@ -95,7 +100,7 @@ def check_gitignore() -> Dict[str, any]:
         print(f"  {RED}✗{RESET} Fichier .gitignore introuvable")
         return results
 
-    with open(gitignore_file, 'r') as f:
+    with open(gitignore_file, "r") as f:
         gitignore_content = f.read()
 
     # Fichiers sensibles qui doivent être ignorés
@@ -130,8 +135,8 @@ def check_hardcoded_secrets() -> Dict[str, any]:
 
     # Patterns à rechercher
     secret_patterns = [
-        (r'sk-ant-[a-zA-Z0-9\-_]+', "Clé API Anthropic"),
-        (r'sk-[a-zA-Z0-9]{48}', "Clé API OpenAI"),
+        (r"sk-ant-[a-zA-Z0-9\-_]+", "Clé API Anthropic"),
+        (r"sk-[a-zA-Z0-9]{48}", "Clé API OpenAI"),
         (r'password\s*=\s*["\'][^"\']{8,}["\']', "Mot de passe en dur"),
         (r'api[_-]?key\s*=\s*["\'][^"\']+["\']', "Clé API en dur"),
     ]
@@ -148,7 +153,7 @@ def check_hardcoded_secrets() -> Dict[str, any]:
             continue
 
         try:
-            with open(py_file, 'r', encoding='utf-8') as f:
+            with open(py_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
             for pattern, description in secret_patterns:
@@ -161,7 +166,7 @@ def check_hardcoded_secrets() -> Dict[str, any]:
                             issues_found.append(issue)
                             print(f"  {RED}✗{RESET} {issue}")
 
-        except Exception as e:
+        except Exception:
             pass
 
     if not issues_found:
@@ -200,9 +205,11 @@ def check_ssl_config() -> Dict[str, any]:
 
         # Vérifier les permissions de la clé privée
         key_stat = key_file.stat()
-        if oct(key_stat.st_mode)[-3:] != '600':
+        if oct(key_stat.st_mode)[-3:] != "600":
             results["issues"].append("Permissions clé privée trop permissives")
-            print(f"  {YELLOW}⚠{RESET}  Permissions key.pem: {oct(key_stat.st_mode)[-3:]} (recommandé: 600)")
+            print(
+                f"  {YELLOW}⚠{RESET}  Permissions key.pem: {oct(key_stat.st_mode)[-3:]} (recommandé: 600)"
+            )
         else:
             print(f"  {GREEN}✓{RESET} Permissions clé privée correctes")
 
@@ -211,9 +218,9 @@ def check_ssl_config() -> Dict[str, any]:
 
 def generate_report(all_results: List[Dict]) -> None:
     """Génère un rapport final"""
-    print(f"\n{BOLD}{'='*60}{RESET}")
+    print(f"\n{BOLD}{'=' * 60}{RESET}")
     print(f"{BOLD}RAPPORT D'AUDIT DE SÉCURITÉ{RESET}")
-    print(f"{BOLD}{'='*60}{RESET}\n")
+    print(f"{BOLD}{'=' * 60}{RESET}\n")
 
     total_issues = sum(len(r["issues"]) for r in all_results)
     errors = sum(1 for r in all_results if r["status"] == "error")
@@ -244,7 +251,7 @@ def generate_report(all_results: List[Dict]) -> None:
 
 def main():
     print(f"\n{BOLD}🔒 AUDIT DE SÉCURITÉ - Consulting Tools AGENTS{RESET}")
-    print(f"{BOLD}{'='*60}{RESET}")
+    print(f"{BOLD}{'=' * 60}{RESET}")
 
     results = []
 

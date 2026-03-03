@@ -8,34 +8,34 @@ Usage:
     python review.py --file app.py    # Review un fichier specifique
     python review.py --all            # Review tous les fichiers modifies (staged + unstaged)
 """
-import os
-import sys
 import argparse
 import subprocess
+import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+from utils.llm_client import LLMClient
 
 # Setup path
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
-from dotenv import load_dotenv
 load_dotenv(BASE_DIR / ".env")
-
-from utils.llm_client import LLMClient
 
 
 SEVERITY_COLORS = {
     "CRITICAL": "\033[91m",  # Rouge
-    "WARNING": "\033[93m",   # Jaune
-    "INFO": "\033[96m",      # Cyan
-    "OK": "\033[92m",        # Vert
+    "WARNING": "\033[93m",  # Jaune
+    "INFO": "\033[96m",  # Cyan
+    "OK": "\033[92m",  # Vert
 }
 RESET = "\033[0m"
 
 
 def get_git_diff(staged_only=True):
     """Recupere le diff git"""
-    cmd = ["git", "diff", "--cached"] if staged_only else ["git", "diff"]
+    cmd = ["git", "dif", "--cached"] if staged_only else ["git", "diff"]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(BASE_DIR))
         return result.stdout
@@ -50,7 +50,7 @@ def get_file_content(filepath):
     if not path.exists():
         print(f"Fichier non trouve: {filepath}")
         return ""
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
 
@@ -73,7 +73,7 @@ Si le code est bon, indique [OK] avec un bref resume.
 
 Sois concis et actionnable. Ne commente pas le style ou le formatage sauf si c'est un vrai probleme."""
 
-    prompt = f"""Review ce {context} :
+    prompt = """Review ce {context} :
 
 ```
 {code[:12000]}
@@ -93,13 +93,15 @@ def colorize(text):
 
 def main():
     parser = argparse.ArgumentParser(description="Code Review Tool")
-    parser.add_argument("--file", "-f", help="Fichier specifique a reviewer")
-    parser.add_argument("--all", "-a", action="store_true", help="Review tous les changements (staged + unstaged)")
+    parser.add_argument("--file", "-", help="Fichier specifique a reviewer")
+    parser.add_argument(
+        "--all", "-a", action="store_true", help="Review tous les changements (staged + unstaged)"
+    )
     args = parser.parse_args()
 
-    print(f"\n{'='*60}")
-    print(f"  CODE REVIEW - Consulting Tools Agents")
-    print(f"{'='*60}\n")
+    print(f"\n{'=' * 60}")
+    print("  CODE REVIEW - Consulting Tools Agents")
+    print(f"{'=' * 60}\n")
 
     if args.file:
         # Review un fichier specifique
@@ -114,15 +116,19 @@ def main():
         if not diff:
             print("  Aucun changement a reviewer.")
             if not args.all:
-                print("  Tip: Utilisez 'git add' pour stager des fichiers, ou --all pour tout reviewer.\n")
+                print(
+                    "  Tip: Utilisez 'git add' pour stager des fichiers, ou --all pour tout reviewer.\n"
+                )
             sys.exit(0)
 
         # Compter les fichiers modifies
-        files = [l.split(" b/")[-1] for l in diff.split("\n") if l.startswith("diff --git")]
+        files = [
+            line.split(" b/")[-1] for line in diff.split("\n") if line.startswith("diff --git")
+        ]
         print(f"  {len(files)} fichier(s) modifie(s):")
         for f in files:
             print(f"    - {f}")
-        print(f"\n  Analyse en cours...\n")
+        print("\n  Analyse en cours...\n")
 
         result = review_code(diff, context="git diff")
 
@@ -133,17 +139,26 @@ def main():
     criticals = result.count("[CRITICAL]")
     warnings = result.count("[WARNING]")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     if criticals > 0:
-        print(f"  {SEVERITY_COLORS['CRITICAL']}BLOQUE : {criticals} probleme(s) critique(s) detecte(s){RESET}")
-        print(f"  Corrigez les problemes CRITICAL avant de commit.\n")
+        print(
+            f"  {
+                SEVERITY_COLORS['CRITICAL']}BLOQUE : {criticals} probleme(s) critique(s) detecte(s){RESET}"
+        )
+        print("  Corrigez les problemes CRITICAL avant de commit.\n")
         sys.exit(1)
     elif warnings > 0:
-        print(f"  {SEVERITY_COLORS['WARNING']}ATTENTION : {warnings} warning(s) detecte(s){RESET}")
-        print(f"  Verifiez les warnings avant de commit.\n")
+        print(
+            f"  {
+                SEVERITY_COLORS['WARNING']}ATTENTION : {warnings} warning(s) detecte(s){RESET}"
+        )
+        print("  Verifiez les warnings avant de commit.\n")
         sys.exit(0)
     else:
-        print(f"  {SEVERITY_COLORS['OK']}OK : Code review passee avec succes{RESET}\n")
+        print(
+            f"  {
+                SEVERITY_COLORS['OK']}OK : Code review passee avec succes{RESET}\n"
+        )
         sys.exit(0)
 
 
