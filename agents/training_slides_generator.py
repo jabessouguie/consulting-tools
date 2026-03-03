@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
+from utils.image_generator import NanoBananaGenerator
 from utils.llm_client import LLMClient
 
 
@@ -26,6 +27,7 @@ class TrainingSlidesGeneratorAgent:
 
     def __init__(self):
         self.llm = LLMClient(max_tokens=8192)
+        self.nano_banana = NanoBananaGenerator()
         self.base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     @staticmethod
@@ -311,6 +313,249 @@ RAPPELS :
             "generated_at": datetime.now().isoformat(),
         }
 
+    def generate_premium_html_presentation(self, programme_md: str) -> Dict[str, Any]:
+        """
+        Génère une présentation HTML premium suivant le flux demandé par l'utilisateur:
+        1. Déterminer le contenu via Gemini
+        2. Créer la slide vide (titre HTML)
+        3. Déterminer le contenu infographique détaillé
+        4. Utiliser Nano Banana pour l'infographie
+        5. Insérer dans le HTML
+        """
+        print("🚀 Génération de la présentation Premium HTML avec Nano Banana...")
+
+        # 1. Parser le programme
+        programme_data = self.parse_programme(programme_md)
+        title = programme_data.get("title", "Formation")
+
+        all_html_slides = []
+
+        # Déterminer la liste des slides nécessaires
+        print("📊 Détermination de la liste des slides...")
+        slides_plan = self._get_slides_plan(programme_data)
+
+        output_dir = (
+            self.base_dir / "output" / f"premium_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        images_dir = output_dir / "images"
+        images_dir.mkdir(exist_ok=True)
+
+        for i, slide_info in enumerate(slides_plan):
+            print(f"🖼️ Génération de la slide {i+1}/{len(slides_plan)}: {slide_info['title']}")
+
+            # 2. Créer la slide vide avec seulement le titre au format HTML
+            slide_html = f"""
+<section class="slide" data-id="{i}">
+    <div class="slide-header">
+        <h1>{slide_info['title']}</h1>
+    </div>
+    <div class="slide-content" id="content-{i}">
+        <!-- Détails à venir -->
+    </div>
+</section>
+"""
+            # 3. Déterminer le contenu détaillé via Gemini
+            content_details = self._determine_slide_content(slide_info, title)
+
+            # 4. Utiliser Nano Banana pour créer l'infographie
+            image_filename = f"slide_{i}.jpg"
+            image_path = images_dir / image_filename
+
+            infographic_image = self.nano_banana.generate_image(
+                prompt=content_details["image_prompt"], output_path=str(image_path)
+            )
+
+            # 5. Insérer l'infographie et le contenu dans la slide au format HTML
+            relative_image_path = f"images/{image_filename}" if infographic_image else ""
+
+            final_slide_html = self._assemble_final_slide(
+                title=slide_info["title"],
+                content=content_details["text_content"],
+                image_path=relative_image_path,
+                slide_index=i,
+            )
+
+            all_html_slides.append(final_slide_html)
+
+        # Assembler le document complet
+        full_html = self._wrap_in_full_document(title, all_html_slides)
+
+        html_path = output_dir / "index.html"
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(full_html)
+
+        print(f"✅ Présentation Premium générée: {html_path}")
+
+        return {
+            "html_path": str(html_path.relative_to(self.base_dir)),
+            "total_slides": len(all_html_slides),
+            "output_dir": str(output_dir),
+        }
+
+    def _get_slides_plan(self, programme_data: Dict) -> List[Dict]:
+        """Détermine la liste des titres de slides à partir du programme"""
+        prompt = f"""Basé sur ce programme de formation :
+{json.dumps(programme_data, indent=2, ensure_ascii=False)}
+
+Génère une liste de titres de slides cohérente.
+Retourne UNIQUEMENT un JSON listant les titres :
+[
+    {{"title": "Introduction", "type": "intro"}},
+    {{"title": "Module 1 : ...", "type": "section"}},
+    ...
+]"""
+        result = self.llm.generate(prompt=prompt, system_prompt="Tu es un ingénieur pédagogique.")
+
+        # Nettoyer et parser
+        result = result.strip()
+        if result.startswith("```json"):
+            result = result[7:]
+        if result.startswith("```"):
+            result = result[3:]
+        if result.endswith("```"):
+            result = result[:-3]
+
+        return json.loads(self._sanitize_json_string(result))
+
+    def _determine_slide_content(self, slide_info: Dict, formation_title: str) -> Dict:
+        """Détermine le contenu détaillé et le prompt image pour une slide"""
+        prompt = f"""Slide Title: {slide_info['title']}
+Formation: {formation_title}
+
+Détermine le contenu pédagogique et le concept visuel.
+Style attendu : Adopte un style minimaliste et percutant, inspiré de Seth Godin et des formations Wision. Évite les listes à puces. Max 4 points.
+
+Retourne un JSON avec:
+{{
+    "text_content": ["Point 1", "Point 2"],
+    "image_prompt": "Prompt détaillé pour Nano Banana (Imagen 3) suivant la directive: Génère une infographie claire... utilise des analogies visuelles (robots, pop culture)..."
+}}"""
+        result = self.llm.generate(
+            prompt=prompt, system_prompt="Tu es un designer pédagogique expert."
+        )
+
+        # Nettoyer et parser
+        result = result.strip()
+        if result.startswith("```json"):
+            result = result[7:]
+        if result.startswith("```"):
+            result = result[3:]
+        if result.endswith("```"):
+            result = result[:-3]
+
+        return json.loads(self._sanitize_json_string(result))
+
+    def _assemble_final_slide(
+        self, title: str, content: List[str], image_path: str, slide_index: int
+    ) -> str:
+        """Assemble les éléments dans le template HTML d'une slide"""
+        content_html = "".join([f"<p>{point}</p>" for point in content])
+        image_html = (
+            f'<div class="infographic"><img src="{image_path}" alt="Infographie"></div>'
+            if image_path
+            else ""
+        )
+
+        return f"""
+<section class="slide" id="slide-{slide_index}">
+    <div class="slide-header">
+        <h1>{title}</h1>
+    </div>
+    <div class="slide-body">
+        <div class="text-side">
+            {content_html}
+        </div>
+        <div class="visual-side">
+            {image_html}
+        </div>
+    </div>
+</section>
+"""
+
+    def _wrap_in_full_document(self, title: str, slides_html: List[str]) -> str:
+        """Enveloppe les slides dans un document HTML complet avec CSS Consulting Tools"""
+        all_slides = "\n".join(slides_html)
+        return f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{title} - Consulting Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --dark: #1F1F1F;
+            --coral: #FF6B58;
+            --white: #FFFFFF;
+            --rose: #FBF0F4;
+        }}
+        body {{
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            color: var(--dark);
+        }}
+        .slide {{
+            background: var(--white);
+            width: 960px;
+            height: 540px;
+            margin: 0 auto 40px auto;
+            border-top: 4px solid var(--coral);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-sizing: border-box;
+            page-break-after: always;
+        }}
+        .slide-header h1 {{
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 2.5em;
+            margin: 0 0 30px 0;
+            color: var(--dark);
+        }}
+        .slide-body {{
+            display: flex;
+            gap: 40px;
+            height: 100%;
+        }}
+        .text-side {{
+            flex: 1;
+            font-size: 1.25em;
+            line-height: 1.6;
+        }}
+        .text-side p {{
+            margin-bottom: 20px;
+            padding-left: 20px;
+            border-left: 3px solid var(--coral);
+        }}
+        .visual-side {{
+            flex: 1.2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .infographic img {{
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }}
+        @media print {{
+            body {{ padding: 0; background: none; }}
+            .slide {{ margin: 0; box-shadow: none; border-radius: 0; }}
+        }}
+    </style>
+</head>
+<body>
+    {all_slides}
+</body>
+</html>
+"""
+
     def generate_module_pptx(self, slides: List[Dict], module_name: str) -> str:
         """Génère un fichier PPTX pour un module spécifique"""
         from utils.pptx_generator import build_proposal_pptx
@@ -356,5 +601,6 @@ Formation d'introduction à l'IA générative pour les professionnels.
 - Machine Learning vs Deep Learning
 #### Atelier : Premiers pas avec un LLM
 """
-    result = agent.generate_all_slides(test_programme)
-    print(f"Slides générées : {result['total_slides']}")
+    # Test de la nouvelle génération Premium HTML
+    result = agent.generate_premium_html_presentation(test_programme)
+    print(f"Présentation HTML générée : {result['html_path']}")
