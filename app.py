@@ -132,19 +132,15 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         elif referer:
             # Si pas d'Origin, vérifier Referer
             try:
-                referer_origin = f"{
-                    urlparse(referer).scheme}://{
-                    urlparse(referer).netloc}"
+                parsed = urlparse(referer)
+                referer_origin = f"{parsed.scheme}://{parsed.netloc}"
                 origin_valid = referer_origin in allowed_origins
             except BaseException:
                 origin_valid = False
 
         if not origin_valid:
             print(
-                f"⚠️  CSRF blocked: {
-                    request.method} {
-                    request.url.path} from {
-                    origin or referer}")
+                f"⚠️  CSRF blocked: {request.method} {request.url.path} from {origin or referer}")
             return JSONResponse(
                 {"detail": "CSRF validation failed. Request origin not allowed."},
                 status_code=403
@@ -1915,8 +1911,7 @@ async def api_linkedin_publish(request: Request):
         # API errors
         return JSONResponse(
             {
-                "error": f"Erreur lors de la publication: {
-                    safe_error_message(e)}"},
+                "error": f"Erreur lors de la publication: {safe_error_message(e)}"},
             status_code=500
         )
 
@@ -3039,8 +3034,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
         md_path = output_dir / f"tech_digest_{period}_{timestamp}_revised.md"
         with open(md_path, 'w', encoding='utf-8') as f:
             f.write(
-                f"# Veille Technologique {
-                    period.capitalize()} (Révisé)\n\n")
+                f"# Veille Technologique {period.capitalize()} (Révisé)\n\n")
             f.write(
                 f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("---\n\n")
@@ -4255,43 +4249,63 @@ async def api_training_slides_generate(
     request: Request,
     programme_text: str = Form(None),
     file: Optional[UploadFile] = File(None),
+    files: List[UploadFile] = File(default=[]),
 ):
-    """Lance la génération des slides de formation (supporte TXT, MD, DOCX, PDF)"""
+    """
+    Lance la génération des slides de formation.
+
+    Entrées acceptées (par priorité) :
+    - files : plusieurs fichiers (TXT, MD, DOCX, PDF) — leur contenu est concaténé
+    - file  : un seul fichier (compatibilité ascendante)
+    - programme_text : texte brut du programme
+    """
     from utils.document_parser import document_parser
 
-    # Récupérer le texte du programme
-    text = ""
+    # Fusionner file (ancien) et files (nouveau) en une seule liste
+    all_files: List[UploadFile] = []
+    if files:
+        all_files.extend(files)
     if file:
-        # Sauvegarder temporairement le fichier
-        temp_file = BASE_DIR / "output" / f"temp_{file.filename}"
+        all_files.append(file)
+
+    text_parts: List[str] = []
+
+    for upload in all_files:
+        temp_file = BASE_DIR / "output" / f"temp_{upload.filename}"
         temp_file.parent.mkdir(exist_ok=True)
-
         try:
-            content = await file.read()
-            with open(temp_file, 'wb') as f:
-                f.write(content)
-
-            # Extraire le texte selon le format
-            text = document_parser.parse_file(str(temp_file))
-
-            # Supprimer le fichier temporaire
+            content = await upload.read()
+            with open(temp_file, "wb") as fp:
+                fp.write(content)
+            extracted = document_parser.parse_file(str(temp_file))
             temp_file.unlink()
-
-            if not text:
+            if extracted:
+                text_parts.append(extracted)
+            else:
                 return JSONResponse(
                     {
-                        "error": f"Impossible d'extraire le texte du fichier {
-                            file.filename}. Formats supportés : TXT, MD, DOCX, PDF (avec PyPDF2 ou python-docx installés)"},
-                    status_code=400)
-
+                        "error": (
+                            f"Impossible d'extraire le texte du fichier {upload.filename}. "
+                            "Formats supportés : TXT, MD, DOCX, PDF"
+                        )
+                    },
+                    status_code=400,
+                )
         except Exception as e:
             if temp_file.exists():
                 temp_file.unlink()
             return JSONResponse(
-                {"error": f"Erreur lors de la lecture du fichier : {safe_error_message(e)}"}, status_code=400)
+                {"error": f"Erreur lecture fichier '{upload.filename}' : {safe_error_message(e)}"},
+                status_code=400,
+            )
 
+    if text_parts:
+        # Concaténer les textes avec un séparateur clair
+        text = "\n\n---\n\n".join(text_parts)
     elif programme_text:
         text = programme_text.strip()
+    else:
+        text = ""
 
     if not text or len(text) < 50:
         return JSONResponse(
@@ -5412,10 +5426,9 @@ async def api_slide_editor_start_generate(request: Request):
     previous_slides = data.get("previous_slides", "")
     provider = "claude" if model.startswith("claude") else "gemini"
 
-    job_id = f"slide_{
-        datetime.now().strftime('%Y%m%d_%H%M%S')}_{
-        id(data) %
-        10000}"
+    _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    _uid = id(data) % 10000
+    job_id = f"slide_{_ts}_{_uid}"
 
     jobs[job_id] = {
         "type": "slide-editor",
@@ -6051,10 +6064,9 @@ async def api_document_editor_start_generate(request: Request):
     model = data.get("model", "")
     use_context = data.get("use_context", False)
 
-    job_id = f"doc_{
-        datetime.now().strftime('%Y%m%d_%H%M%S')}_{
-        id(data) %
-        10000}"
+    _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    _uid = id(data) % 10000
+    job_id = f"doc_{_ts}_{_uid}"
 
     jobs[job_id] = {
         "type": "document-editor",
@@ -7265,6 +7277,112 @@ async def api_skills_market_analysis(
     return {"analysis": analysis}
 
 
+# --- Photo de profil consultant ---
+
+PHOTOS_DIR = BASE_DIR / "static" / "photos"
+PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+
+_ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+_MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@app.post(
+    "/api/skills-market/consultants/{consultant_id}/photo"
+)
+@limiter.limit("5/minute")
+async def api_skills_market_upload_photo(
+    request: Request,
+    consultant_id: int,
+    photo: UploadFile = File(...),
+):
+    """Upload et associe une photo de profil a un consultant"""
+    consultant = skills_market_db.get_consultant(consultant_id)
+    if not consultant:
+        return JSONResponse(
+            {"error": "Consultant non trouve"}, status_code=404
+        )
+
+    ext = Path(photo.filename).suffix.lower()
+    if ext not in _ALLOWED_IMAGE_EXTS:
+        return JSONResponse(
+            {"error": f"Format non supporte. Formats acceptes: {', '.join(_ALLOWED_IMAGE_EXTS)}"},
+            status_code=400,
+        )
+
+    content = await photo.read()
+    if len(content) > _MAX_PHOTO_SIZE:
+        return JSONResponse(
+            {"error": "Fichier trop volumineux (max 5 Mo)"}, status_code=400
+        )
+
+    # Sauvegarder avec un nom stable par consultant
+    safe_name = f"consultant_{consultant_id}{ext}"
+    photo_path = PHOTOS_DIR / safe_name
+    with open(photo_path, "wb") as f:
+        f.write(content)
+
+    photo_url = f"/static/photos/{safe_name}"
+    updated = skills_market_db.update_photo_url(consultant_id, photo_url)
+    if not updated:
+        return JSONResponse(
+            {"error": "Mise a jour echouee"}, status_code=500
+        )
+
+    return {"photo_url": photo_url, "message": "Photo mise a jour"}
+
+
+# --- Generation de CV depuis le profil consultant ---
+
+
+@app.post(
+    "/api/skills-market/consultants/{consultant_id}/cv"
+)
+@limiter.limit("5/minute")
+async def api_skills_market_generate_cv(
+    request: Request,
+    consultant_id: int,
+):
+    """Genere un CV HTML/PDF adapte au besoin client depuis le profil consultant"""
+    body = await request.json()
+    client_need = body.get("client_need", "").strip()
+    output_format = body.get("format", "html").lower()  # html ou pdf
+
+    consultant = skills_market_db.get_consultant(consultant_id)
+    if not consultant:
+        return JSONResponse(
+            {"error": "Consultant non trouve"}, status_code=404
+        )
+
+    agent = SkillsMarketAgent()
+    try:
+        cv_html = agent.generate_cv(consultant, client_need=client_need)
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur generation CV: {safe_error_message(e)}"}, status_code=500
+        )
+
+    if output_format == "pdf":
+        try:
+            from utils.pdf_converter import markdown_to_pdf
+            from datetime import datetime as _dt
+
+            timestamp = _dt.now().strftime("%Y%m%d_%H%M%S")
+            safe_name_cv = consultant.get("name", "consultant").replace(" ", "_")
+            pdf_path = BASE_DIR / "output" / f"cv_{safe_name_cv}_{timestamp}.pdf"
+            markdown_to_pdf(cv_html, str(pdf_path))
+            return {
+                "format": "pdf",
+                "path": str(pdf_path.relative_to(BASE_DIR)),
+                "download_url": f"/output/{pdf_path.name}",
+            }
+        except Exception as e:
+            return JSONResponse(
+                {"error": f"Erreur export PDF: {safe_error_message(e)}"}, status_code=500
+            )
+
+    return {"format": "html", "cv_html": cv_html}
+
+
 # === E-LEARNING ADAPTATIF ===
 
 elearning_db = ElearningDatabase()
@@ -8082,6 +8200,135 @@ async def api_elearning_update_progress(
         completion_pct, mastery_level,
     )
     return {"ok": True}
+
+
+# === INTERVIEW CHAT ===
+
+
+@app.post("/api/elearning/interview/chat")
+@limiter.limit("30/minute")
+async def api_elearning_interview_chat(request: Request):
+    """
+    Tour de conversation dans un entretien simulé interactif.
+
+    Body JSON :
+      {
+        "messages": [{"role": "user"|"assistant", "content": "..."}],
+        "topic": "Python",          # optionnel
+        "role": "Data Engineer"     # optionnel
+      }
+
+    Retourne la réponse de l'interviewer.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Corps JSON invalide"}, status_code=400)
+
+    messages = body.get("messages")
+    if not messages or not isinstance(messages, list):
+        return JSONResponse({"error": "Champ 'messages' requis (liste)"}, status_code=400)
+
+    # Valider les messages
+    for msg in messages:
+        if not isinstance(msg, dict) or msg.get("role") not in ("user", "assistant"):
+            return JSONResponse(
+                {"error": "Chaque message doit avoir 'role' (user|assistant) et 'content'"},
+                status_code=400,
+            )
+
+    topic = str(body.get("topic", ""))[:200]
+    role = str(body.get("role", ""))[:200]
+
+    try:
+        agent = ElearningAgent()
+        reply = agent.interview_chat(messages, topic=topic, role=role)
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur entretien : {str(e)}"}, status_code=500
+        )
+
+    return {"reply": reply}
+
+
+@app.post("/api/elearning/interview/analyze")
+@limiter.limit("10/minute")
+async def api_elearning_interview_analyze(request: Request):
+    """
+    Analyse les performances d'un entretien simulé complet.
+
+    Body JSON :
+      {
+        "messages": [{"role": "user"|"assistant", "content": "..."}],
+        "topic": "Python",
+        "role": "Data Engineer"
+      }
+
+    Retourne {overall_score, grade, strengths, improvements, detailed_feedback, ...}
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Corps JSON invalide"}, status_code=400)
+
+    messages = body.get("messages")
+    if not messages or not isinstance(messages, list):
+        return JSONResponse({"error": "Champ 'messages' requis (liste)"}, status_code=400)
+
+    topic = str(body.get("topic", ""))[:200]
+    role = str(body.get("role", ""))[:200]
+
+    try:
+        agent = ElearningAgent()
+        analysis = agent.analyze_interview_performance(messages, topic=topic, role=role)
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur analyse : {str(e)}"}, status_code=500
+        )
+
+    return {"analysis": analysis}
+
+
+# === PREMIUM RESOURCES ===
+
+
+@app.post("/api/elearning/course/{course_id}/premium-resources")
+@limiter.limit("5/minute")
+async def api_elearning_premium_resources(
+    request: Request,
+    course_id: int,
+):
+    """
+    Génère des ressources premium pour un cours :
+    fiches mémo, résumés condensés, cheatsheet globale.
+
+    Body JSON optionnel :
+      { "resource_types": ["memo", "summary", "cheatsheet"] }
+    """
+    course = elearning_db.get_course(course_id)
+    if not course:
+        return JSONResponse({"error": "Cours non trouvé"}, status_code=404)
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    resource_types = body.get("resource_types") if isinstance(body, dict) else None
+    valid_types = {"memo", "summary", "cheatsheet"}
+    if resource_types is not None:
+        resource_types = [t for t in resource_types if t in valid_types] or None
+
+    try:
+        agent = ElearningAgent()
+        resources = agent.generate_premium_resources(course, resource_types)
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur génération ressources premium : {str(e)}"},
+            status_code=500,
+        )
+
+    return {"resources": resources}
 
 
 # === MAIN ===

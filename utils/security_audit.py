@@ -62,10 +62,8 @@ def check_env_file() -> Dict[str, any]:
     if missing_vars:
         results["status"] = "warning"
         results["issues"].extend([f"Variable manquante: {v}" for v in missing_vars])
-        print(
-            f"  {YELLOW}⚠{RESET}  Variables manquantes: {
-                ', '.join(missing_vars)}"
-        )
+        missing_list = ", ".join(missing_vars)
+        print(f"  {YELLOW}⚠{RESET}  Variables manquantes: {missing_list}")
     else:
         print(f"  {GREEN}✓{RESET} Toutes les variables critiques sont présentes")
 
@@ -143,26 +141,44 @@ def check_hardcoded_secrets() -> Dict[str, any]:
 
     # Fichiers à analyser
     py_files = list(base_dir.glob("**/*.py"))
-    excluded_files = ["security_audit.py", "venv", "__pycache__"]
+    # Exclure les fichiers tests (fixtures) et le script lui-même
+    excluded_dirs = {"security_audit.py", "venv", "__pycache__", "tests", ".venv"}
 
     issues_found = []
 
     for py_file in py_files:
         # Exclure certains fichiers/dossiers
-        if any(excluded in str(py_file) for excluded in excluded_files):
+        if any(excluded in str(py_file) for excluded in excluded_dirs):
             continue
 
         try:
             with open(py_file, "r", encoding="utf-8") as f:
-                content = f.read()
+                raw_lines = f.readlines()
+
+            # Exclure les lignes d'exemples doctest (>>>) et les commentaires
+            filtered = [
+                ln for ln in raw_lines
+                if not ln.strip().startswith(">>>")
+                and not ln.strip().startswith("#")
+            ]
+            content = "".join(filtered)
 
             for pattern, description in secret_patterns:
                 matches = re.findall(pattern, content, re.IGNORECASE)
                 if matches:
-                    # Filtrer les faux positifs (commentaires, exemples)
                     for match in matches:
-                        if "example" not in match.lower() and "your_" not in match.lower():
-                            issue = f"{description} trouvé dans {py_file.name}"
+                        match_str = match if isinstance(match, str) else match[0]
+                        # Filtrer les faux positifs :
+                        # - valeurs d'exemple ou de template
+                        # - patterns regex (contiennent des métacaractères)
+                        if (
+                            "example" in match_str.lower()
+                            or "your_" in match_str.lower()
+                            or re.search(r"[+*?\[\]\\{]", match_str)
+                        ):
+                            continue
+                        issue = f"{description} trouvé dans {py_file.name}"
+                        if issue not in issues_found:
                             issues_found.append(issue)
                             print(f"  {RED}✗{RESET} {issue}")
 

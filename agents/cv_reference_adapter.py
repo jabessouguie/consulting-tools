@@ -1,3 +1,8 @@
+"""
+Agent d'adaptation de CV et références pour les appels d'offres
+Reformate un CV consultant en slides PPTX ciblées sur une mission donnée
+"""
+
 import json
 import os
 import sys

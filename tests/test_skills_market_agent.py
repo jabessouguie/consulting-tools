@@ -494,3 +494,59 @@ class TestImportFromText:
             progress_callback=callback,
         )
         assert callback.called
+
+
+# ==================
+# GENERATE CV (Phase 1.4)
+# ==================
+
+
+class TestGenerateCV:
+    @pytest.mark.unit
+    def test_generate_cv_returns_html(self, agent):
+        """generate_cv retourne une chaîne HTML"""
+        agent.llm.generate.return_value = "<div><h1>Alice Durand</h1></div>"
+        consultant = {
+            "name": "Alice Durand",
+            "title": "Data Engineer",
+            "company": "Wenvision",
+            "experience_years": 7,
+            "location": "Paris",
+            "skills": ["Python", "SQL", "Spark"],
+            "certifications": ["AWS Certified"],
+            "bio": "Experte en data engineering",
+        }
+        result = agent.generate_cv(consultant)
+        assert isinstance(result, str)
+        assert "Alice" in result
+
+    @pytest.mark.unit
+    def test_generate_cv_with_client_need(self, agent):
+        """Le besoin client est passé dans le prompt"""
+        agent.llm.generate.return_value = "<div>CV adapté</div>"
+        consultant = {
+            "name": "Bob",
+            "title": "Dev",
+            "skills": ["Java"],
+            "bio": "",
+        }
+        agent.generate_cv(consultant, client_need="Besoin en Java senior")
+        call_prompt = agent.llm.generate.call_args[1].get("prompt", "") or agent.llm.generate.call_args[0][0]
+        assert "Besoin en Java senior" in call_prompt
+
+    @pytest.mark.unit
+    def test_generate_cv_strips_markdown_fence(self, agent):
+        """Les balises ```html sont retirées de la réponse"""
+        agent.llm.generate.return_value = "```html\n<div>CV</div>\n```"
+        consultant = {"name": "Test", "skills": [], "bio": ""}
+        result = agent.generate_cv(consultant)
+        assert "```" not in result
+        assert "<div>" in result
+
+    @pytest.mark.unit
+    def test_generate_cv_empty_skills(self, agent):
+        """Fonctionne avec des compétences vides"""
+        agent.llm.generate.return_value = "<p>CV minimal</p>"
+        consultant = {"name": "X", "skills": None, "certifications": None, "bio": ""}
+        result = agent.generate_cv(consultant)
+        assert isinstance(result, str)
