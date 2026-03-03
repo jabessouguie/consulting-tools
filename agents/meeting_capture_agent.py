@@ -22,11 +22,12 @@ from google.api_core.exceptions import GoogleAPIError
 # ---------------------------------------------------------------------------
 
 GEMINI_MODELS: Dict[str, str] = {
-    "gemini-2.5-pro": "Gemini 2.5 Pro (Stable)",
-    "gemini-2.5-flash": "Gemini 2.5 Flash (Rapide)",
+    "gemini-3.1-flash": "Gemini 3.1 Flash (Nouvel Étalon)",
+    "gemini-3.0-flash": "Gemini 3.0 Flash (Performance)",
+    "gemini-2.1-flash": "Gemini 2.1 Flash (Rapide)",
     "gemini-2.0-flash": "Gemini 2.0 Flash (Économique)",
 }
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash"
 
 _ANALYZE_PROMPT = (
     "Tu es un assistant de réunion. Analyse cette vidéo et réponds UNIQUEMENT en JSON valide "
