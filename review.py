@@ -141,23 +141,23 @@ def main():
 
     print(f"\n{'=' * 60}")
     if criticals > 0:
+        critical_color = SEVERITY_COLORS['CRITICAL']
         print(
-            f"  {
-                SEVERITY_COLORS['CRITICAL']}BLOQUE : {criticals} probleme(s) critique(s) detecte(s){RESET}"
+            f"  {critical_color}BLOQUE : {criticals} probleme(s) critique(s) detecte(s){RESET}"
         )
         print("  Corrigez les problemes CRITICAL avant de commit.\n")
         sys.exit(1)
     elif warnings > 0:
+        warning_color = SEVERITY_COLORS['WARNING']
         print(
-            f"  {
-                SEVERITY_COLORS['WARNING']}ATTENTION : {warnings} warning(s) detecte(s){RESET}"
+            f"  {warning_color}ATTENTION : {warnings} warning(s) detecte(s){RESET}"
         )
         print("  Verifiez les warnings avant de commit.\n")
         sys.exit(0)
     else:
+        ok_color = SEVERITY_COLORS['OK']
         print(
-            f"  {
-                SEVERITY_COLORS['OK']}OK : Code review passee avec succes{RESET}\n"
+            f"  {ok_color}OK : Code review passee avec succes{RESET}\n"
         )
         sys.exit(0)
 

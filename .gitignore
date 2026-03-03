@@ -74,3 +74,9 @@ cache/
 
 # Temporary sandbox files
 temp/
+
+# SSL certificates and private keys
+*.pem
+*.key
+ssl/
+static/photos/

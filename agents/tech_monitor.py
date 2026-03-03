@@ -128,10 +128,9 @@ class TechMonitorAgent:
             except Exception as e:
                 from utils.validation import sanitize_error_message
 
+                err_msg = sanitize_error_message(str(e))
                 print(
-                    f"   ⚠️  Erreur sur {source_url}: {
-                        sanitize_error_message(
-                            str(e))}"
+                    f"   ⚠️  Erreur sur {source_url}: {err_msg}"
                 )
                 continue
 

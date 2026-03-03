@@ -63,10 +63,10 @@ async def validate_file_upload(
             break
 
     if not extension:
+        allowed_exts_str = ', '.join(allowed_extensions)
         raise HTTPException(
             status_code=400,
-            detail=f"Type de fichier non autorise. Extensions acceptees : {
-                ', '.join(allowed_extensions)}",
+            detail=f"Type de fichier non autorise. Extensions acceptees : {allowed_exts_str}",
         )
 
     # Lire contenu
@@ -76,11 +76,10 @@ async def validate_file_upload(
     if len(content) > max_size:
         size_mb = len(content) / (1024 * 1024)
         max_mb = max_size / (1024 * 1024)
+        detail_msg = f"Fichier trop volumineux ({size_mb:.1f}MB). Taille max : {max_mb:.0f}MB"
         raise HTTPException(
             status_code=413,
-            detail=f"Fichier trop volumineux ({
-                size_mb:.1f}MB). Taille max : {
-                max_mb:.0f}MB",
+            detail=detail_msg,
         )
 
     # Verifier que le fichier n est pas vide

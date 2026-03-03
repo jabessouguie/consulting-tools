@@ -433,3 +433,74 @@ REGLES:
                     continue
 
         return None
+
+    def generate_cv(self, consultant: Dict, client_need: str = "") -> str:
+        """
+        Génère un CV HTML professionnel à partir du profil d'un consultant.
+
+        Args:
+            consultant: Dictionnaire contenant les données du consultant
+            client_need: Description du besoin client pour adapter le CV (optionnel)
+
+        Returns:
+            CV au format HTML prêt à l'affichage ou à l'export PDF
+        """
+        skills = ", ".join(consultant.get("skills", []) or [])
+        certifications = "\n".join(
+            f"- {c}" for c in (consultant.get("certifications") or [])
+        )
+        experiences = consultant.get("experience_years", "N/A")
+        adaptation_block = ""
+        if client_need:
+            adaptation_block = f"""
+ADAPTATION DEMANDÉE :
+Le CV doit mettre en avant les compétences et expériences les plus pertinentes
+pour le besoin client suivant : {client_need}
+Réorganise les sections si nécessaire pour maximiser la pertinence."""
+
+        prompt = f"""Génère un CV professionnel en HTML pour ce consultant :
+
+NOM : {consultant.get("name", "N/A")}
+TITRE : {consultant.get("title", "N/A")}
+ENTREPRISE : {consultant.get("company", "N/A")}
+EXPÉRIENCE : {experiences} ans
+LOCALISATION : {consultant.get("location", "N/A")}
+COMPÉTENCES : {skills}
+CERTIFICATIONS :
+{certifications or "Aucune"}
+BIO / PRÉSENTATION :
+{consultant.get("bio", "")}
+{adaptation_block}
+
+Génère uniquement le HTML (sans balise <html>/<head>/<body> wrapper) avec :
+- Un en-tête avec nom, titre, coordonnées fictives (email pro, LinkedIn)
+- Une section "Profil" avec la bio adaptée
+- Une section "Compétences clés" avec les skills en badges colorés
+- Une section "Expérience" (utilise le nombre d'années, invente des postes plausibles si besoin)
+- Une section "Certifications" si non vide
+- Un style CSS inline élégant et professionnel (palette sobre : bleu foncé #1a3a5c + blanc + gris clair)
+- Mise en page A4 (max-width 800px, police sans-serif)
+
+RÈGLES :
+- Retourne UNIQUEMENT le HTML, sans markdown, sans explication
+- Pas de ```html ni de préambule
+- Le HTML doit être complet et directement intégrable dans une page web"""
+
+        system_prompt = (
+            "Tu es un designer RH expert en création de CVs consultants haute valeur."
+            " Tu génères des CVs HTML visuellement professionnels et impactants."
+        )
+
+        response = self.llm.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.4,
+        )
+
+        # Nettoyer les balises de code markdown si présentes
+        cv_html = response.strip()
+        if cv_html.startswith("```"):
+            cv_html = re.sub(r"^```(?:html)?\s*", "", cv_html)
+            cv_html = re.sub(r"\s*```$", "", cv_html)
+
+        return cv_html.strip()

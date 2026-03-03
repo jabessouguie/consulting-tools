@@ -800,6 +800,57 @@ REGLES:
             print(f"Erreur generation quiz: {e}")
             return {"error": str(e)}
 
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        """
+        Normalise un texte pour comparaison souple :
+        minuscules, sans ponctuation superflue, espaces normalisés.
+        """
+        t = text.strip().lower()
+        # Apostrophes typographiques → standard
+        t = re.sub(r"[''`\u2019]", "'", t)
+        # Supprimer ponctuation de début/fin
+        t = re.sub(r"^[\s.,;:!?\-–—]+|[\s.,;:!?\-–—]+$", "", t)
+        # Normaliser les espaces multiples
+        t = re.sub(r"\s+", " ", t)
+        return t
+
+    @staticmethod
+    def _mcq_match(student: str, correct: str) -> bool:
+        """
+        Vérifie si une réponse MCQ correspond à la bonne réponse.
+
+        Gère les cas :
+        - Lettre seule : "A" correspond à "A. Paris" ou "A) Paris"
+        - Texte seul : "Paris" correspond à "A. Paris"
+        - Variantes de ponctuation : "a." "a)" "a:" "a -"
+        """
+        s = student.strip().lower()
+        c = correct.strip().lower()
+
+        if s == c:
+            return True
+
+        # Pattern de préfixe lettre (a. / a) / a: / a -)
+        _letter_re = re.compile(r"^([a-d])[.):\s\-]")
+
+        s_m = _letter_re.match(s)
+        c_m = _letter_re.match(c)
+        s_letter = s_m.group(1) if s_m else None
+        c_letter = c_m.group(1) if c_m else None
+
+        # Cas "A" vs "A. Paris" (ou inverse)
+        if s == c_letter or c == s_letter:
+            return True
+
+        # Comparer les textes après le préfixe lettre
+        s_text = re.sub(r"^[a-d][.):\s\-]+", "", s).strip()
+        c_text = re.sub(r"^[a-d][.):\s\-]+", "", c).strip()
+        if s_text and c_text and s_text == c_text:
+            return True
+
+        return False
+
     def evaluate_answer(
         self,
         question: Dict,
@@ -808,7 +859,9 @@ REGLES:
         """
         Evalue la reponse d'un etudiant.
 
-        Pour MCQ/true_false/fill_blank: comparaison exacte.
+        Pour MCQ: comparaison avec gestion lettre/texte (A / A. Paris / Paris).
+        Pour true_false: comparaison normalisée (vrai/true, faux/false).
+        Pour fill_blank: comparaison après normalisation du texte.
         Pour open_ended: evaluation par LLM.
 
         Args:
@@ -822,8 +875,24 @@ REGLES:
         correct = question.get("correct_answer", "")
         explanation = question.get("explanation", "")
 
-        if q_type in ("mcq", "true_false"):
-            is_correct = student_answer.strip().lower() == correct.strip().lower()
+        if q_type == "mcq":
+            is_correct = self._mcq_match(student_answer, correct)
+            return {
+                "is_correct": is_correct,
+                "explanation": explanation,
+                "feedback": (
+                    "Bonne reponse !" if is_correct else f"La bonne reponse etait : {correct}"
+                ),
+            }
+
+        elif q_type == "true_false":
+            # Normaliser vrai/faux ↔ true/false
+            _tf_map = {"vrai": "true", "faux": "false", "oui": "true", "non": "false"}
+            s_norm = self._normalize_text(student_answer)
+            c_norm = self._normalize_text(correct)
+            s_norm = _tf_map.get(s_norm, s_norm)
+            c_norm = _tf_map.get(c_norm, c_norm)
+            is_correct = s_norm == c_norm
             return {
                 "is_correct": is_correct,
                 "explanation": explanation,
@@ -833,7 +902,15 @@ REGLES:
             }
 
         elif q_type == "fill_blank":
-            is_correct = student_answer.strip().lower() == correct.strip().lower()
+            is_correct = self._normalize_text(student_answer) == self._normalize_text(correct)
+            # Tolérance partielle : chaque mot significatif de la réponse attendue est présent
+            if not is_correct:
+                correct_words = [
+                    w for w in self._normalize_text(correct).split() if len(w) > 2
+                ]
+                answer_norm = self._normalize_text(student_answer)
+                if correct_words and all(w in answer_norm for w in correct_words):
+                    is_correct = True
             return {
                 "is_correct": is_correct,
                 "explanation": explanation,
@@ -1201,6 +1278,307 @@ REGLES:
             )
             / 60,
         }
+
+    # ==================
+    # INTERVIEW CHAT
+    # ==================
+
+    def interview_chat(
+        self,
+        messages: List[Dict[str, str]],
+        topic: str = "",
+        role: str = "",
+    ) -> str:
+        """
+        Répond dans un mode chat d'entretien interactif.
+
+        L'IA joue le rôle d'un recruteur / interviewer technique et
+        pose des questions de suivi basées sur les réponses de l'apprenant.
+
+        Args:
+            messages: Historique de la conversation
+                [{"role": "user"|"assistant", "content": "..."}]
+            topic: Sujet de l'entretien (ex: "Data Engineering", "Python")
+            role: Poste visé (ex: "Data Engineer Senior")
+
+        Returns:
+            Réponse de l'interviewer (texte)
+        """
+        topic_line = f"Poste : {role}\nDomaine : {topic}" if topic or role else ""
+        system_prompt = f"""Tu es un recruteur technique expérimenté dans un entretien simulé.
+{topic_line}
+
+Ton rôle :
+- Jouer le rôle d'un interviewer professionnel, bienveillant mais exigeant
+- Poser des questions techniques et comportementales pertinentes
+- Approfondir les réponses du candidat avec des questions de suivi
+- Ne pas donner les réponses : faire réfléchir le candidat
+- Adapter la difficulté selon la qualité des réponses
+- Terminer par "FIN_ENTRETIEN" uniquement si l'utilisateur demande explicitement à arrêter
+
+Style : conversationnel, professionnel, concis (2-4 phrases max par tour)."""
+
+        response = self.llm.generate_with_context(
+            messages=messages,
+            system_prompt=system_prompt,
+            temperature=0.7,
+        )
+        return response.strip()
+
+    def analyze_interview_performance(
+        self,
+        conversation: List[Dict[str, str]],
+        topic: str = "",
+        role: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Analyse les performances d'un entretien simulé.
+
+        Args:
+            conversation: Historique complet de la conversation
+            topic: Sujet de l'entretien
+            role: Poste visé
+
+        Returns:
+            {overall_score, strengths, improvements, detailed_feedback, recommendations}
+        """
+        # Filtrer les messages utilisateur pour l'analyse
+        user_turns = [m["content"] for m in conversation if m.get("role") == "user"]
+        if not user_turns:
+            return {
+                "overall_score": 0,
+                "strengths": [],
+                "improvements": ["Aucune réponse fournie"],
+                "detailed_feedback": "Entretien vide.",
+                "recommendations": [],
+            }
+
+        conversation_text = "\n".join(
+            f"[{m.get('role', 'user').upper()}] {m.get('content', '')}"
+            for m in conversation
+        )
+
+        prompt = f"""Analyse cet entretien simulé et évalue les performances du candidat.
+
+POSTE VISÉ : {role or "Non précisé"}
+DOMAINE : {topic or "Non précisé"}
+
+TRANSCRIPT :
+{conversation_text[:4000]}
+
+Retourne un JSON avec :
+{{
+    "overall_score": 0-100,
+    "grade": "A/B/C/D/F",
+    "strengths": ["Point fort 1", "Point fort 2", "Point fort 3"],
+    "improvements": ["Axe d'amélioration 1", "Axe 2", "Axe 3"],
+    "detailed_feedback": "Analyse narrative de 3-4 phrases sur la qualité des réponses",
+    "technical_score": 0-100,
+    "communication_score": 0-100,
+    "recommendations": ["Recommandation 1", "Recommandation 2"]
+}}
+
+RÈGLES :
+- Bienveillant mais objectif
+- Basé uniquement sur ce qui a été dit
+- Retourne UNIQUEMENT le JSON"""
+
+        system_prompt = (
+            "Tu es un expert en évaluation RH et performance en entretien."
+            " Reponds uniquement en JSON."
+        )
+        try:
+            response = self.llm.generate(
+                prompt=prompt, system_prompt=system_prompt, temperature=0.3
+            )
+            result = self._parse_json_response(response)
+            if result:
+                return result
+        except Exception as e:
+            print(f"Erreur analyse entretien: {e}")
+
+        return {
+            "overall_score": 50,
+            "grade": "C",
+            "strengths": [],
+            "improvements": ["Analyse non disponible"],
+            "detailed_feedback": "Impossible d'analyser les performances.",
+            "technical_score": 50,
+            "communication_score": 50,
+            "recommendations": [],
+        }
+
+    # ==================
+    # PREMIUM RESOURCES
+    # ==================
+
+    def generate_premium_resources(
+        self,
+        course: Dict,
+        resource_types: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Génère des ressources premium exportables pour un cours.
+
+        Args:
+            course: Dict du cours avec modules et leçons
+            resource_types: Liste de types parmi ["memo", "summary", "cheatsheet"]
+                            Défaut : tous les types
+
+        Returns:
+            {memo_cards, module_summaries, cheatsheet, generated_at}
+        """
+        if resource_types is None:
+            resource_types = ["memo", "summary", "cheatsheet"]
+
+        course_title = course.get("title", "Cours")
+        modules = course.get("modules", [])
+
+        result: Dict[str, Any] = {"course_title": course_title}
+
+        # --- Fiches mémo (une par module) ---
+        if "memo" in resource_types:
+            result["memo_cards"] = self._generate_memo_cards(course_title, modules) if modules else []
+
+        # --- Résumés condensés par module ---
+        if "summary" in resource_types:
+            result["module_summaries"] = (
+                self._generate_module_summaries(course_title, modules) if modules else []
+            )
+
+        # --- Cheatsheet globale du cours ---
+        if "cheatsheet" in resource_types:
+            result["cheatsheet"] = self._generate_cheatsheet(course_title, modules)
+
+        return result
+
+    def _generate_memo_cards(
+        self, course_title: str, modules: List[Dict]
+    ) -> List[Dict]:
+        """Génère une fiche mémo HTML par module."""
+        memo_cards = []
+        for module in modules:
+            lessons_text = "\n".join(
+                f"- {les.get('title', '')}: {les.get('content', '')[:400]}"
+                for les in module.get("lessons", [])
+            )
+            prompt = f"""Cours : {course_title}
+Module : {module.get("title", "")}
+
+Contenu des leçons :
+{lessons_text or "(aucun contenu disponible)"}
+
+Génère une fiche mémo HTML compacte (fiche de révision) avec :
+- Titre du module en en-tête coloré
+- Les 5-8 concepts clés en puces courtes (1 ligne max par concept)
+- Un encadré "À retenir absolument" avec 2-3 points essentiels
+- Style CSS inline (carte blanche, bordure bleue, police sans-serif)
+- Format A6 paysage (max-width: 420px)
+
+Retourne UNIQUEMENT le HTML, sans markdown ni préambule."""
+
+            system_prompt = (
+                "Tu es un expert en design pédagogique. "
+                "Tu crées des fiches mémo visuelles et impactantes."
+            )
+            try:
+                html = self.llm.generate(
+                    prompt=prompt, system_prompt=system_prompt, temperature=0.4
+                )
+                html = re.sub(r"^```(?:html)?\s*", "", html.strip())
+                html = re.sub(r"\s*```$", "", html)
+            except Exception as e:
+                html = f"<p>Erreur génération fiche mémo : {e}</p>"
+
+            memo_cards.append(
+                {
+                    "module_id": module.get("id"),
+                    "module_title": module.get("title", ""),
+                    "html": html.strip(),
+                }
+            )
+        return memo_cards
+
+    def _generate_module_summaries(
+        self, course_title: str, modules: List[Dict]
+    ) -> List[Dict]:
+        """Génère un résumé condensé par module."""
+        summaries = []
+        for module in modules:
+            lessons_text = "\n".join(
+                f"Leçon : {les.get('title', '')}\n{les.get('content', '')[:600]}"
+                for les in module.get("lessons", [])
+            )
+            prompt = f"""Cours : {course_title}
+Module : {module.get("title", "")}
+
+Contenu :
+{lessons_text or "(aucun contenu disponible)"}
+
+Rédige un résumé condensé en Markdown (200-300 mots) :
+- Commence par une phrase d'accroche sur l'enjeu du module
+- Structure en 3-4 paragraphes thématiques
+- Mets en **gras** les termes clés
+- Termine par "En bref :" + 2 lignes de synthèse
+
+Retourne UNIQUEMENT le Markdown."""
+
+            system_prompt = "Tu es un expert en synthèse pédagogique."
+            try:
+                md = self.llm.generate(
+                    prompt=prompt, system_prompt=system_prompt, temperature=0.4
+                )
+                md = re.sub(r"^```(?:markdown|md)?\s*", "", md.strip())
+                md = re.sub(r"\s*```$", "", md)
+            except Exception as e:
+                md = f"Erreur génération résumé : {e}"
+
+            summaries.append(
+                {
+                    "module_id": module.get("id"),
+                    "module_title": module.get("title", ""),
+                    "markdown": md.strip(),
+                }
+            )
+        return summaries
+
+    def _generate_cheatsheet(
+        self, course_title: str, modules: List[Dict]
+    ) -> str:
+        """Génère une cheatsheet globale HTML du cours."""
+        modules_overview = "\n".join(
+            f"Module {i+1}: {m.get('title', '')} — "
+            + ", ".join(les.get("title", "") for les in m.get("lessons", []))
+            for i, m in enumerate(modules)
+        )
+
+        prompt = f"""Cours : {course_title}
+
+Structure :
+{modules_overview or "(aucun module disponible)"}
+
+Génère une cheatsheet HTML globale (mémo de référence rapide) :
+- En-tête avec titre du cours et date de génération
+- Tableau récapitulatif par module : Module | Concepts clés | Commandes/Formules/Points mémo
+- Section "Top 10 des points à retenir" (puces numérotées)
+- Style CSS inline professionnel (fond gris clair, tableaux bordés, police monospace pour les commandes)
+- Max-width 900px
+
+Retourne UNIQUEMENT le HTML, sans markdown ni préambule."""
+
+        system_prompt = (
+            "Tu es un expert en cheatsheets techniques et pédagogiques."
+        )
+        try:
+            html = self.llm.generate(
+                prompt=prompt, system_prompt=system_prompt, temperature=0.4
+            )
+            html = re.sub(r"^```(?:html)?\s*", "", html.strip())
+            html = re.sub(r"\s*```$", "", html)
+        except Exception as e:
+            html = f"<p>Erreur génération cheatsheet : {e}</p>"
+
+        return html.strip()
 
     # ==================
     # HELPERS

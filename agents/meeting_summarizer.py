@@ -4,6 +4,7 @@ Analyse un transcript de réunion et génère un compte rendu structuré + email
 """
 
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,49 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 
 from config import get_consultant_info
 from utils.llm_client import LLMClient
+
+# Patterns de préambules conversationnels de l'IA à supprimer
+_PREAMBLE_PATTERNS = re.compile(
+    r"^("
+    r"absolument[\.,!]?\s*|"
+    r"bien\s+s[uû]r[\.,!]?\s*|"
+    r"certainement[\.,!]?\s*|"
+    r"d'accord[\.,!]?\s*|"
+    r"bien\s+entendu[\.,!]?\s*|"
+    r"avec\s+plaisir[\.,!]?\s*|"
+    r"tr[eè]s\s+bien[\.,!]?\s*|"
+    r"parfait[\.,!]?\s*|"
+    r"voici\s+(le|la|les|l')?\s*(compte\s+rendu|r[eé]sum[eé]|email|analyse|r[eé]sultat)[^:\n]*[:\n]\s*|"
+    r"je\s+vais\s+(maintenant\s+|vous\s+)?[^\n]{0,80}\n|"
+    r"voici\s+[^\n]{0,80}[:\n]\s*"
+    r")",
+    re.IGNORECASE | re.UNICODE,
+)
+
+
+def _strip_preamble(text: str) -> str:
+    """
+    Supprime les préambules conversationnels de l'IA.
+
+    Exemples supprimés:
+    - "Absolument. Voici l'email rédigé..."
+    - "Bien sûr, voici le compte rendu:"
+    - "Je vais maintenant générer..."
+
+    Args:
+        text: Texte brut retourné par le LLM
+
+    Returns:
+        Texte nettoyé sans préambule
+    """
+    cleaned = text.strip()
+    # Appliquer le pattern en boucle (ex: "Absolument. Voici le résumé:\n")
+    for _ in range(3):
+        new = _PREAMBLE_PATTERNS.sub("", cleaned).strip()
+        if new == cleaned:
+            break
+        cleaned = new
+    return cleaned
 
 
 class MeetingSummarizerAgent:
@@ -59,7 +103,7 @@ Retourne les informations en format structuré et clair."""
 
         response = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.4)
 
-        return {"extracted_info": response}
+        return {"extracted_info": _strip_preamble(response)}
 
     def generate_minutes(self, transcript: str, extracted_info: str) -> str:
         """
@@ -152,7 +196,7 @@ REGLES IMPORTANTES :
 
         minutes = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.5)
 
-        return minutes
+        return _strip_preamble(minutes)
 
     def generate_email(self, extracted_info: str, minutes: str) -> Dict[str, str]:
         """
@@ -199,7 +243,9 @@ OBJET: [objet de l'email]
 CORPS:
 [corps de l'email]"""
 
-        response = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.5)
+        response = _strip_preamble(
+            self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.5)
+        )
 
         # Parser la réponse pour extraire objet et corps
         lines = response.strip().split("\n")
