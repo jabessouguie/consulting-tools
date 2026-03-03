@@ -1,23 +1,28 @@
 """
 Agent de generation de posts LinkedIn a partir d'un article web
-Fetch un article, l'analyse et genere un post LinkedIn engageant pour le partager
+Fetch un article, l'analyse et genere un post LinkedIn
+engageant pour le partager
 """
+
 import os
 import sys
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
-
+import html2text
 import requests
 from bs4 import BeautifulSoup
-import html2text
+from dotenv import load_dotenv
 
-from utils.llm_client import LLMClient
-from config import get_consultant_info
+# Path setup and environment loading
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_PATH not in sys.path:
+    sys.path.append(BASE_PATH)
+
+load_dotenv(os.path.join(BASE_PATH, ".env"))
+
+from config import get_consultant_info  # noqa: E402
+from utils.llm_client import LLMClient  # noqa: E402
 
 
 class ArticleToPostAgent:
@@ -46,47 +51,55 @@ class ArticleToPostAgent:
         print(f"🌐 Recuperation de l'article: {url}")
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) '
-                          'Chrome/120.0.0.0 Safari/537.36'
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
         }
 
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
 
-        soup = BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(response.content, "html.parser")
 
         # Extraire le titre
-        title = ''
-        if soup.find('h1'):
-            title = soup.find('h1').get_text(strip=True)
-        elif soup.find('title'):
-            title = soup.find('title').get_text(strip=True)
+        title = ""
+        if soup.find("h1"):
+            title = soup.find("h1").get_text(strip=True)
+        elif soup.find("title"):
+            title = soup.find("title").get_text(strip=True)
 
         # Extraire la meta description
-        meta_desc = ''
-        meta = soup.find('meta', attrs={'name': 'description'})
+        meta_desc = ""
+        meta = soup.find("meta", attrs={"name": "description"})
         if meta:
-            meta_desc = meta.get('content', '')
+            meta_desc = meta.get("content", "")
 
         # Extraire le contenu principal
         # Essayer plusieurs selecteurs courants pour le corps de l'article
         article_body = None
-        for selector in ['article', '.post-content', '.article-content',
-                         '.entry-content', 'main', '.content', '#content',
-                         '.blog-post', '.post-body']:
+        for selector in [
+            "article",
+            ".post-content",
+            ".article-content",
+            ".entry-content",
+            "main",
+            ".content",
+            "#content",
+            ".blog-post",
+            ".post-body",
+        ]:
             article_body = soup.select_one(selector)
             if article_body:
                 break
 
         if not article_body:
-            article_body = soup.find('body')
+            article_body = soup.find("body")
 
         # Supprimer les elements non pertinents
         if article_body:
-            for tag in article_body.find_all(['script', 'style', 'nav',
-                                               'footer', 'header', 'aside',
-                                               'form', 'iframe']):
+            for tag in article_body.find_all(
+                ["script", "style", "nav", "footer", "header", "aside", "form", "iframe"]
+            ):
                 tag.decompose()
 
         raw_html = str(article_body) if article_body else str(soup)
@@ -98,11 +111,11 @@ class ArticleToPostAgent:
         print(f"   ✅ Article recupere: {title[:80]}")
 
         return {
-            'url': url,
-            'title': title,
-            'meta_description': meta_desc,
-            'content': text_content,
-            'fetched_at': datetime.now().isoformat(),
+            "url": url,
+            "title": title,
+            "meta_description": meta_desc,
+            "content": text_content,
+            "fetched_at": datetime.now().isoformat(),
         }
 
     def generate_post(
@@ -125,35 +138,54 @@ class ArticleToPostAgent:
         print("✍️  Generation du post LinkedIn...")
 
         tone_instructions = {
-            "expert": "Ton professionnel et analytique. Tu apportes ta perspective d'expert avec des insights concrets.",
-            "casual": "Ton decontracte et accessible. Tu partages une decouverte de maniere conversationnelle.",
-            "provocateur": "Ton interpellant et engageant. Tu poses des questions qui font reflechir et challenges les idees recues.",
+            "expert": (
+                "Ton professionnel et analytique. Tu apportes ta "
+                "perspective d'expert avec des insights concrets."
+            ),
+            "casual": (
+                "Ton decontracte et accessible. Tu partages une "
+                "decouverte de maniere conversationnelle."
+            ),
+            "provocateur": (
+                "Ton interpellant et engageant. Tu poses des "
+                "questions qui font reflechir et challenges les "
+                "idees recues."
+            ),
         }
 
         # Charger le persona depuis le fichier
-        persona_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "linkedin_persona.md")
+        persona_path = os.path.join(BASE_PATH, "data", "linkedin_persona.md")
         persona_style = ""
         if os.path.exists(persona_path):
-            with open(persona_path, 'r', encoding='utf-8') as f:
+            with open(persona_path, "r", encoding="utf-8") as f:
                 persona_content = f.read()
-                persona_style = "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n" + persona_content[persona_content.find("### ✨ Ton & Style"):persona_content.find("### 🎨 Thématiques favorites")]
+                start_tag = "### ✨ Ton & Style"
+                end_tag = "### 🎨 Thématiques favorites"
+                start_idx = persona_content.find(start_tag)
+                end_idx = persona_content.find(end_tag)
+                persona_style = (
+                    "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n" + persona_content[start_idx:end_idx]
+                )
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es {self.consultant_info['name']}, \
+{self.consultant_info['title']} chez {self.consultant_info['company']}.
 Base : Paris | Génération Z assumée
 {persona_style}
 
 Tu dois creer un post LinkedIn pour partager un article. Le post doit:
 - Etre authentique et refléter ta voix de consultant data/IA
-- Apporter de la valeur en reformulant les points cles avec ta perspective de consultant, SANS inventer d'exemples ou d'anecdotes
+- Apporter de la valeur en reformulant les points cles avec ta \
+perspective de consultant, SANS inventer d'exemples ou d'anecdotes
 - Donner envie de lire l'article SANS simplement le resumer
-- {'Utiliser des emojis avec moderation pour structurer' if include_emoji else 'Ne PAS utiliser d emojis'}
+- {'Utiliser des emojis pour structurer' if include_emoji else 'Pas d emojis'}
 - Faire entre 1000 et 1500 caracteres
 - Se terminer par une question d engagement
 
 REGLES IMPERATIVES:
-- Base-toi UNIQUEMENT sur le contenu de l'article. Ne fabrique aucun fait, chiffre ou exemple.
+- Base-toi UNIQUEMENT sur le contenu de l'article. Ne fabrique aucun \
+fait, chiffre ou exemple.
 - Ne JAMAIS inventer d'anecdotes personnelles ou d'experiences fictives
-- Ta "perspective" = ton analyse des faits de l'article, PAS une histoire inventee
+- Ta "perspective" = ton analyse des faits de l'article, PAS une fiction
 
 {tone_instructions.get(tone, tone_instructions['expert'])}"""
 
@@ -166,14 +198,14 @@ CONTENU DE L'ARTICLE:
 {article['content']}
 
 Structure du post:
-1. HOOK (1-2 lignes percutantes qui captent l'attention - NE PAS commencer par "Je viens de lire...")
-2. TA PERSPECTIVE (2-3 phrases avec ton analyse personnelle, un enseignement ou une experience en lien)
+1. HOOK (1-2 lignes percutantes - NE PAS commencer par "Je viens de lire")
+2. TA PERSPECTIVE (2-3 phrases avec ton analyse personnelle)
 3. POINTS CLES (2-3 elements cles de l'article, reformules avec ta vision)
 4. APPEL A L'ACTION (invitation a lire + question d'engagement)
 5. HASHTAGS (3-5 hashtags pertinents)
 
 IMPORTANT:
-- Le lien vers l'article sera ajoute automatiquement, NE PAS l'inclure dans le texte du post
+- Le lien sera ajoute automatiquement, NE PAS l'inclure dans le texte
 - NE PAS ecrire "Lien en commentaire" ou "Article en commentaire"
 - Sois specifique sur le contenu, pas generique
 - Ecris en francais"""
@@ -186,15 +218,15 @@ IMPORTANT:
         )
 
         # Generer une variante courte
-        short_prompt = f"""A partir de ce post LinkedIn, cree une version courte (400-600 caracteres max) qui va droit au point.
-Garde le hook et la question finale, compresse le milieu.
-
-Post original:
-{main_post}
-
-{'Utilise des emojis' if include_emoji else 'Pas d emojis'}.
-NE PAS inclure le lien de l'article dans le texte.
-NE PAS inventer d'anecdotes ou d'exemples qui ne sont pas dans le post original."""
+        short_prompt = (
+            "A partir de ce post LinkedIn, cree une version courte "
+            "(400-600 caracteres max) qui va droit au point. "
+            "Garde le hook et la question finale, compresse le milieu.\n\n"
+            f"Post original:\n{main_post}\n\n"
+            f"{'Utilise des emojis' if include_emoji else 'Pas d emojis'}.\n"
+            "NE PAS inclure le lien de l'article dans le texte.\n"
+            "NE PAS inventer d'anecdotes ou d'exemples fictifs.\n"
+        )
 
         short_version = self.llm_client.generate(
             prompt=short_prompt,
@@ -206,13 +238,13 @@ NE PAS inventer d'anecdotes ou d'exemples qui ne sont pas dans le post original.
         print("   ✅ Post genere avec variante courte")
 
         return {
-            'main_post': main_post,
-            'short_version': short_version,
-            'tone': tone,
-            'article_title': article['title'],
-            'article_url': article['url'],
-            'generated_at': datetime.now().isoformat(),
-            'consultant': self.consultant_info,
+            "main_post": main_post,
+            "short_version": short_version,
+            "tone": tone,
+            "article_title": article["title"],
+            "article_url": article["url"],
+            "generated_at": datetime.now().isoformat(),
+            "consultant": self.consultant_info,
         }
 
     def run(
@@ -241,24 +273,23 @@ NE PAS inventer d'anecdotes ou d'exemples qui ne sont pas dans le post original.
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        output_dir = os.path.join(base_dir, "output")
+        output_dir = os.path.join(BASE_PATH, "output")
         os.makedirs(output_dir, exist_ok=True)
 
         md_path = os.path.join(output_dir, f"article_post_{timestamp}.md")
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(f"# Post LinkedIn - Partage d'article\n\n")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write("# Post LinkedIn - Partage d'article\n\n")
             f.write(f"**Article:** [{article['title']}]({url})\n")
             f.write(f"**Ton:** {tone}\n")
-            f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
+            f.write(f"**Date:** " f"{datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("## Post Principal\n\n")
-            f.write(result['main_post'])
+            f.write(result["main_post"])
             f.write(f"\n\n🔗 {url}\n")
             f.write("\n\n---\n\n## Version Courte\n\n")
-            f.write(result['short_version'])
+            f.write(result["short_version"])
             f.write(f"\n\n🔗 {url}\n")
 
-        result['md_path'] = md_path
+        result["md_path"] = md_path
         print(f"\n✅ Post sauvegarde: {md_path}")
 
         return result
@@ -267,10 +298,10 @@ NE PAS inventer d'anecdotes ou d'exemples qui ne sont pas dans le post original.
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Generer un post LinkedIn a partir d\'un article')
-    parser.add_argument('url', help='URL de l\'article')
-    parser.add_argument('--tone', choices=['expert', 'casual', 'provocateur'], default='expert')
-    parser.add_argument('--no-emoji', action='store_true')
+    parser = argparse.ArgumentParser(description="Generer un post LinkedIn a partir d'un article")
+    parser.add_argument("url", help="URL de l'article")
+    parser.add_argument("--tone", choices=["expert", "casual", "provocateur"], default="expert")
+    parser.add_argument("--no-emoji", action="store_true")
 
     args = parser.parse_args()
 
@@ -280,9 +311,9 @@ def main():
     print(f"\n{'='*50}")
     print("POST GENERE")
     print(f"{'='*50}\n")
-    print(result['main_post'])
+    print(result["main_post"])
     print(f"\n🔗 {args.url}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

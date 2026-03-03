@@ -3,29 +3,26 @@ Agent de génération de propositions commerciales
 Analyse un appel d'offre et génère une proposition commerciale en utilisant
 les références Wenvision (fichiers PPTX locaux) et un template PowerPoint
 """
-import os
+
 import json
-from typing import Dict, Any, Optional
-from datetime import datetime
+import os
 import sys
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from dotenv import load_dotenv
+
+from config import get_consultant_info
+from utils.image_generator import DiagramGenerator, ImageGenerator, ImageLibrary
+from utils.llm_client import LLMClient
+from utils.pptx_generator import build_proposal_pptx
+from utils.pptx_reader import extract_template_structure, read_all_references, read_pptx_template
 
 # Ajouter le répertoire parent au path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dotenv import load_dotenv
 load_dotenv()
 
-from typing import List
-from utils.llm_client import LLMClient
-from utils.pptx_reader import (
-    read_pptx_template,
-    read_pptx_reference,
-    read_all_references,
-    extract_template_structure,
-)
-from utils.pptx_generator import build_proposal_pptx
-from utils.image_generator import ImageGenerator, ImageLibrary, DiagramGenerator
-from config import get_consultant_info
 
 # Chemin de base du projet
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,16 +36,10 @@ class ProposalGeneratorAgent:
         self.llm_client = LLMClient()
 
         # Chemins locaux
-        self.template_path = os.path.join(
-            BASE_DIR, "WENVISION_Template_Palette 2026.pptx"
-        )
+        self.template_path = os.path.join(BASE_DIR, "WENVISION_Template_Palette 2026.pptx")
         self.references_dir = os.path.join(BASE_DIR, "data", "references")
-        self.notebooklm_data_path = os.path.join(
-            BASE_DIR, "data", "notebooklm", "references.json"
-        )
-        self.biographies_path = os.path.join(
-            BASE_DIR, "Biographies - CV All WEnvision.pptx"
-        )
+        self.notebooklm_data_path = os.path.join(BASE_DIR, "data", "notebooklm", "references.json")
+        self.biographies_path = os.path.join(BASE_DIR, "Biographies - CV All WEnvision.pptx")
 
         # Informations consultant (depuis config centralisee)
         self.consultant_info = get_consultant_info()
@@ -68,18 +59,18 @@ class ProposalGeneratorAgent:
             Dictionnaire contenant toutes les références
         """
         result = {
-            'pptx_references': [],
-            'projects': [],
-            'expertise': [],
-            'methodologies': [],
-            'differentiators': [],
+            "pptx_references": [],
+            "projects": [],
+            "expertise": [],
+            "methodologies": [],
+            "differentiators": [],
         }
 
         # 1. Charger les références PPTX
         print("Chargement des références PPTX...")
         pptx_refs = read_all_references(self.references_dir)
         if pptx_refs:
-            result['pptx_references'] = pptx_refs
+            result["pptx_references"] = pptx_refs
             print(f"   {len(pptx_refs)} référence(s) PPTX chargée(s)")
         else:
             print("   Aucune référence PPTX trouvée dans data/references/")
@@ -87,12 +78,12 @@ class ProposalGeneratorAgent:
         # 2. Charger le fichier JSON de références
         if os.path.exists(self.notebooklm_data_path):
             print("Chargement des références JSON (NotebookLM)...")
-            with open(self.notebooklm_data_path, 'r', encoding='utf-8') as f:
+            with open(self.notebooklm_data_path, "r", encoding="utf-8") as f:
                 json_refs = json.load(f)
-            result['projects'] = json_refs.get('projects', [])
-            result['expertise'] = json_refs.get('expertise', [])
-            result['methodologies'] = json_refs.get('methodologies', [])
-            result['differentiators'] = json_refs.get('differentiators', [])
+            result["projects"] = json_refs.get("projects", [])
+            result["expertise"] = json_refs.get("expertise", [])
+            result["methodologies"] = json_refs.get("methodologies", [])
+            result["differentiators"] = json_refs.get("differentiators", [])
             print(f"   {len(result['projects'])} projet(s) JSON chargé(s)")
         else:
             print(f"   Fichier JSON non trouvé: {self.notebooklm_data_path}")
@@ -137,16 +128,16 @@ class ProposalGeneratorAgent:
             "requirements": {
                 "technical": ["string"],
                 "functional": ["string"],
-                "constraints": ["string"]
+                "constraints": ["string"],
             },
             "budget": "string or null",
             "timeline": "string or null",
             "deliverables": ["string"],
             "evaluation_criteria": ["string"],
-            "keywords": ["string"]
+            "keywords": ["string"],
         }
 
-        prompt = f"""Analyse cet appel d'offre et extrais les informations clés de manière structurée:
+        prompt = """Analyse cet appel d'offre et extrais les informations clés de manière structurée:
 
 {tender_text}
 
@@ -160,7 +151,12 @@ Identifie particulièrement:
 - Les mots-clés techniques importants"""
 
         analysis = self.llm_client.extract_structured_data(prompt, schema)
-        print(f"   Analyse terminée: {analysis.get('project_title', 'Sans titre')}")
+        print(
+            f"   Analyse terminée: {
+                analysis.get(
+                    'project_title',
+                    'Sans titre')}"
+        )
 
         return analysis
 
@@ -180,23 +176,35 @@ Identifie particulièrement:
 
         # Construire le contexte des references PPTX
         pptx_context = ""
-        for ref in references.get('pptx_references', []):
+        for ref in references.get("pptx_references", []):
             pptx_context += f"\n--- Référence: {ref['filename']} ---\n"
-            pptx_context += ref['full_text'] + "\n"
+            pptx_context += ref["full_text"] + "\n"
 
         # Construire le contexte des references JSON
         json_context = ""
-        for project in references.get('projects', []):
-            json_context += f"\n--- Projet: {project.get('title', 'N/A')} ---\n"
+        for project in references.get("projects", []):
+            json_context += f"\n--- Projet: {
+                project.get(
+                    'title', 'N/A')} ---\n"
             json_context += f"Client: {project.get('client', 'N/A')}\n"
             json_context += f"Secteur: {project.get('sector', 'N/A')}\n"
-            json_context += f"Description: {project.get('description', 'N/A')}\n"
+            json_context += f"Description: {
+                project.get(
+                    'description', 'N/A')}\n"
             json_context += f"Challenge: {project.get('challenge', 'N/A')}\n"
             json_context += f"Solution: {project.get('solution', 'N/A')}\n"
-            json_context += f"Technologies: {', '.join(project.get('technologies', []))}\n"
-            json_context += f"Résultats: {', '.join(project.get('results', []))}\n"
+            json_context += f"Technologies: {
+                ', '.join(
+                    project.get(
+                        'technologies',
+                        []))}\n"
+            json_context += f"Résultats: {
+                ', '.join(
+                    project.get(
+                        'results',
+                        []))}\n"
 
-        prompt = f"""À partir de cet appel d'offre analysé:
+        prompt = """À partir de cet appel d'offre analysé:
 {json.dumps(tender_analysis, indent=2, ensure_ascii=False)}
 
 Et de ces références disponibles:
@@ -221,10 +229,7 @@ Pour chaque référence, explique pourquoi elle est pertinente."""
 
         response = self.llm_client.generate(prompt, temperature=0.5)
 
-        return {
-            'selected_references': response,
-            'all_references': references
-        }
+        return {"selected_references": response, "all_references": references}
 
     def load_cvs(self) -> List[Dict[str, Any]]:
         """
@@ -237,10 +242,14 @@ Pour chaque référence, explique pourquoi elle est pertinente."""
         print("Chargement des biographies...")
 
         if not os.path.exists(self.biographies_path):
-            print(f"   Fichier biographies non trouvé: {self.biographies_path}")
+            print(
+                f"   Fichier biographies non trouvé: {
+                    self.biographies_path}"
+            )
             return []
 
         from pptx import Presentation
+
         prs = Presentation(self.biographies_path)
 
         cvs = []
@@ -255,15 +264,19 @@ Pour chaque référence, explique pourquoi elle est pertinente."""
 
             full_text = "\n".join(texts)
             if len(full_text) > 50:  # Ignorer les slides quasi vides
-                cvs.append({
-                    'slide_index': i,
-                    'raw_text': full_text,
-                })
+                cvs.append(
+                    {
+                        "slide_index": i,
+                        "raw_text": full_text,
+                    }
+                )
 
         print(f"   {len(cvs)} CV(s) chargé(s)")
         return cvs
 
-    def adapt_cvs(self, cvs: List[Dict[str, Any]], tender_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def adapt_cvs(
+        self, cvs: List[Dict[str, Any]], tender_analysis: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """
         Reecrit les CVs pour les adapter au contexte de l'appel d'offre
 
@@ -282,9 +295,9 @@ Pour chaque référence, explique pourquoi elle est pertinente."""
         # Envoyer tous les CVs au LLM pour selection et adaptation
         cvs_text = ""
         for i, cv in enumerate(cvs):
-            cvs_text += f"\n--- CV {i+1} ---\n{cv['raw_text'][:2000]}\n"
+            cvs_text += f"\n--- CV {i + 1} ---\n{cv['raw_text'][:2000]}\n"
 
-        prompt = f"""A partir de cet appel d'offre:
+        prompt = """A partir de cet appel d'offre:
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
 Objectifs: {json.dumps(tender_analysis.get('objectives', []), ensure_ascii=False)}
@@ -322,17 +335,13 @@ IMPORTANT:
 - Mets en avant les technologies et methodologies mentionnees dans l'appel d'offre
 - Maximum 5 experiences et 6 competences par CV"""
 
-        response = self.llm_client.generate(
-            prompt=prompt,
-            temperature=0.5,
-            max_tokens=3000
-        )
+        response = self.llm_client.generate(prompt=prompt, temperature=0.5, max_tokens=3000)
 
         # Parser le JSON
         try:
             # Extraire le JSON de la reponse
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 adapted_cvs = json.loads(response[json_start:json_end])
                 print(f"   {len(adapted_cvs)} CV(s) adapté(s)")
@@ -342,7 +351,9 @@ IMPORTANT:
 
         return []
 
-    def _suggest_diagram_for_slide(self, slide_title: str, context: str) -> Optional[Dict[str, Any]]:
+    def _suggest_diagram_for_slide(
+        self, slide_title: str, context: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Suggere un diagramme pertinent pour une slide donnee
 
@@ -357,27 +368,36 @@ IMPORTANT:
         context_lower = context.lower()
 
         # Detecter si un diagramme flow serait pertinent
-        if any(word in title_lower for word in ['demarche', 'methodologie', 'processus', 'etapes', 'phases']):
+        if any(
+            word in title_lower
+            for word in ["demarche", "methodologie", "processus", "etapes", "phases"]
+        ):
             return {
-                'type': 'flow',
-                'trigger': 'methodologie',
-                'description': 'Processus etape par etape'
+                "type": "flow",
+                "trigger": "methodologie",
+                "description": "Processus etape par etape",
             }
 
         # Detecter si un diagramme cycle serait pertinent
-        if any(word in title_lower for word in ['succes', 'facteurs', 'cles', 'iteration', 'amelioration']):
+        if any(
+            word in title_lower
+            for word in ["succes", "facteurs", "cles", "iteration", "amelioration"]
+        ):
             return {
-                'type': 'cycle',
-                'trigger': 'facteurs_cles',
-                'description': 'Elements interdependants'
+                "type": "cycle",
+                "trigger": "facteurs_cles",
+                "description": "Elements interdependants",
             }
 
         # Detecter si une architecture serait pertinente
-        if any(word in context_lower for word in ['architecture', 'infrastructure', 'composants', 'systeme']):
+        if any(
+            word in context_lower
+            for word in ["architecture", "infrastructure", "composants", "systeme"]
+        ):
             return {
-                'type': 'flow',
-                'trigger': 'architecture',
-                'description': 'Architecture de la solution'
+                "type": "flow",
+                "trigger": "architecture",
+                "description": "Architecture de la solution",
             }
 
         return None
@@ -397,12 +417,15 @@ IMPORTANT:
         """
         print("Generation de la structure des slides...")
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = """Tu es {
+            self.consultant_info['name']}, {
+            self.consultant_info['title']} chez {
+            self.consultant_info['company']}.
 Tu generes une proposition commerciale structuree en slides PowerPoint.
 IMPORTANT: Genere du contenu concret et professionnel, sans majuscules inutiles ni emojis."""
 
         # Resumer les informations pour le contexte
-        context_summary = f"""Client: {tender_analysis.get('client_name', 'N/A')}
+        context_summary = """Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
 Objectifs: {', '.join(tender_analysis.get('objectives', [])[:4])}
 Mots-cles: {', '.join(tender_analysis.get('keywords', [])[:6])}
@@ -410,12 +433,14 @@ Exigences techniques: {', '.join(tender_analysis.get('requirements', {}).get('te
 
         # References resume
         refs_summary = ""
-        if references and references.get('all_references'):
-            projects = references['all_references'].get('projects', [])[:2]
+        if references and references.get("all_references"):
+            projects = references["all_references"].get("projects", [])[:2]
             for p in projects:
-                refs_summary += f"\n- {p.get('title', 'Projet')}: {p.get('description', '')[:100]}"
+                refs_summary += f"\n- {p.get('title',
+                                             'Projet')}: {p.get('description',
+                                                                '')[:100]}"
 
-        prompt = f"""Genere une proposition commerciale VISUELLE et MODERNE en slides PowerPoint.
+        prompt = """Genere une proposition commerciale VISUELLE et MODERNE en slides PowerPoint.
 
 CONTEXTE:
 {context_summary}
@@ -456,7 +481,7 @@ Exemple de structure VISUELLE (pas de slides section, debut direct par diagramme
   {{"type":"diagram","title":"Notre demarche","diagram_type":"flow","elements":["Cadrage","Conception","Pilote","Deploiement"],"description":"Methodologie en 4 phases"}},
   {{"type":"content","title":"Phase de cadrage","bullets":["Diagnostic rapide","Ateliers collaboratifs"]}},
   {{"type":"diagram","title":"Architecture proposee","diagram_type":"flow","elements":["Frontend","API","Base de donnees","Analytics"],"description":"Architecture cloud-native"}},
-  {{"type":"timeline","title":"Planning","diagram_type":"timeline","elements":["J0: Kick-off","M1: POC","M3: Pilote","M6: Production"],"description":"Roadmap 6 mois"}},
+  {{"type":"timeline","title":"Planning","diagram_type":"timeline","elements":["J0: Kick-of","M1: POC","M3: Pilote","M6: Production"],"description":"Roadmap 6 mois"}},
   {{"type":"table","title":"Budget","headers":["Phase","Jours","Total"],"rows":[["Cadrage","10j","10k€"],["Pilote","20j","20k€"],["Total","30j","30k€"]]}},
   {{"type":"diagram","title":"Facteurs de succes","diagram_type":"cycle","elements":["Co-construction","Iterations","Mesure","Ajustement"],"description":"Cycle d'amelioration"}},
   {{"type":"closing"}}
@@ -472,125 +497,162 @@ IMPORTANT - STRUCTURE VISUELLE:
 - Chaque concept = 1 diagramme si possible"""
 
         response = self.llm_client.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.6,
-            max_tokens=8000
+            prompt=prompt, system_prompt=system_prompt, temperature=0.6, max_tokens=8000
         )
 
         # Parser le JSON
         try:
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 slides = json.loads(response[json_start:json_end])
 
                 # Valider et completer les slides
                 for slide in slides:
-                    if slide.get('type') == 'content' and 'bullets' not in slide:
+                    if slide.get("type") == "content" and "bullets" not in slide:
                         # Ajouter des bullets par defaut si manquants
-                        slide['bullets'] = [
+                        slide["bullets"] = [
                             "Point a developper selon le contexte",
                             "Deuxieme point a completer",
-                            "Troisieme point a personnaliser"
+                            "Troisieme point a personnaliser",
                         ]
-                    elif slide.get('type') == 'table' and 'rows' not in slide:
+                    elif slide.get("type") == "table" and "rows" not in slide:
                         # Ajouter des donnees par defaut
-                        slide['headers'] = slide.get('headers', ['Colonne 1', 'Colonne 2'])
-                        slide['rows'] = [['Donnee 1', 'Donnee 2'], ['Total', 'A definir']]
+                        slide["headers"] = slide.get("headers", ["Colonne 1", "Colonne 2"])
+                        slide["rows"] = [["Donnee 1", "Donnee 2"], ["Total", "A definir"]]
 
                 # Ajouter les slides CV (sans section, juste les CVs)
                 if adapted_cvs:
                     # Supprimer closing si presente
-                    if slides and slides[-1].get('type') == 'closing':
+                    if slides and slides[-1].get("type") == "closing":
                         slides.pop()
 
                     # Ajouter les CVs directement
                     for cv in adapted_cvs:
-                        slides.append({
-                            "type": "cv",
-                            "name": cv.get('name', ''),
-                            "title": cv.get('title', ''),
-                            "experiences": cv.get('experiences', []),
-                            "skills": cv.get('skills', []),
-                        })
+                        slides.append(
+                            {
+                                "type": "cv",
+                                "name": cv.get("name", ""),
+                                "title": cv.get("title", ""),
+                                "experiences": cv.get("experiences", []),
+                                "skills": cv.get("skills", []),
+                            }
+                        )
 
-                    # Pas de closing slide (on termine sur les CVs ou derniere slide utile)
+                    # Pas de closing slide (on termine sur les CVs ou derniere
+                    # slide utile)
 
                 print(f"   {len(slides)} slides completes generees")
                 return slides
 
         except (json.JSONDecodeError, ValueError) as e:
             print(f"   Erreur parsing JSON: {e}")
-            print(f"   Utilisation d'une structure par defaut...")
+            print("   Utilisation d'une structure par defaut...")
 
-            # Structure de fallback VISUELLE (pas de slides section, focus diagrammes)
+            # Structure de fallback VISUELLE (pas de slides section, focus
+            # diagrammes)
             fallback_slides = [
-                {"type": "cover", "client": tender_analysis.get('client_name', ''), "project": tender_analysis.get('project_title', ''), "date": datetime.now().strftime('%d/%m/%Y')},
+                {
+                    "type": "cover",
+                    "client": tender_analysis.get("client_name", ""),
+                    "project": tender_analysis.get("project_title", ""),
+                    "date": datetime.now().strftime("%d/%m/%Y"),
+                },
                 # Debut direct par un diagramme
-                {"type": "diagram", "title": "Vision du projet", "diagram_type": "pyramid", "elements": [
-                    tender_analysis.get('project_title', 'Projet'),
-                    "Objectifs strategiques",
-                    "Actions prioritaires"
-                ], "description": "Pyramide des enjeux"},
-                {"type": "content", "title": "Nos objectifs", "bullets": tender_analysis.get('objectives', ['Objectif 1', 'Objectif 2'])[:3]},
+                {
+                    "type": "diagram",
+                    "title": "Vision du projet",
+                    "diagram_type": "pyramid",
+                    "elements": [
+                        tender_analysis.get("project_title", "Projet"),
+                        "Objectifs strategiques",
+                        "Actions prioritaires",
+                    ],
+                    "description": "Pyramide des enjeux",
+                },
+                {
+                    "type": "content",
+                    "title": "Nos objectifs",
+                    "bullets": tender_analysis.get("objectives", ["Objectif 1", "Objectif 2"])[:3],
+                },
                 # Diagramme methodologie
-                {"type": "diagram", "title": "Notre demarche", "diagram_type": "flow", "elements": [
-                    "Cadrage",
-                    "Conception",
-                    "Pilote",
-                    "Deploiement"
-                ], "description": "Methodologie iterative en 4 phases"},
-                {"type": "content", "title": "Approche collaborative", "bullets": [
-                    "Co-construction avec vos equipes",
-                    "Iterations courtes et validation continue"
-                ]},
+                {
+                    "type": "diagram",
+                    "title": "Notre demarche",
+                    "diagram_type": "flow",
+                    "elements": ["Cadrage", "Conception", "Pilote", "Deploiement"],
+                    "description": "Methodologie iterative en 4 phases",
+                },
+                {
+                    "type": "content",
+                    "title": "Approche collaborative",
+                    "bullets": [
+                        "Co-construction avec vos equipes",
+                        "Iterations courtes et validation continue",
+                    ],
+                },
                 # Timeline planning
-                {"type": "diagram", "title": "Planning", "diagram_type": "timeline", "elements": [
-                    "J0: Kick-off",
-                    "M1: POC",
-                    "M3: Pilote",
-                    "M6: Production"
-                ], "description": "Roadmap de deploiement sur 6 mois"},
+                {
+                    "type": "diagram",
+                    "title": "Planning",
+                    "diagram_type": "timeline",
+                    "elements": ["J0: Kick-off", "M1: POC", "M3: Pilote", "M6: Production"],
+                    "description": "Roadmap de deploiement sur 6 mois",
+                },
                 # Budget compact
-                {"type": "table", "title": "Budget", "headers": ["Phase", "Duree", "Total"], "rows": [
-                    ["Cadrage", "2 sem", "10k€"],
-                    ["Pilote", "8 sem", "40k€"],
-                    ["Production", "4 sem", "20k€"],
-                    ["Total", "14 sem", "70k€"]
-                ]},
+                {
+                    "type": "table",
+                    "title": "Budget",
+                    "headers": ["Phase", "Duree", "Total"],
+                    "rows": [
+                        ["Cadrage", "2 sem", "10k€"],
+                        ["Pilote", "8 sem", "40k€"],
+                        ["Production", "4 sem", "20k€"],
+                        ["Total", "14 sem", "70k€"],
+                    ],
+                },
                 # Facteurs de succes en cycle
-                {"type": "diagram", "title": "Facteurs de succes", "diagram_type": "cycle", "elements": [
-                    "Co-construction",
-                    "Iterations rapides",
-                    "Mesure impact",
-                    "Ajustement continu"
-                ], "description": "Cycle d'amelioration continue"},
-                {"type": "content", "title": "Notre valeur ajoutee", "bullets": [
-                    "Expertise data & IA eprouvee",
-                    "Accompagnement pragmatique"
-                ]},
-                {"type": "closing"}
+                {
+                    "type": "diagram",
+                    "title": "Facteurs de succes",
+                    "diagram_type": "cycle",
+                    "elements": [
+                        "Co-construction",
+                        "Iterations rapides",
+                        "Mesure impact",
+                        "Ajustement continu",
+                    ],
+                    "description": "Cycle d'amelioration continue",
+                },
+                {
+                    "type": "content",
+                    "title": "Notre valeur ajoutee",
+                    "bullets": ["Expertise data & IA eprouvee", "Accompagnement pragmatique"],
+                },
+                {"type": "closing"},
             ]
 
             # Ajouter CVs si disponibles (sans section, sans closing)
             if adapted_cvs:
                 # Supprimer closing
-                if fallback_slides[-1].get('type') == 'closing':
+                if fallback_slides[-1].get("type") == "closing":
                     fallback_slides.pop()
 
                 # Ajouter CVs directement
                 for cv in adapted_cvs:
-                    fallback_slides.append({
-                        "type": "cv",
-                        "name": cv.get('name', ''),
-                        "title": cv.get('title', ''),
-                        "experiences": cv.get('experiences', []),
-                        "skills": cv.get('skills', [])
-                    })
+                    fallback_slides.append(
+                        {
+                            "type": "cv",
+                            "name": cv.get("name", ""),
+                            "title": cv.get("title", ""),
+                            "experiences": cv.get("experiences", []),
+                            "skills": cv.get("skills", []),
+                        }
+                    )
             else:
-                # Pas de CVs: supprimer closing quand meme pour finir sur du contenu utile
-                if fallback_slides[-1].get('type') == 'closing':
+                # Pas de CVs: supprimer closing quand meme pour finir sur du
+                # contenu utile
+                if fallback_slides[-1].get("type") == "closing":
                     fallback_slides.pop()
 
             return fallback_slides
@@ -599,7 +661,7 @@ IMPORTANT - STRUCTURE VISUELLE:
         self,
         slides: List[Dict[str, Any]],
         tender_analysis: Dict[str, Any],
-        generate_images: bool = False
+        generate_images: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Ameliore les slides avec des diagrammes/images generes
@@ -616,72 +678,98 @@ IMPORTANT - STRUCTURE VISUELLE:
             return slides
 
         context = {
-            'client_name': tender_analysis.get('client_name', 'Client'),
-            'project_title': tender_analysis.get('project_title', 'Projet')
+            "client_name": tender_analysis.get("client_name", "Client"),
+            "project_title": tender_analysis.get("project_title", "Projet"),
         }
 
         enhanced_slides = []
         for slide in slides:
             enhanced_slides.append(slide)
 
-            # Detecter les slides qui pourraient beneficier de diagrammes generes
-            slide_title = slide.get('title', '').lower()
+            # Detecter les slides qui pourraient beneficier de diagrammes
+            # generes
+            slide_title = slide.get("title", "").lower()
 
-            # Architecture/Infrastructure → generer diagramme Mermaid via Claude
-            if any(keyword in slide_title for keyword in ['architecture', 'infrastructure', 'technique', 'solution', 'composants']):
-                if slide.get('type') == 'content':
+            # Architecture/Infrastructure → generer diagramme Mermaid via
+            # Claude
+            if any(
+                keyword in slide_title
+                for keyword in [
+                    "architecture",
+                    "infrastructure",
+                    "technique",
+                    "solution",
+                    "composants",
+                ]
+            ):
+                if slide.get("type") == "content":
                     # Construire description depuis les bullets
-                    bullets = slide.get('bullets', [])
-                    components = [b.split(':')[0].strip() for b in bullets[:6]]
+                    bullets = slide.get("bullets", [])
+                    components = [b.split(":")[0].strip() for b in bullets[:6]]
 
-                    print(f"   Generation diagramme architecture pour: {slide.get('title', 'Architecture')}")
+                    print(
+                        f"   Generation diagramme architecture pour: {
+                            slide.get(
+                                'title',
+                                'Architecture')}"
+                    )
 
                     # Methode 1: Claude + Mermaid (privilegie, gratuit)
                     image_path = self.diagram_generator.generate_architecture_diagram(
                         components=components,
                         context=context,
-                        description=slide.get('title', 'Architecture')
+                        description=slide.get("title", "Architecture"),
                     )
 
-                    # Methode 2: DALL-E en fallback si Mermaid echoue et OPENAI_API_KEY disponible
-                    if not image_path and os.getenv('OPENAI_API_KEY'):
+                    # Methode 2: DALL-E en fallback si Mermaid echoue et
+                    # OPENAI_API_KEY disponible
+                    if not image_path and os.getenv("OPENAI_API_KEY"):
                         print("   Fallback DALL-E pour architecture...")
                         image_path = self.image_generator.generate_architecture_diagram(
-                            components=components,
-                            context=context
+                            components=components, context=context
                         )
 
                     if image_path:
                         # Ajouter une slide image apres la slide content
-                        enhanced_slides.append({
-                            "type": "image",
-                            "title": f"Vue d'ensemble - {slide.get('title', '')}",
-                            "image_path": image_path,
-                            "caption": "Architecture proposee pour le projet",
-                            "bullets": components[:3]
-                        })
+                        enhanced_slides.append(
+                            {
+                                "type": "image",
+                                "title": f"Vue d'ensemble - {slide.get('title', '')}",
+                                "image_path": image_path,
+                                "caption": "Architecture proposee pour le projet",
+                                "bullets": components[:3],
+                            }
+                        )
 
             # Flux/Processus → possiblement generer flowchart Mermaid
-            elif any(keyword in slide_title for keyword in ['flux', 'processus', 'workflow']) and slide.get('type') == 'content':
-                bullets = slide.get('bullets', [])
-                steps = [b.split(':')[0].strip() for b in bullets[:6]]
+            elif (
+                any(keyword in slide_title for keyword in ["flux", "processus", "workflow"])
+                and slide.get("type") == "content"
+            ):
+                bullets = slide.get("bullets", [])
+                steps = [b.split(":")[0].strip() for b in bullets[:6]]
 
                 if len(steps) >= 3:
-                    print(f"   Generation diagramme flux pour: {slide.get('title', 'Processus')}")
+                    print(
+                        f"   Generation diagramme flux pour: {
+                            slide.get(
+                                'title',
+                                'Processus')}"
+                    )
                     image_path = self.diagram_generator.generate_flow_diagram(
-                        steps=steps,
-                        context=context,
-                        description=slide.get('title', 'Processus')
+                        steps=steps, context=context, description=slide.get("title", "Processus")
                     )
 
                     if image_path:
-                        enhanced_slides.append({
-                            "type": "image",
-                            "title": f"Flux - {slide.get('title', '')}",
-                            "image_path": image_path,
-                            "caption": "Processus detaille",
-                            "bullets": steps[:3]
-                        })
+                        enhanced_slides.append(
+                            {
+                                "type": "image",
+                                "title": f"Flux - {slide.get('title', '')}",
+                                "image_path": image_path,
+                                "caption": "Processus detaille",
+                                "bullets": steps[:3],
+                            }
+                        )
 
         return enhanced_slides
 
@@ -701,21 +789,21 @@ IMPORTANT - STRUCTURE VISUELLE:
 
         # Mapping de mots-cles vers categories
         keyword_to_category = {
-            'architecture': 'architecture',
-            'infrastructure': 'infrastructure',
-            'processus': 'process',
-            'methodologie': 'methodology',
-            'demarche': 'methodology',
-            'equipe': 'team',
-            'resultats': 'success',
-            'reussite': 'success',
-            'dashboard': 'dashboard',
-            'tableau de bord': 'dashboard',
-            'donnees': 'data',
-            'data': 'data',
-            'technologie': 'technology',
-            'mockup': 'mockup',
-            'interface': 'mockup'
+            "architecture": "architecture",
+            "infrastructure": "infrastructure",
+            "processus": "process",
+            "methodologie": "methodology",
+            "demarche": "methodology",
+            "equipe": "team",
+            "resultats": "success",
+            "reussite": "success",
+            "dashboard": "dashboard",
+            "tableau de bord": "dashboard",
+            "donnees": "data",
+            "data": "data",
+            "technologie": "technology",
+            "mockup": "mockup",
+            "interface": "mockup",
         }
 
         # Chercher une categorie correspondante
@@ -728,10 +816,7 @@ IMPORTANT - STRUCTURE VISUELLE:
         return None
 
     def generate_proposal_content(
-        self,
-        tender_analysis: Dict[str, Any],
-        references: Dict[str, Any],
-        template_structure: str
+        self, tender_analysis: Dict[str, Any], references: Dict[str, Any], template_structure: str
     ) -> Dict[str, Any]:
         """
         Génère le contenu de la proposition commerciale
@@ -746,7 +831,10 @@ IMPORTANT - STRUCTURE VISUELLE:
         """
         print("Génération de la proposition commerciale...")
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = """Tu es {
+            self.consultant_info['name']}, {
+            self.consultant_info['title']} chez {
+            self.consultant_info['company']}.
 
 Tu dois générer une proposition commerciale professionnelle et convaincante en français.
 
@@ -757,7 +845,7 @@ Style WEnvision:
 - Démontrer l'expertise sans jargon excessif
 - Philosophie: Co-construction, Alignement, Pragmatisme"""
 
-        prompt = f"""Génère une proposition commerciale complète basée sur:
+        prompt = """Génère une proposition commerciale complète basée sur:
 
 APPEL D'OFFRE ANALYSÉ:
 {json.dumps(tender_analysis, indent=2, ensure_ascii=False)}
@@ -802,26 +890,19 @@ Pour chaque section, fournis du contenu détaillé et directement exploitable.
 Sois concret, spécifique au client et à ses enjeux."""
 
         proposal = self.llm_client.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.7,
-            max_tokens=8000
+            prompt=prompt, system_prompt=system_prompt, temperature=0.7, max_tokens=8000
         )
 
         return {
-            'content': proposal,
-            'tender_analysis': tender_analysis,
-            'references_used': {
-                'selected_references': references.get('selected_references')
-            },
-            'generated_at': datetime.now().isoformat(),
-            'consultant': self.consultant_info
+            "content": proposal,
+            "tender_analysis": tender_analysis,
+            "references_used": {"selected_references": references.get("selected_references")},
+            "generated_at": datetime.now().isoformat(),
+            "consultant": self.consultant_info,
         }
 
     def generate_proposal(
-        self,
-        tender_path: str,
-        output_path: Optional[str] = None
+        self, tender_path: str, output_path: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Génère une proposition commerciale complète
@@ -833,13 +914,13 @@ Sois concret, spécifique au client et à ses enjeux."""
         Returns:
             Proposition générée
         """
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("GÉNÉRATION DE PROPOSITION COMMERCIALE - WENVISION")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         # 1. Charger l'appel d'offre
         print(f"Chargement de l'appel d'offre: {tender_path}")
-        with open(tender_path, 'r', encoding='utf-8') as f:
+        with open(tender_path, "r", encoding="utf-8") as f:
             tender_text = f.read()
 
         # 2. Analyser l'appel d'offre
@@ -859,78 +940,72 @@ Sois concret, spécifique au client et à ses enjeux."""
 
         # 7. Générer la structure des slides PPTX
         slides_structure = self.generate_slides_structure(
-            tender_analysis,
-            references,
-            template,
-            adapted_cvs
+            tender_analysis, references, template, adapted_cvs
         )
 
-        # 7b. Ameliorer avec images generees (optionnel, si OPENAI_API_KEY configuree)
-        use_dalle = os.getenv('USE_DALLE_IMAGES', 'false').lower() == 'true'
-        if use_dalle and os.getenv('OPENAI_API_KEY'):
+        # 7b. Ameliorer avec images generees (optionnel, si OPENAI_API_KEY
+        # configuree)
+        use_dalle = os.getenv("USE_DALLE_IMAGES", "false").lower() == "true"
+        if use_dalle and os.getenv("OPENAI_API_KEY"):
             print("Amelioration des slides avec images DALL-E...")
             slides_structure = self.enhance_slides_with_images(
-                slides_structure,
-                tender_analysis,
-                generate_images=True
+                slides_structure, tender_analysis, generate_images=True
             )
 
         # 8. Générer la proposition Markdown
-        proposal = self.generate_proposal_content(
-            tender_analysis,
-            references,
-            template
-        )
+        proposal = self.generate_proposal_content(tender_analysis, references, template)
 
         # 9. Sauvegarder
         if not output_path:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            client_name = tender_analysis.get('client_name', 'client').replace(' ', '_')
+            client_name = tender_analysis.get("client_name", "client").replace(" ", "_")
             output_path = os.path.join(
                 BASE_DIR, "output", f"proposal_{client_name}_{timestamp}.json"
             )
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(proposal, f, indent=2, ensure_ascii=False)
 
         # Générer aussi une version markdown
-        md_path = output_path.replace('.json', '.md')
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(f"# Proposition Commerciale - {tender_analysis.get('project_title', 'Projet')}\n\n")
+        md_path = output_path.replace(".json", ".md")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(
+                f"# Proposition Commerciale - {tender_analysis.get('project_title', 'Projet')}\n\n"
+            )
             f.write(f"**Client:** {tender_analysis.get('client_name', 'N/A')}\n")
             f.write(f"**Consultant:** {self.consultant_info['name']}\n")
             f.write(f"**Entreprise:** {self.consultant_info['company']}\n")
             f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y')}\n\n")
             f.write("---\n\n")
-            f.write(proposal['content'])
+            f.write(proposal["content"])
 
         # 10. Générer le PPTX
-        pptx_path = output_path.replace('.json', '.pptx')
+        pptx_path = output_path.replace(".json", ".pptx")
         try:
             build_proposal_pptx(
                 template_path=self.template_path,
                 slides_data=slides_structure,
                 output_path=pptx_path,
-                consultant_info=self.consultant_info
+                consultant_info=self.consultant_info,
             )
             print(f"   PPTX: {pptx_path}")
         except Exception as e:
             print(f"   Erreur PPTX: {e}")
             pptx_path = None
 
-        print(f"\nProposition générée avec succès!")
+        print("\nProposition générée avec succès!")
         print(f"   JSON: {output_path}")
         print(f"   Markdown: {md_path}")
         if pptx_path:
             print(f"   PowerPoint: {pptx_path}")
-        print(f"\n{'='*60}\n")
+        print(f"\n{'=' * 60}\n")
 
         return {
             **proposal,
-            'pptx_path': pptx_path,
-            'slides_structure': slides_structure,
+            "pptx_path": pptx_path,
+            "slides_structure": slides_structure,
         }
 
     # === GENERATION MODULAIRE PAR SECTIONS ===
@@ -947,7 +1022,7 @@ Sois concret, spécifique au client et à ses enjeux."""
         """
         print("Génération de l'agenda...")
 
-        prompt = f"""Génère une slide d'agenda pour cette proposition commerciale:
+        prompt = """Génère une slide d'agenda pour cette proposition commerciale:
 
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
@@ -970,16 +1045,18 @@ Retourne UNIQUEMENT en JSON:
 
         # Parser le JSON
         try:
-            json_start = response.find('{')
-            json_end = response.rfind('}') + 1
+            json_start = response.find("{")
+            json_end = response.rfind("}") + 1
             if json_start >= 0 and json_end > json_start:
                 agenda_data = json.loads(response[json_start:json_end])
                 print("   Agenda généré")
-                return [{
-                    "type": "content",
-                    "title": agenda_data.get("title", "Agenda"),
-                    "bullets": agenda_data.get("bullets", [])
-                }]
+                return [
+                    {
+                        "type": "content",
+                        "title": agenda_data.get("title", "Agenda"),
+                        "bullets": agenda_data.get("bullets", []),
+                    }
+                ]
         except Exception as e:
             print(f"   Erreur: {e}")
 
@@ -999,16 +1076,26 @@ Retourne UNIQUEMENT en JSON:
 
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
-        if 'feedback_instructions' in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
+        if "feedback_instructions" in tender_analysis:
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
+                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
-        prompt = f"""Génère des slides de contexte VISUELLES et IMPACTANTES (style Veolia) pour cette mission:
+        prompt = """Génère des slides de contexte VISUELLES et IMPACTANTES (style Veolia) pour cette mission:
 
-Client: {tender_analysis.get('client_name', 'N/A')}
-Projet: {tender_analysis.get('project_title', 'N/A')}
-Objectifs: {json.dumps(tender_analysis.get('objectives', []), ensure_ascii=False)}
-Contraintes: {json.dumps(tender_analysis.get('requirements', {}), ensure_ascii=False)}
-{feedback_instructions}
+Client: {
+            tender_analysis.get(
+                'client_name', 'N/A')}
+Projet: {
+            tender_analysis.get(
+                'project_title', 'N/A')}
+Objectifs: {
+                    json.dumps(
+                        tender_analysis.get(
+                            'objectives', []), ensure_ascii=False)}
+Contraintes: {
+                                json.dumps(
+                                    tender_analysis.get(
+                                        'requirements', {}), ensure_ascii=False)} {feedback_instructions}
 APPROCHE VISUELLE MODERNE (style Veolia) - 3-4 slides :
 1. Slide STAT impactante (si chiffre clé disponible : budget, délai, ROI attendu)
    OU Quote/Key message si c'est une phrase forte du client
@@ -1025,36 +1112,40 @@ TYPES DE SLIDES DISPONIBLES:
 
 Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
 [
-  {{
-    "type": "stat",
+  {
+                                            "type": "stat",
     "stat_value": "18 mois",
     "stat_label": "pour transformer la data",
     "context": "Durée cible de la mission",
     "subtitle": "Timeline du projet"
-  }},
-  {{
-    "type": "diagram",
+  } ,
+  {
+                                                "type": "diagram",
     "title": "Enjeux stratégiques",
     "diagram_type": "pyramid",
     "elements": ["Vision stratégique", "Objectifs métier", "Quick wins", "Fondations"],
     "description": "Hiérarchie des priorités"
-  }},
-  {{
-    "type": "highlight",
+  } ,
+  {
+
+            "type": "highlight",
     "title": "Nos 3 objectifs clés",
     "key_points": ["Objectif 1 (15 mots max)", "Objectif 2", "Objectif 3"],
     "highlight_color": "corail"
-  }}
+  }
 ]"""
 
         response = self.llm_client.generate(prompt, temperature=0.6, max_tokens=1500)
 
         try:
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 slides_data = json.loads(response[json_start:json_end])
-                print(f"   {len(slides_data)} slides de contexte générées (approche visuelle)")
+                print(
+                    f"   {
+                        len(slides_data)} slides de contexte générées (approche visuelle)"
+                )
                 return slides_data
         except Exception as e:
             print(f"   Erreur: {e}")
@@ -1066,16 +1157,18 @@ Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
                 "title": "Enjeux du projet",
                 "diagram_type": "pyramid",
                 "elements": ["Vision stratégique", "Objectifs métier", "Fondations techniques"],
-                "description": "Hiérarchie des enjeux"
+                "description": "Hiérarchie des enjeux",
             },
             {
                 "type": "content",
                 "title": "Objectifs",
-                "bullets": ["Transformer la donnée", "Créer de la valeur"]
-            }
+                "bullets": ["Transformer la donnée", "Créer de la valeur"],
+            },
         ]
 
-    def generate_approach_slides(self, tender_analysis: Dict[str, Any], references: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def generate_approach_slides(
+        self, tender_analysis: Dict[str, Any], references: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """
         Génère les slides de vision et approche - APPROCHE VISUELLE
 
@@ -1090,29 +1183,31 @@ Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
 
         # Résumer les références pour réduire les tokens
         refs_summary = ""
-        if references and references.get('selected_references'):
-            refs_summary = str(references.get('selected_references', ''))[:1500]
-        elif references and references.get('all_references'):
-            projects = references['all_references'].get('projects', [])[:2]
+        if references and references.get("selected_references"):
+            refs_summary = str(references.get("selected_references", ""))[:1500]
+        elif references and references.get("all_references"):
+            projects = references["all_references"].get("projects", [])[:2]
             for p in projects:
-                refs_summary += f"\n- {p.get('title', 'Projet')}: {p.get('description', '')[:100]}"
+                refs_summary += f"\n- {p.get('title',
+                                             'Projet')}: {p.get('description',
+                                                                '')[:100]}"
 
         # Extraire les objectifs pour contexte
-        objectives = ', '.join(tender_analysis.get('objectives', [])[:3])
+        objectives = ", ".join(tender_analysis.get("objectives", [])[:3])
 
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
-        if 'feedback_instructions' in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
+        if "feedback_instructions" in tender_analysis:
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
+                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
-        prompt = f"""Génère des slides VISUELLES et IMPACTANTES (style Veolia) pour notre vision et approche:
+        prompt = """Génère des slides VISUELLES et IMPACTANTES (style Veolia) pour notre vision et approche:
 
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
 Objectifs: {objectives}
 
-Références Wenvision: {refs_summary}
-{feedback_instructions}
+Références Wenvision: {refs_summary} {feedback_instructions}
 APPROCHE VISUELLE MODERNE (style Veolia) - 4-5 slides:
 1. Slide QUOTE avec notre vision/philosophie (phrase impactante de 20-30 mots)
    OU Slide HIGHLIGHT avec 3 piliers de notre approche (encadrés colorés)
@@ -1128,41 +1223,40 @@ TYPES DE SLIDES DISPONIBLES:
 
 Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
 [
-  {{
-    "type": "quote",
+  {"type": "quote",
     "quote_text": "Transformer la data en valeur métier nécessite une approche pragmatique, itérative et centrée sur l'humain",
     "title": "Notre philosophie"
-  }},
-  {{
-    "type": "highlight",
+  } ,
+  {"type": "highlight",
     "title": "Nos 3 piliers",
     "key_points": ["Pilier 1 (concis)", "Pilier 2", "Pilier 3"],
     "highlight_color": "terracotta"
-  }},
-  {{
-    "type": "diagram",
+  } ,
+  {"type": "diagram",
     "title": "Notre démarche",
     "diagram_type": "flow",
     "elements": ["Cadrage", "Conception", "POC", "Pilote", "Déploiement"],
     "description": "Méthodologie itérative éprouvée"
-  }},
-  {{
-    "type": "diagram",
+  } ,
+  {"type": "diagram",
     "title": "Facteurs clés de succès",
     "diagram_type": "cycle",
     "elements": ["Implication métier", "Itérations courtes", "Transfert compétences", "Quick wins"],
     "description": "Cercle vertueux de la réussite"
-  }}
+  }
 ]"""
 
         response = self.llm_client.generate(prompt, temperature=0.6, max_tokens=2000)
 
         try:
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 slides_data = json.loads(response[json_start:json_end])
-                print(f"   {len(slides_data)} slides d'approche générées (approche visuelle)")
+                print(
+                    f"   {
+                        len(slides_data)} slides d'approche générées (approche visuelle)"
+                )
                 return slides_data
         except (json.JSONDecodeError, ValueError) as e:
             print(f"   Erreur parsing JSON: {e}")
@@ -1174,16 +1268,19 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
                 "type": "content",
                 "title": "Notre vision",
                 "bullets": [
-                    f"Accompagner {tender_analysis.get('client_name', 'le client')} dans sa transformation",
-                    "Approche pragmatique orientée résultats"
-                ]
+                    f"Accompagner {
+                        tender_analysis.get(
+                            'client_name',
+                            'le client')} dans sa transformation",
+                    "Approche pragmatique orientée résultats",
+                ],
             },
             {
                 "type": "diagram",
                 "title": "Notre démarche",
                 "diagram_type": "flow",
                 "elements": ["Cadrage", "Conception", "Pilote", "Déploiement"],
-                "description": "Méthodologie itérative"
+                "description": "Méthodologie itérative",
             },
             {
                 "type": "diagram",
@@ -1193,9 +1290,9 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
                     "Implication parties prenantes",
                     "Iterations courtes",
                     "Alignement métier",
-                    "Transfert de compétences continu"
-                ]
-            }
+                    "Transfert de compétences continu",
+                ],
+            },
         ]
 
     def generate_planning_slide(self, tender_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1212,10 +1309,11 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
 
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
-        if 'feedback_instructions' in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
+        if "feedback_instructions" in tender_analysis:
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
+                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
-        prompt = f"""Génère un planning VISUEL pour cette mission:
+        prompt = """Génère un planning VISUEL pour cette mission:
 
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
@@ -1257,23 +1355,33 @@ OU si besoin d'un tableau détaillé en plus:
         response = self.llm_client.generate(prompt, temperature=0.5, max_tokens=1500)
 
         try:
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 planning_data = json.loads(response[json_start:json_end])
-                print(f"   {len(planning_data)} slide(s) de planning générée(s) (approche visuelle)")
+                print(
+                    f"   {
+                        len(planning_data)} slide(s) de planning générée(s) (approche visuelle)"
+                )
                 return planning_data
         except Exception as e:
             print(f"   Erreur: {e}")
 
         # Fallback visuel
-        return [{
-            "type": "diagram",
-            "title": "Roadmap de déploiement",
-            "diagram_type": "timeline",
-            "elements": ["T0: Cadrage", "T+1M: Conception", "T+3M: Pilote", "T+6M: Déploiement"],
-            "description": "Timeline du projet sur 6 mois"
-        }]
+        return [
+            {
+                "type": "diagram",
+                "title": "Roadmap de déploiement",
+                "diagram_type": "timeline",
+                "elements": [
+                    "T0: Cadrage",
+                    "T+1M: Conception",
+                    "T+3M: Pilote",
+                    "T+6M: Déploiement",
+                ],
+                "description": "Timeline du projet sur 6 mois",
+            }
+        ]
 
     def generate_budget_slide(self, tender_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
@@ -1289,10 +1397,11 @@ OU si besoin d'un tableau détaillé en plus:
 
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
-        if 'feedback_instructions' in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT (ex: augmenter budget 20% = multiplier par 1.2).\n"
+        if "feedback_instructions" in tender_analysis:
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
+                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT (ex: augmenter budget 20% = multiplier par 1.2).\n"
 
-        prompt = f"""Génère un chiffrage SIMPLIFIÉ et VISUEL pour cette mission:
+        prompt = """Génère un chiffrage SIMPLIFIÉ et VISUEL pour cette mission:
 
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
@@ -1318,34 +1427,40 @@ Retourne UNIQUEMENT en JSON avec 3-4 lignes + total:
         response = self.llm_client.generate(prompt, temperature=0.5, max_tokens=800)
 
         try:
-            json_start = response.find('{')
-            json_end = response.rfind('}') + 1
+            json_start = response.find("{")
+            json_end = response.rfind("}") + 1
             if json_start >= 0 and json_end > json_start:
                 budget_data = json.loads(response[json_start:json_end])
                 print("   Chiffrage généré (format simplifié)")
-                return [{
-                    "type": "table",
-                    "title": budget_data.get("title", "Chiffrage"),
-                    "headers": budget_data.get("headers", []),
-                    "rows": budget_data.get("rows", [])
-                }]
+                return [
+                    {
+                        "type": "table",
+                        "title": budget_data.get("title", "Chiffrage"),
+                        "headers": budget_data.get("headers", []),
+                        "rows": budget_data.get("rows", []),
+                    }
+                ]
         except Exception as e:
             print(f"   Erreur: {e}")
 
         # Fallback simplifié
-        return [{
-            "type": "table",
-            "title": "Chiffrage de l'intervention",
-            "headers": ["Prestation", "Jours", "Total"],
-            "rows": [
-                ["Cadrage et conception", "15 j", "15 000€"],
-                ["Mise en œuvre", "25 j", "25 000€"],
-                ["Déploiement", "10 j", "10 000€"],
-                ["TOTAL", "50 j", "50 000€"]
-            ]
-        }]
+        return [
+            {
+                "type": "table",
+                "title": "Chiffrage de l'intervention",
+                "headers": ["Prestation", "Jours", "Total"],
+                "rows": [
+                    ["Cadrage et conception", "15 j", "15 000€"],
+                    ["Mise en œuvre", "25 j", "25 000€"],
+                    ["Déploiement", "10 j", "10 000€"],
+                    ["TOTAL", "50 j", "50 000€"],
+                ],
+            }
+        ]
 
-    def generate_references_slides(self, tender_analysis: Dict[str, Any], references: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def generate_references_slides(
+        self, tender_analysis: Dict[str, Any], references: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """
         Génère les slides de références pertinentes
 
@@ -1359,24 +1474,32 @@ Retourne UNIQUEMENT en JSON avec 3-4 lignes + total:
         print("Génération des références...")
 
         # Extraire les projets pertinents
-        projects = references.get('all_references', {}).get('projects', [])[:3]
+        projects = references.get("all_references", {}).get("projects", [])[:3]
 
         if not projects:
-            return [{"type": "content", "title": "Références", "bullets": ["Aucune référence disponible"]}]
+            return [
+                {
+                    "type": "content",
+                    "title": "Références",
+                    "bullets": ["Aucune référence disponible"],
+                }
+            ]
 
         slides = []
         for i, project in enumerate(projects, 1):
-            slides.append({
-                "type": "content",
-                "title": f"Référence {i}: {project.get('title', 'Projet')}",
-                "bullets": [
-                    f"Client: {project.get('client', 'N/A')}",
-                    f"Secteur: {project.get('sector', 'N/A')}",
-                    f"Challenge: {project.get('challenge', 'N/A')[:150]}",
-                    f"Solution: {project.get('solution', 'N/A')[:150]}",
-                    f"Technologies: {', '.join(project.get('technologies', [])[:4])}"
-                ]
-            })
+            slides.append(
+                {
+                    "type": "content",
+                    "title": f"Référence {i}: {project.get('title', 'Projet')}",
+                    "bullets": [
+                        f"Client: {project.get('client', 'N/A')}",
+                        f"Secteur: {project.get('sector', 'N/A')}",
+                        f"Challenge: {project.get('challenge', 'N/A')[:150]}",
+                        f"Solution: {project.get('solution', 'N/A')[:150]}",
+                        f"Technologies: {', '.join(project.get('technologies', [])[:4])}",
+                    ],
+                }
+            )
 
         print(f"   {len(slides)} slides de références générées")
         return slides
@@ -1400,18 +1523,26 @@ Retourne UNIQUEMENT en JSON avec 3-4 lignes + total:
 
         adapted_cvs = self.adapt_cvs(cvs, tender_analysis)
         if not adapted_cvs:
-            return [{"type": "content", "title": "Équipe", "bullets": ["Erreur lors de l'adaptation des CVs"]}]
+            return [
+                {
+                    "type": "content",
+                    "title": "Équipe",
+                    "bullets": ["Erreur lors de l'adaptation des CVs"],
+                }
+            ]
 
         # Convertir en slides
         cv_slides = []
         for cv in adapted_cvs:
-            cv_slides.append({
-                "type": "cv",
-                "name": cv.get('name', ''),
-                "title": cv.get('title', ''),
-                "experiences": cv.get('experiences', []),
-                "skills": cv.get('skills', [])
-            })
+            cv_slides.append(
+                {
+                    "type": "cv",
+                    "name": cv.get("name", ""),
+                    "title": cv.get("title", ""),
+                    "experiences": cv.get("experiences", []),
+                    "skills": cv.get("skills", []),
+                }
+            )
 
         print(f"   {len(cv_slides)} CVs générés")
         return cv_slides
@@ -1422,16 +1553,13 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Agent de génération de propositions commerciales Wenvision'
+        description="Agent de génération de propositions commerciales Wenvision"
     )
     parser.add_argument(
-        'tender_file',
-        help='Chemin vers le fichier d\'appel d\'offre (txt, md, pdf)'
+        "tender_file", help="Chemin vers le fichier d'appel d'offre (txt, md, pdf)"
     )
     parser.add_argument(
-        '-o', '--output',
-        help='Chemin de sortie pour la proposition',
-        default=None
+        "-o", "--output", help="Chemin de sortie pour la proposition", default=None
     )
 
     args = parser.parse_args()
@@ -1440,11 +1568,8 @@ def main():
     agent = ProposalGeneratorAgent()
 
     # Générer la proposition
-    agent.generate_proposal(
-        tender_path=args.tender_file,
-        output_path=args.output
-    )
+    agent.generate_proposal(tender_path=args.tender_file, output_path=args.output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

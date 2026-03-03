@@ -3,12 +3,14 @@ Generateur d'images et diagrammes pour les propositions commerciales
 - Diagrammes Mermaid via Claude (architecture, flux, sequences)
 - Images DALL-E (optionnel, pour illustrations)
 """
+
 import os
-import requests
 import subprocess
-from typing import Optional, Dict, Any, List
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import requests
 
 
 class DiagramGenerator:
@@ -23,6 +25,7 @@ class DiagramGenerator:
         """
         if llm_client is None:
             from utils.llm_client import LLMClient
+
             self.llm_client = LLMClient()
         else:
             self.llm_client = llm_client
@@ -31,11 +34,7 @@ class DiagramGenerator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_mermaid_code(
-        self,
-        diagram_type: str,
-        description: str,
-        elements: List[str],
-        context: Dict[str, Any]
+        self, diagram_type: str, description: str, elements: List[str], context: Dict[str, Any]
     ) -> str:
         """
         Genere du code Mermaid via Claude
@@ -49,9 +48,8 @@ class DiagramGenerator:
         Returns:
             Code Mermaid genere
         """
-        elements_str = "\n".join([f"- {el}" for el in elements])
 
-        prompt = f"""Genere un diagramme Mermaid pour visualiser cette architecture/infrastructure:
+        prompt = """Genere un diagramme Mermaid pour visualiser cette architecture/infrastructure:
 
 Description: {description}
 Client: {context.get('client_name', 'Client')}
@@ -77,20 +75,16 @@ graph TD
 
 Genere un diagramme similaire adapte aux elements fournis."""
 
-        response = self.llm_client.generate(
-            prompt=prompt,
-            temperature=0.4,
-            max_tokens=1500
-        )
+        response = self.llm_client.generate(prompt=prompt, temperature=0.4, max_tokens=1500)
 
         # Nettoyer la reponse
         code = response.strip()
         # Retirer les balises markdown si presentes
-        if code.startswith('```mermaid'):
+        if code.startswith("```mermaid"):
             code = code[10:]
-        elif code.startswith('```'):
+        elif code.startswith("```"):
             code = code[3:]
-        if code.endswith('```'):
+        if code.endswith("```"):
             code = code[:-3]
 
         return code.strip()
@@ -108,27 +102,25 @@ Genere un diagramme similaire adapte aux elements fournis."""
         """
         try:
             # Verifier si mmdc est installe
-            result = subprocess.run(
-                ['which', 'mmdc'],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["which", "mmdc"], capture_output=True, text=True)
 
             if result.returncode != 0:
-                print("   mermaid-cli (mmdc) non installe. Installation: npm install -g @mermaid-js/mermaid-cli")
+                print(
+                    "   mermaid-cli (mmdc) non installe. Installation: npm install -g @mermaid-js/mermaid-cli"
+                )
                 return False
 
             # Sauvegarder le code Mermaid dans un fichier temporaire
-            temp_mmd = output_path.replace('.png', '.mmd')
-            with open(temp_mmd, 'w', encoding='utf-8') as f:
+            temp_mmd = output_path.replace(".png", ".mmd")
+            with open(temp_mmd, "w", encoding="utf-8") as f:
                 f.write(mermaid_code)
 
             # Convertir en PNG
             result = subprocess.run(
-                ['mmdc', '-i', temp_mmd, '-o', output_path, '-b', 'transparent'],
+                ["mmdc", "-i", temp_mmd, "-o", output_path, "-b", "transparent"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
 
             # Supprimer le fichier temporaire
@@ -152,7 +144,7 @@ Genere un diagramme similaire adapte aux elements fournis."""
         self,
         components: List[str],
         context: Dict[str, Any],
-        description: str = "Architecture technique de la solution"
+        description: str = "Architecture technique de la solution",
     ) -> Optional[str]:
         """
         Genere un diagramme d'architecture via Mermaid
@@ -169,10 +161,10 @@ Genere un diagramme similaire adapte aux elements fournis."""
 
         # Generer le code Mermaid via Claude
         mermaid_code = self.generate_mermaid_code(
-            diagram_type='architecture',
+            diagram_type="architecture",
             description=description,
             elements=components,
-            context=context
+            context=context,
         )
 
         # Sauvegarder et convertir en PNG
@@ -191,7 +183,7 @@ Genere un diagramme similaire adapte aux elements fournis."""
         self,
         steps: List[str],
         context: Dict[str, Any],
-        description: str = "Processus et flux de travail"
+        description: str = "Processus et flux de travail",
     ) -> Optional[str]:
         """
         Genere un diagramme de flux via Mermaid
@@ -207,10 +199,7 @@ Genere un diagramme similaire adapte aux elements fournis."""
         print(f"   Generation diagramme flux (Mermaid): {len(steps)} etapes")
 
         mermaid_code = self.generate_mermaid_code(
-            diagram_type='flow',
-            description=description,
-            elements=steps,
-            context=context
+            diagram_type="flow", description=description, elements=steps, context=context
         )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -227,7 +216,7 @@ Genere un diagramme similaire adapte aux elements fournis."""
         self,
         actors: List[str],
         context: Dict[str, Any],
-        description: str = "Diagramme de sequence"
+        description: str = "Diagramme de sequence",
     ) -> Optional[str]:
         """
         Genere un diagramme de sequence via Mermaid
@@ -243,10 +232,7 @@ Genere un diagramme similaire adapte aux elements fournis."""
         print(f"   Generation diagramme sequence (Mermaid): {len(actors)} acteurs")
 
         mermaid_code = self.generate_mermaid_code(
-            diagram_type='sequence',
-            description=description,
-            elements=actors,
-            context=context
+            diagram_type="sequence", description=description, elements=actors, context=context
         )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -270,16 +256,13 @@ class ImageGenerator:
         Args:
             api_key: Cle API OpenAI (optionnelle, utilise OPENAI_API_KEY env var par defaut)
         """
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.base_url = "https://api.openai.com/v1/images/generations"
         self.output_dir = Path(__file__).parent.parent / "data" / "images" / "generated"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_diagram_image(
-        self,
-        description: str,
-        context: Dict[str, Any],
-        style: str = "professional"
+        self, description: str, context: Dict[str, Any], style: str = "professional"
     ) -> Optional[str]:
         """
         Genere une image de diagramme via DALL-E
@@ -298,17 +281,17 @@ class ImageGenerator:
 
         # Construire le prompt pour DALL-E
         style_prompts = {
-            'professional': 'professional business diagram, clean corporate style, simple and clear',
-            'modern': 'modern tech diagram, gradient colors, sleek design',
-            'minimalist': 'minimalist diagram, black and white, simple lines'
+            "professional": "professional business diagram, clean corporate style, simple and clear",
+            "modern": "modern tech diagram, gradient colors, sleek design",
+            "minimalist": "minimalist diagram, black and white, simple lines",
         }
 
-        style_desc = style_prompts.get(style, style_prompts['professional'])
+        style_prompts.get(style, style_prompts["professional"])
 
-        client_name = context.get('client_name', 'client')
-        project_title = context.get('project_title', 'project')
+        context.get("client_name", "client")
+        context.get("project_title", "project")
 
-        prompt = f"""{style_desc}, {description},
+        prompt = """{style_desc}, {description},
 for {client_name} - {project_title},
 no text labels, icon-based, suitable for business presentation,
 high quality, 16:9 aspect ratio"""
@@ -316,7 +299,7 @@ high quality, 16:9 aspect ratio"""
         try:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
 
             data = {
@@ -325,7 +308,7 @@ high quality, 16:9 aspect ratio"""
                 "n": 1,
                 "size": "1792x1024",  # Format paysage
                 "quality": "standard",
-                "style": "natural"
+                "style": "natural",
             }
 
             print(f"   Generation image DALL-E: {description[:50]}...")
@@ -333,7 +316,7 @@ high quality, 16:9 aspect ratio"""
 
             if response.status_code == 200:
                 result = response.json()
-                image_url = result['data'][0]['url']
+                image_url = result["data"][0]["url"]
 
                 # Telecharger l'image
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -342,7 +325,7 @@ high quality, 16:9 aspect ratio"""
 
                 img_response = requests.get(image_url, timeout=30)
                 if img_response.status_code == 200:
-                    with open(filepath, 'wb') as f:
+                    with open(filepath, "wb") as f:
                         f.write(img_response.content)
                     print(f"   Image generee: {filepath}")
                     return str(filepath)
@@ -355,9 +338,7 @@ high quality, 16:9 aspect ratio"""
             return None
 
     def generate_architecture_diagram(
-        self,
-        components: list,
-        context: Dict[str, Any]
+        self, components: list, context: Dict[str, Any]
     ) -> Optional[str]:
         """
         Genere un diagramme d'architecture technique
@@ -370,14 +351,12 @@ high quality, 16:9 aspect ratio"""
             Chemin vers l'image generee
         """
         components_str = ", ".join(components[:5])  # Max 5 composants
-        description = f"technical architecture diagram showing {components_str} components interconnected"
-        return self.generate_diagram_image(description, context, style='modern')
+        description = (
+            f"technical architecture diagram showing {components_str} components interconnected"
+        )
+        return self.generate_diagram_image(description, context, style="modern")
 
-    def generate_process_flowchart(
-        self,
-        steps: list,
-        context: Dict[str, Any]
-    ) -> Optional[str]:
+    def generate_process_flowchart(self, steps: list, context: Dict[str, Any]) -> Optional[str]:
         """
         Genere un flowchart de processus
 
@@ -390,13 +369,9 @@ high quality, 16:9 aspect ratio"""
         """
         steps_str = " to ".join(steps[:4])  # Max 4 etapes
         description = f"process flowchart showing steps: {steps_str}"
-        return self.generate_diagram_image(description, context, style='professional')
+        return self.generate_diagram_image(description, context, style="professional")
 
-    def generate_data_visualization(
-        self,
-        viz_type: str,
-        context: Dict[str, Any]
-    ) -> Optional[str]:
+    def generate_data_visualization(self, viz_type: str, context: Dict[str, Any]) -> Optional[str]:
         """
         Genere une visualisation de donnees
 
@@ -408,13 +383,13 @@ high quality, 16:9 aspect ratio"""
             Chemin vers l'image generee
         """
         viz_descriptions = {
-            'dashboard': 'modern analytics dashboard with charts and KPIs',
-            'chart': 'business chart showing growth metrics',
-            'graph': 'network graph showing data relationships'
+            "dashboard": "modern analytics dashboard with charts and KPIs",
+            "chart": "business chart showing growth metrics",
+            "graph": "network graph showing data relationships",
         }
 
-        description = viz_descriptions.get(viz_type, viz_descriptions['dashboard'])
-        return self.generate_diagram_image(description, context, style='modern')
+        description = viz_descriptions.get(viz_type, viz_descriptions["dashboard"])
+        return self.generate_diagram_image(description, context, style="modern")
 
 
 class ImageLibrary:
@@ -430,28 +405,21 @@ class ImageLibrary:
     def _load_catalog(self):
         """Charge le catalogue d'images"""
         import json
+
         if self.catalog_file.exists():
-            with open(self.catalog_file, 'r', encoding='utf-8') as f:
+            with open(self.catalog_file, "r", encoding="utf-8") as f:
                 self.catalog = json.load(f)
         else:
-            self.catalog = {
-                'categories': {},
-                'images': []
-            }
+            self.catalog = {"categories": {}, "images": []}
 
     def _save_catalog(self):
         """Sauvegarde le catalogue d'images"""
         import json
-        with open(self.catalog_file, 'w', encoding='utf-8') as f:
+
+        with open(self.catalog_file, "w", encoding="utf-8") as f:
             json.dump(self.catalog, f, indent=2, ensure_ascii=False)
 
-    def add_image(
-        self,
-        image_path: str,
-        category: str,
-        tags: list,
-        description: str
-    ) -> str:
+    def add_image(self, image_path: str, category: str, tags: list, description: str) -> str:
         """
         Ajoute une image a la bibliotheque
 
@@ -479,18 +447,20 @@ class ImageLibrary:
         shutil.copy2(source_path, dest_path)
 
         # Ajouter au catalogue
-        self.catalog['images'].append({
-            'filename': filename,
-            'path': str(dest_path),
-            'category': category,
-            'tags': tags,
-            'description': description,
-            'added_at': timestamp
-        })
+        self.catalog["images"].append(
+            {
+                "filename": filename,
+                "path": str(dest_path),
+                "category": category,
+                "tags": tags,
+                "description": description,
+                "added_at": timestamp,
+            }
+        )
 
-        if category not in self.catalog['categories']:
-            self.catalog['categories'][category] = []
-        self.catalog['categories'][category].append(filename)
+        if category not in self.catalog["categories"]:
+            self.catalog["categories"][category] = []
+        self.catalog["categories"][category].append(filename)
 
         self._save_catalog()
         print(f"   Image ajoutee a la bibliotheque: {filename}")
@@ -500,7 +470,7 @@ class ImageLibrary:
         self,
         category: Optional[str] = None,
         tags: Optional[list] = None,
-        keyword: Optional[str] = None
+        keyword: Optional[str] = None,
     ) -> list:
         """
         Recherche des images dans la bibliotheque
@@ -513,23 +483,17 @@ class ImageLibrary:
         Returns:
             Liste d'images correspondantes
         """
-        results = self.catalog['images']
+        results = self.catalog["images"]
 
         if category:
-            results = [img for img in results if img['category'] == category]
+            results = [img for img in results if img["category"] == category]
 
         if tags:
-            results = [
-                img for img in results
-                if any(tag in img['tags'] for tag in tags)
-            ]
+            results = [img for img in results if any(tag in img["tags"] for tag in tags)]
 
         if keyword:
             keyword_lower = keyword.lower()
-            results = [
-                img for img in results
-                if keyword_lower in img['description'].lower()
-            ]
+            results = [img for img in results if keyword_lower in img["description"].lower()]
 
         return results
 
@@ -546,7 +510,8 @@ class ImageLibrary:
         images = self.search_images(category=category)
         if images:
             import random
-            return images[random.randint(0, len(images) - 1)]['path']
+
+            return images[random.randint(0, len(images) - 1)]["path"]
         return None
 
     def list_categories(self) -> list:
@@ -556,7 +521,7 @@ class ImageLibrary:
         Returns:
             Liste des categories
         """
-        return list(self.catalog['categories'].keys())
+        return list(self.catalog["categories"].keys())
 
     def get_statistics(self) -> Dict[str, Any]:
         """
@@ -566,40 +531,34 @@ class ImageLibrary:
             Dict avec statistiques
         """
         return {
-            'total_images': len(self.catalog['images']),
-            'categories': len(self.catalog['categories']),
-            'by_category': {
-                cat: len(imgs)
-                for cat, imgs in self.catalog['categories'].items()
-            }
+            "total_images": len(self.catalog["images"]),
+            "categories": len(self.catalog["categories"]),
+            "by_category": {cat: len(imgs) for cat, imgs in self.catalog["categories"].items()},
         }
 
 
 class NanoBananaGenerator:
-    """Generateur d'images via Imagen 4 Fast avec SDK google-generativeai"""
+    """Generateur d'images via Imagen 3 avec SDK google-genai"""
 
     def __init__(self):
         try:
-            import google.generativeai as genai
+            from google import genai as genai_new
 
-            # Configurer avec la cle API
-            api_key = os.getenv('GEMINI_API_KEY')
+            api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 raise ValueError("GEMINI_API_KEY non trouvee dans .env")
 
-            genai.configure(api_key=api_key)
-            self.genai = genai
-            # Imagen 4 Fast - modele rapide et fiable pour generation d'images
-            self.model_name = "models/imagen-4.0-fast-generate-001"
-            print(f"  [NanoBanana] Initialise avec Imagen 4 Fast")
+            self.client = genai_new.Client(api_key=api_key)
+            self.model_name = "imagen-3.0-generate-001"
+            print(f"  [NanoBanana] Initialise avec {self.model_name}")
 
         except Exception as e:
             print(f"  [NanoBanana] Erreur initialisation: {e}")
-            self.genai = None
+            self.client = None
 
     def generate_image(self, prompt: str, output_path: str) -> Optional[str]:
         """
-        Genere une image a partir d'un prompt via Imagen 4 Fast
+        Genere une image a partir d'un prompt via Imagen 3
 
         Args:
             prompt: Description de l'image a generer
@@ -608,48 +567,37 @@ class NanoBananaGenerator:
         Returns:
             Chemin du fichier image genere, ou None si echec
         """
-        if not self.genai:
+        if not self.client:
             print("  [NanoBanana] API non initialisee")
             return None
 
         try:
-            # Generer l'image avec Imagen 4 Fast via google-generativeai
-            model = self.genai.GenerativeModel(self.model_name)
-
-            # Configuration avec timeout etendu pour generation d'images
-            request_options = {
-                "timeout": 120.0  # 2 minutes timeout
-            }
-
-            response = model.generate_content(
-                prompt,
-                generation_config=self.genai.GenerationConfig(
-                    temperature=1.0,
-                ),
-                request_options=request_options
+            result = self.client.models.generate_images(
+                model=self.model_name,
+                prompt=prompt[:4000],
+                config={
+                    "number_of_images": 1,
+                    "output_mime_type": "image/jpeg",
+                    "aspect_ratio": "16:9",
+                },
             )
 
-            # Extraire et sauvegarder l'image
-            if response.parts:
-                for part in response.parts:
-                    if hasattr(part, 'inline_data') and part.inline_data:
-                        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            if result.generated_images and len(result.generated_images) > 0:
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-                        # Ecrire les donnees de l'image
-                        image_data = part.inline_data.data
-                        with open(output_path, 'wb') as f:
-                            f.write(image_data)
+                image_data = result.generated_images[0].image.image_bytes
+                with open(output_path, "wb") as f:
+                    f.write(image_data)
 
-                        print(f"  [NanoBanana] Image generee: {output_path}")
-                        return output_path
+                size_kb = len(image_data) / 1024
+                print(f"  [NanoBanana] Image generee: {output_path}" f" ({size_kb:.0f} KB)")
+                return output_path
 
-            print(f"  [NanoBanana] Aucune image dans la reponse")
+            print("  [NanoBanana] Aucune image dans la reponse")
             return None
 
         except Exception as e:
             print(f"  [NanoBanana] Erreur generation: {e}")
-            import traceback
-            traceback.print_exc()
             return None
 
     def generate_article_illustration(self, article_text: str, output_path: str) -> Optional[str]:
@@ -663,7 +611,7 @@ class NanoBananaGenerator:
         Returns:
             Chemin du fichier image
         """
-        prompt = f"""Role & Objective: You are an expert Art Director for a high-end tech consultancy firm.
+        prompt = """Role & Objective: You are an expert Art Director for a high-end tech consultancy firm.
 Your task is to generate a premium, cinematic illustration based on the Blog Post provided below.
 
 Analysis Instructions:
@@ -687,14 +635,14 @@ Action: Generate the illustration now based on this analysis."""
 
 # Categories predefinies pour la bibliotheque
 PREDEFINED_CATEGORIES = [
-    'architecture',      # Diagrammes d'architecture
-    'process',          # Flowcharts et processus
-    'dashboard',        # Tableaux de bord
-    'team',             # Photos d'equipe
-    'technology',       # Logos et icones tech
-    'data',             # Visualisations de donnees
-    'success',          # Images de reussite/resultats
-    'methodology',      # Schemas methodologiques
-    'infrastructure',   # Schemas d'infrastructure
-    'mockup'           # Mockups d'interfaces
+    "architecture",  # Diagrammes d'architecture
+    "process",  # Flowcharts et processus
+    "dashboard",  # Tableaux de bord
+    "team",  # Photos d'equipe
+    "technology",  # Logos et icones tech
+    "data",  # Visualisations de donnees
+    "success",  # Images de reussite/resultats
+    "methodology",  # Schemas methodologiques
+    "infrastructure",  # Schemas d'infrastructure
+    "mockup",  # Mockups d'interfaces
 ]

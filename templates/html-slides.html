@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}WEnvision - Slides HTML Premium{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon proposal"></div>
+        <div>
+            <div class="card-title">Slides HTML Premium</div>
+            <div class="card-subtitle">Generez des presentations HTML qualite Canva avec Gemini 3.1 Pro et la charte
+                Wenvision</div>
+        </div>
+    </div>
+
+    <form id="html-slides-form">
+        <div class="form-group">
+            <label class="form-label">Sujet de la presentation</label>
+            <textarea class="form-textarea" id="slide-topic"
+                placeholder="Ex: Introduction a l'IA Generative pour les entreprises, Strategie Data 2026, Les tendances du Cloud Computing..."
+                style="min-height: 120px;" required></textarea>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <div class="form-group" style="flex: 1;">
+                <label class="form-label">Nombre de slides</label>
+                <select class="form-input" id="num-slides">
+                    <option value="5">5 slides (court)</option>
+                    <option value="10" selected>10 slides (standard)</option>
+                    <option value="15">15 slides (detaille)</option>
+                    <option value="20">20 slides (complet)</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label class="form-label">Langue</label>
+                <select class="form-input" id="slide-language">
+                    <option value="fr" selected>Francais</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary" style="padding: 1rem; font-size: 1.1rem; width: 100%;">
+                Generer la presentation HTML
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="progress-container" id="progress" style="display:none;">
+    <div class="progress-bar-wrapper">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <ul class="progress-steps">
+        <li class="progress-step pending" data-step="design">
+            <span class="step-icon">1</span>
+            <span>Analyse du design system</span>
+        </li>
+        <li class="progress-step pending" data-step="generate">
+            <span class="step-icon">2</span>
+            <span>Generation HTML (Gemini 3.1 Pro)</span>
+        </li>
+        <li class="progress-step pending" data-step="save">
+            <span class="step-icon">3</span>
+            <span>Sauvegarde du fichier</span>
+        </li>
+    </ul>
+</div>
+
+<div id="error-container"></div>
+
+<div class="result-container" id="result" style="display:none;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title" id="result-title">Presentation HTML generee</div>
+                <div class="card-subtitle" id="result-subtitle"></div>
+            </div>
+        </div>
+
+        <div id="html-preview"
+            style="margin: 1.5rem; border: 2px solid var(--gris-clair, #e0e0e0); border-radius: 12px; overflow: hidden; background: #f4f4f4;">
+            <iframe id="preview-iframe" sandbox="allow-same-origin"
+                style="width: 100%; height: 620px; border: none;"></iframe>
+        </div>
+
+        <div class="result-actions" id="result-actions"
+            style="padding: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a class="btn btn-primary" id="download-html" href="#" download>Telecharger HTML</a>
+            <a class="btn btn-secondary" id="open-html" href="#" target="_blank">Ouvrir dans un nouvel onglet</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    initHtmlSlidesPage();
+</script>
+{% endblock %}

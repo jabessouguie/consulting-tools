@@ -1,0 +1,1426 @@
+{% extends "base.html" %}
+
+{% block title %}E-learning Adaptatif - WEnvision{% endblock %}
+
+{% block content %}
+<style>
+    .el-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+    }
+    .el-tab {
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        border: none;
+        background: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #6b7280;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+    .el-tab:hover { color: #3B82F6; }
+    .el-tab.active {
+        color: #3B82F6;
+        border-bottom-color: #3B82F6;
+    }
+    .el-panel { display: none; }
+    .el-panel.active { display: block; }
+
+    /* Badges */
+    .badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .badge-beginner, .badge-easy { background: #d1fae5; color: #065f46; }
+    .badge-intermediate, .badge-medium { background: #fef3c7; color: #92400e; }
+    .badge-advanced, .badge-hard { background: #fee2e2; color: #991b1b; }
+    .badge-none { background: #f3f4f6; color: #6b7280; }
+    .badge-proficient { background: #dbeafe; color: #1e40af; }
+    .badge-expert { background: #c7d2fe; color: #3730a3; }
+
+    /* Course cards */
+    .course-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1rem;
+    }
+    .course-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: white;
+        transition: box-shadow 0.2s, transform 0.2s;
+        cursor: pointer;
+    }
+    .course-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+    .course-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+    .course-card .meta {
+        display: flex; gap: 0.75rem; flex-wrap: wrap;
+        font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;
+    }
+
+    /* Module accordion */
+    .module-item {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+    }
+    .module-header {
+        padding: 0.75rem 1rem;
+        background: #f9fafb;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 500;
+    }
+    .module-header:hover { background: #f3f4f6; }
+    .module-body { padding: 0 1rem 1rem; display: none; }
+    .module-body.open { display: block; }
+    .lesson-item {
+        padding: 0.75rem;
+        border-left: 3px solid #3B82F6;
+        margin: 0.5rem 0;
+        background: #f8fafc;
+        border-radius: 0 8px 8px 0;
+    }
+    .lesson-item h5 { margin: 0 0 0.3rem 0; font-size: 0.9rem; }
+
+    /* Quiz interface */
+    .quiz-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    .quiz-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding: 0.75rem 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+    }
+    .quiz-question {
+        padding: 1.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+    .quiz-question h4 { margin: 0 0 1rem 0; }
+    .quiz-option {
+        display: block;
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .quiz-option:hover { border-color: #3B82F6; background: #eff6ff; }
+    .quiz-option.selected { border-color: #3B82F6; background: #dbeafe; }
+    .quiz-option.correct { border-color: #10b981; background: #d1fae5; }
+    .quiz-option.wrong { border-color: #ef4444; background: #fee2e2; }
+
+    .quiz-feedback {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        display: none;
+    }
+    .quiz-feedback.correct { background: #d1fae5; border: 1px solid #10b981; }
+    .quiz-feedback.wrong { background: #fee2e2; border: 1px solid #ef4444; }
+
+    /* Progress bars */
+    .el-progress {
+        width: 100%;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .el-progress-fill {
+        height: 100%;
+        background: #3B82F6;
+        border-radius: 4px;
+        transition: width 0.5s;
+    }
+
+    /* Learning path */
+    .path-step {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        border-left: 3px solid #3B82F6;
+        margin-left: 1rem;
+        margin-bottom: 0.5rem;
+        background: #f8fafc;
+        border-radius: 0 8px 8px 0;
+    }
+    .path-step .step-num {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: #3B82F6;
+        color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 600;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+
+    /* General form */
+    .el-form-group { margin-bottom: 1rem; }
+    .el-form-group label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.4rem;
+        font-size: 0.9rem;
+    }
+    .el-input, .el-select, .el-textarea {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-family: 'Inter', sans-serif;
+    }
+    .el-input:focus, .el-select:focus, .el-textarea:focus {
+        outline: none;
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .el-textarea { min-height: 100px; resize: vertical; }
+    .el-btn {
+        padding: 0.6rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .el-btn-primary { background: #3B82F6; color: white; }
+    .el-btn-primary:hover { background: #2563eb; }
+    .el-btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .el-btn-danger { background: #ef4444; color: white; }
+    .el-btn-danger:hover { background: #dc2626; }
+    .el-btn-secondary { background: white; color: #374151; border: 1.5px solid #e5e7eb; }
+    .el-btn-secondary:hover { border-color: #3B82F6; color: #3B82F6; }
+
+    /* SSE progress */
+    .sse-progress {
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        margin-top: 1rem;
+        display: none;
+    }
+    .sse-progress .step-log {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin: 0.3rem 0;
+    }
+
+    /* Modal */
+    .el-modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none; align-items: center; justify-content: center;
+        z-index: 1000;
+    }
+    .el-modal-overlay.open { display: flex; }
+    .el-modal {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 800px;
+        width: 90%;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    /* Radio group */
+    .radio-group {
+        display: flex; gap: 0.75rem; flex-wrap: wrap;
+    }
+    .radio-group label {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.4rem 0.8rem;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 400;
+        transition: all 0.2s;
+    }
+    .radio-group input:checked + span {
+        color: #3B82F6;
+    }
+    .radio-group label:has(input:checked) {
+        border-color: #3B82F6;
+        background: #eff6ff;
+    }
+
+    .markdown-content h1 { font-size: 1.3rem; margin: 1rem 0 0.5rem; }
+    .markdown-content h2 { font-size: 1.15rem; margin: 0.8rem 0 0.4rem; }
+    .markdown-content h3 { font-size: 1rem; margin: 0.6rem 0 0.3rem; }
+    .markdown-content p { margin: 0.4rem 0; line-height: 1.6; }
+    .markdown-content ul, .markdown-content ol { padding-left: 1.5rem; }
+    .markdown-content code {
+        background: #f3f4f6; padding: 0.15rem 0.4rem;
+        border-radius: 4px; font-size: 0.85rem;
+    }
+    .markdown-content pre {
+        background: #1f2937; color: #e5e7eb;
+        padding: 1rem; border-radius: 8px;
+        overflow-x: auto; margin: 0.5rem 0;
+    }
+    .markdown-content pre code {
+        background: none; padding: 0; color: inherit;
+    }
+
+    /* Mode selector */
+    .mode-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    .mode-card {
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        position: relative;
+    }
+    .mode-card:hover { border-color: #93c5fd; background: #f8fafc; }
+    .mode-card.selected {
+        border-color: #3B82F6;
+        background: #eff6ff;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .mode-card .mode-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.4rem;
+    }
+    .mode-card .mode-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 0.2rem;
+    }
+    .mode-card .mode-desc {
+        font-size: 0.75rem;
+        color: #6b7280;
+        line-height: 1.3;
+    }
+    .mode-card .mode-check {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #3B82F6;
+        color: white;
+        font-size: 0.7rem;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    .mode-card.selected .mode-check { display: flex; }
+
+    @media (max-width: 700px) {
+        .mode-grid { grid-template-columns: 1fr 1fr; }
+    }
+</style>
+
+<div class="page-header">
+    <h1>E-learning Adaptatif</h1>
+    <p class="subtitle">Generez des cours, quiz adaptatifs et parcours personnalises par IA</p>
+</div>
+
+<!-- Tabs -->
+<div class="el-tabs">
+    <button class="el-tab active" onclick="switchTab('generate')">Generation</button>
+    <button class="el-tab" onclick="switchTab('library')">Bibliotheque</button>
+    <button class="el-tab" onclick="switchTab('quiz')">Quiz Adaptatif</button>
+    <button class="el-tab" onclick="switchTab('path')">Parcours</button>
+</div>
+
+<!-- TAB 1: Course Generation -->
+<div id="tab-generate" class="el-panel active">
+    <div class="card">
+        <div class="card-content" style="padding: 1.5rem;">
+            <h3 style="margin-top: 0;">Generer un cours</h3>
+
+            <!-- Mode selector -->
+            <div class="el-form-group" style="margin-bottom: 1.25rem;">
+                <label style="margin-bottom: 0.5rem;">Mode de preparation</label>
+                <div class="mode-grid">
+                    <div class="mode-card selected" onclick="selectMode('free')">
+                        <div class="mode-check">&#10003;</div>
+                        <div class="mode-icon">&#128218;</div>
+                        <div class="mode-name">Cours libre</div>
+                        <div class="mode-desc">Formation e-learning classique sur un sujet</div>
+                    </div>
+                    <div class="mode-card" onclick="selectMode('interview')">
+                        <div class="mode-check">&#10003;</div>
+                        <div class="mode-icon">&#128188;</div>
+                        <div class="mode-name">Prep. entretien</div>
+                        <div class="mode-desc">Questions techniques, mises en situation, methode STAR</div>
+                    </div>
+                    <div class="mode-card" onclick="selectMode('certification')">
+                        <div class="mode-check">&#10003;</div>
+                        <div class="mode-icon">&#127942;</div>
+                        <div class="mode-name">Prep. certification</div>
+                        <div class="mode-desc">Reussir l'examen: fiches memo, examens blancs, pieges</div>
+                    </div>
+                    <div class="mode-card" onclick="selectMode('training')">
+                        <div class="mode-check">&#10003;</div>
+                        <div class="mode-icon">&#127891;</div>
+                        <div class="mode-name">Donner une formation</div>
+                        <div class="mode-desc">Maitriser les concepts et anticiper les questions participants</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="el-form-group" style="grid-column: 1 / -1;">
+                    <label id="gen-topic-label">Sujet du cours <span style="color:#6b7280;font-weight:400">(ou importer un document)</span></label>
+                    <input type="text" id="gen-topic" class="el-input"
+                        placeholder="Ex: Introduction a Python, Machine Learning, Gestion de projet Agile...">
+                </div>
+                <div class="el-form-group" style="grid-column: 1 / -1;">
+                    <label>Importer un support de formation (optionnel)</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="flex:1; border: 1px dashed #d1d5db; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; font-size: 0.85rem; color: #6b7280; transition: border-color 0.2s;" onmouseover="this.style.borderColor='#3B82F6'" onmouseout="this.style.borderColor='#d1d5db'">
+                            <input type="file" id="gen-file" accept=".pdf,.pptx,.html,.htm,.md,.txt,.markdown" onchange="handleElearningFileUpload(this)" style="display:none">
+                            <span id="gen-file-label">Choisir un fichier PDF, PPTX, HTML ou Markdown</span>
+                        </label>
+                        <button id="gen-file-clear" onclick="clearElearningFile()" style="display:none; background:none; border:1px solid #e5e7eb; border-radius:6px; padding:0.4rem 0.6rem; cursor:pointer; font-size:0.8rem; color:#ef4444;">Supprimer</button>
+                    </div>
+                </div>
+                <div class="el-form-group" id="gen-audience-group">
+                    <label>Public cible</label>
+                    <select id="gen-audience" class="el-select">
+                        <option value="Debutants sans experience">Debutants</option>
+                        <option value="Professionnels en reconversion">Reconversion</option>
+                        <option value="Etudiants niveau universitaire">Etudiants</option>
+                        <option value="Professionnels techniques">Professionnels tech</option>
+                        <option value="Managers et decideurs">Managers</option>
+                    </select>
+                </div>
+                <div class="el-form-group">
+                    <label>Duree (heures)</label>
+                    <input type="number" id="gen-duration" class="el-input"
+                        value="3" min="1" max="40">
+                </div>
+                <div class="el-form-group" style="grid-column: 1 / -1;">
+                    <label>Niveau de difficulte</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="gen-difficulty" value="beginner"><span>Debutant</span></label>
+                        <label><input type="radio" name="gen-difficulty" value="intermediate" checked><span>Intermediaire</span></label>
+                        <label><input type="radio" name="gen-difficulty" value="advanced"><span>Avance</span></label>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-generate" class="el-btn el-btn-primary" onclick="generateCourse()">
+                Generer le cours
+            </button>
+
+            <div id="gen-progress" class="sse-progress">
+                <div class="el-progress"><div id="gen-progress-bar" class="el-progress-fill" style="width: 0%"></div></div>
+                <div id="gen-steps" style="margin-top: 0.5rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generated course result -->
+    <div id="gen-result" style="display: none; margin-top: 1rem;">
+        <div class="card">
+            <div class="card-content" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 id="gen-result-title" style="margin: 0;"></h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="el-btn el-btn-secondary" onclick="showRegenerateForm()">Regenerer</button>
+                        <button class="el-btn el-btn-primary" onclick="switchTab('library')">Voir bibliotheque</button>
+                    </div>
+                </div>
+                <p id="gen-result-desc" style="color: #6b7280;"></p>
+                <div id="gen-result-objectives" style="margin: 1rem 0;"></div>
+                <div id="gen-result-modules"></div>
+            </div>
+        </div>
+
+        <!-- Regenerate form -->
+        <div id="regenerate-form" class="card" style="display: none; margin-top: 1rem;">
+            <div class="card-content" style="padding: 1.5rem;">
+                <h4 style="margin-top: 0;">Regenerer avec feedback</h4>
+                <div class="el-form-group">
+                    <textarea id="regen-feedback" class="el-textarea"
+                        placeholder="Ex: Ajouter plus d'exemples pratiques, simplifier le module 2, ajouter un module sur les tests..."></textarea>
+                </div>
+                <button class="el-btn el-btn-primary" onclick="regenerateCourse()">Regenerer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 2: Library -->
+<div id="tab-library" class="el-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">Mes cours</h3>
+        <button class="el-btn el-btn-secondary" onclick="loadCourses()">Rafraichir</button>
+    </div>
+    <div id="library-empty" style="text-align: center; padding: 3rem; color: #6b7280; display: none;">
+        <p>Aucun cours genere. Commencez par generer un cours dans l'onglet "Generation".</p>
+    </div>
+    <div id="library-grid" class="course-grid"></div>
+
+    <!-- Course detail modal -->
+    <div id="course-modal" class="el-modal-overlay" onclick="closeCourseModal()">
+        <div class="el-modal" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <h3 id="modal-title" style="margin-top: 0;"></h3>
+                <button onclick="closeCourseModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+            </div>
+            <p id="modal-desc" style="color: #6b7280;"></p>
+            <div id="modal-objectives" style="margin: 1rem 0;"></div>
+            <div id="modal-modules"></div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                <button class="el-btn el-btn-primary" onclick="generateQuizForCourse()">Lancer un quiz</button>
+                <button class="el-btn el-btn-secondary" onclick="startLearningPath()">Creer un parcours</button>
+                <button class="el-btn el-btn-danger" onclick="deleteCourse()">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 3: Quiz -->
+<div id="tab-quiz" class="el-panel">
+    <!-- Quiz setup -->
+    <div id="quiz-setup" class="card">
+        <div class="card-content" style="padding: 1.5rem;">
+            <h3 style="margin-top: 0;">Lancer un quiz adaptatif</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="el-form-group">
+                    <label>Cours</label>
+                    <select id="quiz-course" class="el-select" onchange="loadQuizLessons()">
+                        <option value="">Selectionner un cours...</option>
+                    </select>
+                </div>
+                <div class="el-form-group">
+                    <label>Lecon (optionnel)</label>
+                    <select id="quiz-lesson" class="el-select">
+                        <option value="">Tout le cours</option>
+                    </select>
+                </div>
+                <div class="el-form-group">
+                    <label>Difficulte initiale</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="quiz-difficulty" value="easy"><span>Facile</span></label>
+                        <label><input type="radio" name="quiz-difficulty" value="medium" checked><span>Moyen</span></label>
+                        <label><input type="radio" name="quiz-difficulty" value="hard"><span>Difficile</span></label>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-gen-quiz" class="el-btn el-btn-primary" onclick="generateQuiz()">Generer le quiz</button>
+            <div id="quiz-gen-progress" class="sse-progress">
+                <div class="el-progress"><div id="quiz-gen-bar" class="el-progress-fill" style="width: 0%"></div></div>
+                <div id="quiz-gen-steps" style="margin-top: 0.5rem;"></div>
+            </div>
+
+            <!-- Existing quizzes -->
+            <div id="existing-quizzes" style="margin-top: 1.5rem; display: none;">
+                <h4>Quiz existants</h4>
+                <div id="quiz-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz in progress -->
+    <div id="quiz-active" style="display: none;">
+        <div class="quiz-container">
+            <div class="quiz-header">
+                <span id="quiz-counter">Question 1/10</span>
+                <span id="quiz-difficulty-badge" class="badge badge-medium">Moyen</span>
+                <span id="quiz-timer" style="font-size: 0.85rem; color: #6b7280;">00:00</span>
+            </div>
+            <div id="quiz-question-area" class="quiz-question">
+                <h4 id="quiz-q-text"></h4>
+                <div id="quiz-options"></div>
+                <div id="quiz-text-input" style="display: none;">
+                    <textarea id="quiz-answer-text" class="el-textarea" style="min-height: 60px;"
+                        placeholder="Votre reponse..."></textarea>
+                </div>
+            </div>
+            <div id="quiz-feedback-area" class="quiz-feedback"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                <button id="btn-submit-answer" class="el-btn el-btn-primary" onclick="submitAnswer()">Valider</button>
+                <button id="btn-next-question" class="el-btn el-btn-primary" onclick="nextQuestion()" style="display: none;">Suivant</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz results -->
+    <div id="quiz-results" style="display: none;">
+        <div class="card">
+            <div class="card-content" style="padding: 1.5rem; text-align: center;">
+                <h3>Resultats du quiz</h3>
+                <div id="quiz-score" style="font-size: 3rem; font-weight: 700; color: #3B82F6; margin: 1rem 0;"></div>
+                <div id="quiz-stats" style="display: flex; gap: 2rem; justify-content: center; margin-bottom: 1.5rem;"></div>
+                <div id="quiz-breakdown" style="text-align: left; margin-top: 1rem;"></div>
+                <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1.5rem;">
+                    <button class="el-btn el-btn-secondary" onclick="resetQuiz()">Nouveau quiz</button>
+                    <button class="el-btn el-btn-primary" onclick="createPathFromQuiz()">Generer un parcours</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 4: Learning Path -->
+<div id="tab-path" class="el-panel">
+    <!-- Path setup -->
+    <div id="path-setup" class="card">
+        <div class="card-content" style="padding: 1.5rem;">
+            <h3 style="margin-top: 0;">Creer un parcours personnalise</h3>
+            <div class="el-form-group">
+                <label>Cours</label>
+                <select id="path-course" class="el-select">
+                    <option value="">Selectionner un cours...</option>
+                </select>
+            </div>
+            <div class="el-form-group">
+                <label>Vos objectifs d'apprentissage</label>
+                <textarea id="path-goals" class="el-textarea"
+                    placeholder="Ex: Maitriser les bases de Python, Creer des scripts d'automatisation, Comprendre la POO..."></textarea>
+            </div>
+            <button id="btn-gen-path" class="el-btn el-btn-primary" onclick="generatePath()">Generer mon parcours</button>
+            <div id="path-gen-progress" class="sse-progress">
+                <div class="el-progress"><div id="path-gen-bar" class="el-progress-fill" style="width: 0%"></div></div>
+                <div id="path-gen-steps" style="margin-top: 0.5rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Path dashboard -->
+    <div id="path-dashboard" style="display: none; margin-top: 1rem;">
+        <div class="card">
+            <div class="card-content" style="padding: 1.5rem;">
+                <h3 style="margin-top: 0;">Mon parcours</h3>
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                        <span style="font-size: 0.85rem; font-weight: 500;">Progression globale</span>
+                        <span id="path-progress-pct" style="font-size: 0.85rem; color: #3B82F6; font-weight: 600;">0%</span>
+                    </div>
+                    <div class="el-progress" style="height: 12px;">
+                        <div id="path-progress-bar" class="el-progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Knowledge gaps -->
+                <div id="path-gaps" style="margin-bottom: 1.5rem;"></div>
+
+                <!-- Recommendations -->
+                <div id="path-recommendations"></div>
+
+                <!-- Module progress -->
+                <h4>Progression par module</h4>
+                <div id="path-modules"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// State
+let sessionId = localStorage.getItem('el_session') || null;
+let currentCourseId = null;
+let currentQuizId = null;
+let currentAttemptId = null;
+let currentQuestion = null;
+let totalQuestions = 0;
+let answeredCount = 0;
+let quizTimer = null;
+let quizSeconds = 0;
+let coursesCache = [];
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+    await initSession();
+    loadCourses();
+});
+
+async function initSession() {
+    try {
+        const resp = await fetch('/api/elearning/session/init', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({session_identifier: sessionId})
+        });
+        const data = await resp.json();
+        sessionId = data.session_identifier;
+        localStorage.setItem('el_session', sessionId);
+    } catch(e) { console.error('Session init error:', e); }
+}
+
+// Tab navigation
+function switchTab(tab) {
+    document.querySelectorAll('.el-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.el-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.querySelectorAll('.el-tab')[
+        ['generate','library','quiz','path'].indexOf(tab)
+    ].classList.add('active');
+
+    if (tab === 'library') loadCourses();
+    if (tab === 'quiz') populateQuizCourseSelect();
+    if (tab === 'path') populatePathCourseSelect();
+}
+
+// ==================
+// MODE SELECTION
+// ==================
+let currentMode = 'free';
+
+const modePlaceholders = {
+    free: 'Ex: Introduction a Python, Machine Learning, Gestion de projet Agile...',
+    interview: 'Ex: Data Engineer chez Google, Architecte Cloud AWS, Consultant SAP...',
+    certification: 'Ex: AWS Solutions Architect, PMP, Scrum Master PSM I, Azure AZ-900...',
+    training: 'Ex: Formation Docker pour devs, Atelier IA generative, Workshop Python...',
+};
+
+const modeLabels = {
+    free: 'Sujet du cours',
+    interview: 'Poste ou domaine de l\'entretien',
+    certification: 'Nom de la certification',
+    training: 'Sujet de la formation a donner',
+};
+
+function selectMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    const input = document.getElementById('gen-topic');
+    input.placeholder = modePlaceholders[mode] || modePlaceholders.free;
+    document.getElementById('gen-topic-label').innerHTML =
+        modeLabels[mode] + ' <span style="color:#6b7280;font-weight:400">(ou importer un document)</span>';
+
+    // Hide audience field for certification (consultant is the only learner)
+    const audienceGroup = document.getElementById('gen-audience-group');
+    if (mode === 'certification') {
+        audienceGroup.style.display = 'none';
+        document.getElementById('gen-audience').value = 'Candidat a la certification';
+    } else {
+        audienceGroup.style.display = '';
+        // Reset to default if was hidden
+        const sel = document.getElementById('gen-audience');
+        if (sel.value === 'Candidat a la certification') {
+            sel.value = 'Debutants sans experience';
+        }
+    }
+
+    // Update file upload hint per mode
+    const fileLabel = document.getElementById('gen-file-label');
+    if (!document.getElementById('gen-file').files.length) {
+        if (mode === 'certification') {
+            fileLabel.textContent = 'Importer un support de certification (syllabus, exemples d\'examen...)';
+        } else {
+            fileLabel.textContent = 'Choisir un fichier PDF, PPTX, HTML ou Markdown';
+        }
+    }
+}
+
+// ==================
+// FILE UPLOAD
+// ==================
+let elDocumentContent = '';
+
+async function handleElearningFileUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const label = document.getElementById('gen-file-label');
+    const clearBtn = document.getElementById('gen-file-clear');
+
+    if (['txt', 'md', 'markdown'].includes(ext)) {
+        elDocumentContent = await file.text();
+        label.textContent = file.name + ' (' + (elDocumentContent.length / 1000).toFixed(1) + 'k car.)';
+        clearBtn.style.display = 'inline-block';
+        return;
+    }
+
+    label.textContent = 'Extraction en cours...';
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const resp = await fetch('/api/elearning/course/upload-document', {method: 'POST', body: formData});
+        const data = await resp.json();
+        if (data.error) { alert('Erreur: ' + data.error); label.textContent = 'Choisir un fichier'; return; }
+        elDocumentContent = data.text;
+        label.textContent = data.filename + ' (' + (data.length / 1000).toFixed(1) + 'k car.)';
+        clearBtn.style.display = 'inline-block';
+    } catch(e) {
+        alert('Erreur: ' + e.message);
+        label.textContent = 'Choisir un fichier PDF, PPTX, HTML ou Markdown';
+    }
+}
+
+function clearElearningFile() {
+    elDocumentContent = '';
+    document.getElementById('gen-file').value = '';
+    document.getElementById('gen-file-label').textContent = 'Choisir un fichier PDF, PPTX, HTML ou Markdown';
+    document.getElementById('gen-file-clear').style.display = 'none';
+}
+
+// ==================
+// COURSE GENERATION
+// ==================
+
+async function generateCourse() {
+    const topic = document.getElementById('gen-topic').value.trim();
+    if (!topic && !elDocumentContent) return alert('Veuillez entrer un sujet ou importer un document');
+
+    const audience = document.getElementById('gen-audience').value;
+    const duration = document.getElementById('gen-duration').value;
+    const difficulty = document.querySelector('input[name="gen-difficulty"]:checked').value;
+
+    const btn = document.getElementById('btn-generate');
+    btn.disabled = true;
+    btn.textContent = elDocumentContent ? 'Analyse du document...' : 'Generation en cours...';
+
+    const progress = document.getElementById('gen-progress');
+    progress.style.display = 'block';
+    document.getElementById('gen-steps').innerHTML = '';
+    document.getElementById('gen-progress-bar').style.width = '10%';
+
+    const form = new FormData();
+    form.append('topic', topic);
+    form.append('target_audience', audience);
+    form.append('duration_hours', duration);
+    form.append('difficulty', difficulty);
+    form.append('mode', currentMode);
+    if (elDocumentContent) form.append('document_content', elDocumentContent);
+
+    try {
+        const resp = await fetch('/api/elearning/course/generate', {method: 'POST', body: form});
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        await streamJob(data.job_id, 'gen-progress-bar', 'gen-steps', (result) => {
+            btn.disabled = false;
+            btn.textContent = 'Generer le cours';
+            if (result.course_id) {
+                currentCourseId = result.course_id;
+                loadCourseDetail(result.course_id, 'gen');
+            }
+        });
+    } catch(e) {
+        alert('Erreur: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Generer le cours';
+    }
+}
+
+async function loadCourseDetail(courseId, target) {
+    const resp = await fetch('/api/elearning/course/' + courseId);
+    const data = await resp.json();
+    if (!data.course) return;
+
+    const c = data.course;
+
+    if (target === 'gen') {
+        document.getElementById('gen-result').style.display = 'block';
+        document.getElementById('gen-result-title').textContent = c.title;
+        document.getElementById('gen-result-desc').textContent = c.description;
+
+        let objHtml = '<h4>Objectifs d\'apprentissage</h4><ul>';
+        (c.learning_objectives || []).forEach(o => objHtml += '<li>' + o + '</li>');
+        objHtml += '</ul>';
+        document.getElementById('gen-result-objectives').innerHTML = objHtml;
+
+        document.getElementById('gen-result-modules').innerHTML = renderModules(c.modules);
+    } else if (target === 'modal') {
+        document.getElementById('modal-title').textContent = c.title;
+        document.getElementById('modal-desc').textContent = c.description;
+
+        let objHtml = '<h4>Objectifs</h4><ul>';
+        (c.learning_objectives || []).forEach(o => objHtml += '<li>' + o + '</li>');
+        objHtml += '</ul>';
+        document.getElementById('modal-objectives').innerHTML = objHtml;
+
+        document.getElementById('modal-modules').innerHTML = renderModules(c.modules);
+    }
+}
+
+function renderModules(modules) {
+    return (modules || []).map((m, i) => `
+        <div class="module-item">
+            <div class="module-header" onclick="this.nextElementSibling.classList.toggle('open')">
+                <span>Module ${m.module_number || i+1}: ${m.title}</span>
+                <span style="font-size: 0.8rem; color: #6b7280;">${m.estimated_duration_minutes || 30} min</span>
+            </div>
+            <div class="module-body">
+                <p style="color: #6b7280; font-size: 0.85rem;">${m.description || ''}</p>
+                ${(m.lessons || []).map(l => `
+                    <div class="lesson-item">
+                        <h5>Lecon ${l.lesson_number}: ${l.title}</h5>
+                        <div class="markdown-content">${typeof marked !== 'undefined' ? marked.parse(l.content_markdown || '') : l.content_markdown || ''}</div>
+                        ${(l.key_takeaways || []).length ? '<div style="margin-top: 0.5rem;"><strong>Points cles:</strong><ul>' + l.key_takeaways.map(k => '<li>' + k + '</li>').join('') + '</ul></div>' : ''}
+                        ${(l.practical_exercises || []).length ? '<div style="margin-top: 0.5rem;"><strong>Exercices:</strong>' + l.practical_exercises.map(e => '<div style="padding: 0.5rem; background: #eff6ff; border-radius: 6px; margin: 0.3rem 0;"><strong>' + e.title + '</strong><p style="margin: 0.2rem 0; font-size: 0.85rem;">' + e.description + '</p></div>').join('') + '</div>' : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function showRegenerateForm() {
+    document.getElementById('regenerate-form').style.display =
+        document.getElementById('regenerate-form').style.display === 'none' ? 'block' : 'none';
+}
+
+async function regenerateCourse() {
+    if (!currentCourseId) return;
+    const feedback = document.getElementById('regen-feedback').value.trim();
+    if (!feedback) return alert('Veuillez entrer du feedback');
+
+    const form = new FormData();
+    form.append('feedback', feedback);
+
+    const resp = await fetch('/api/elearning/course/' + currentCourseId + '/regenerate', {method: 'POST', body: form});
+    const data = await resp.json();
+    if (data.job_id) {
+        document.getElementById('gen-progress').style.display = 'block';
+        await streamJob(data.job_id, 'gen-progress-bar', 'gen-steps', (result) => {
+            if (result.course_id) {
+                currentCourseId = result.course_id;
+                loadCourseDetail(result.course_id, 'gen');
+                document.getElementById('regenerate-form').style.display = 'none';
+            }
+        });
+    }
+}
+
+// ==================
+// LIBRARY
+// ==================
+
+async function loadCourses() {
+    try {
+        const resp = await fetch('/api/elearning/courses');
+        const data = await resp.json();
+        coursesCache = data.courses || [];
+        renderCourseGrid(coursesCache);
+    } catch(e) { console.error('Load courses error:', e); }
+}
+
+function renderCourseGrid(courses) {
+    const grid = document.getElementById('library-grid');
+    const empty = document.getElementById('library-empty');
+
+    if (!courses.length) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    grid.innerHTML = courses.map(c => `
+        <div class="course-card" onclick="openCourseModal(${c.id})">
+            <h4>${c.title}</h4>
+            <div class="meta">
+                <span class="badge badge-${c.difficulty_level}">${c.difficulty_level}</span>
+                <span>${c.duration_hours}h</span>
+                <span>${c.modules_count} modules</span>
+                <span>${c.lessons_count} lecons</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #6b7280; margin: 0;">${c.topic}</p>
+        </div>
+    `).join('');
+}
+
+function openCourseModal(courseId) {
+    currentCourseId = courseId;
+    loadCourseDetail(courseId, 'modal');
+    document.getElementById('course-modal').classList.add('open');
+}
+
+function closeCourseModal() {
+    document.getElementById('course-modal').classList.remove('open');
+}
+
+async function deleteCourse() {
+    if (!currentCourseId) return;
+    if (!confirm('Supprimer ce cours et toutes ses donnees?')) return;
+
+    await fetch('/api/elearning/course/' + currentCourseId, {method: 'DELETE'});
+    closeCourseModal();
+    loadCourses();
+}
+
+function generateQuizForCourse() {
+    closeCourseModal();
+    switchTab('quiz');
+    setTimeout(() => {
+        document.getElementById('quiz-course').value = currentCourseId;
+        loadQuizLessons();
+    }, 100);
+}
+
+function startLearningPath() {
+    closeCourseModal();
+    switchTab('path');
+    setTimeout(() => {
+        document.getElementById('path-course').value = currentCourseId;
+    }, 100);
+}
+
+// ==================
+// QUIZ
+// ==================
+
+function populateQuizCourseSelect() {
+    const sel = document.getElementById('quiz-course');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Selectionner un cours...</option>';
+    coursesCache.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.title}</option>`;
+    });
+    if (current) sel.value = current;
+}
+
+async function loadQuizLessons() {
+    const courseId = document.getElementById('quiz-course').value;
+    const sel = document.getElementById('quiz-lesson');
+    sel.innerHTML = '<option value="">Tout le cours</option>';
+
+    if (!courseId) return;
+
+    const resp = await fetch('/api/elearning/course/' + courseId);
+    const data = await resp.json();
+    if (!data.course) return;
+
+    (data.course.modules || []).forEach(m => {
+        (m.lessons || []).forEach(l => {
+            sel.innerHTML += `<option value="${l.id}">M${m.module_number} - ${l.title}</option>`;
+        });
+    });
+
+    // Load existing quizzes
+    const qResp = await fetch('/api/elearning/quizzes/' + courseId);
+    const qData = await qResp.json();
+    const quizzes = qData.quizzes || [];
+
+    const container = document.getElementById('existing-quizzes');
+    const list = document.getElementById('quiz-list');
+
+    if (quizzes.length) {
+        container.style.display = 'block';
+        list.innerHTML = quizzes.map(q => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem;">
+                <div>
+                    <strong>${q.title}</strong>
+                    <span class="badge badge-${q.difficulty_level}" style="margin-left: 0.5rem;">${q.difficulty_level}</span>
+                    <span style="color: #6b7280; font-size: 0.8rem; margin-left: 0.5rem;">${q.questions_count} questions</span>
+                </div>
+                <button class="el-btn el-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;" onclick="startQuiz(${q.id})">Commencer</button>
+            </div>
+        `).join('');
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+async function generateQuiz() {
+    const courseId = document.getElementById('quiz-course').value;
+    if (!courseId) return alert('Selectionner un cours');
+
+    const lessonId = document.getElementById('quiz-lesson').value || '';
+    const difficulty = document.querySelector('input[name="quiz-difficulty"]:checked').value;
+
+    const btn = document.getElementById('btn-gen-quiz');
+    btn.disabled = true;
+
+    const progress = document.getElementById('quiz-gen-progress');
+    progress.style.display = 'block';
+
+    const form = new FormData();
+    form.append('course_id', courseId);
+    if (lessonId) form.append('lesson_id', lessonId);
+    form.append('difficulty', difficulty);
+    form.append('mode', currentMode);
+
+    try {
+        const resp = await fetch('/api/elearning/quiz/generate', {method: 'POST', body: form});
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        await streamJob(data.job_id, 'quiz-gen-bar', 'quiz-gen-steps', (result) => {
+            btn.disabled = false;
+            if (result.quiz_id) {
+                startQuiz(result.quiz_id);
+            }
+        });
+    } catch(e) {
+        alert('Erreur: ' + e.message);
+        btn.disabled = false;
+    }
+}
+
+async function startQuiz(quizId) {
+    currentQuizId = quizId;
+    answeredCount = 0;
+
+    const form = new FormData();
+    form.append('quiz_id', quizId);
+    form.append('session_identifier', sessionId);
+
+    const resp = await fetch('/api/elearning/quiz/start', {method: 'POST', body: form});
+    const data = await resp.json();
+
+    if (data.error) return alert(data.error);
+
+    currentAttemptId = data.attempt_id;
+    totalQuestions = data.total_questions;
+    currentQuestion = data.first_question;
+
+    document.getElementById('quiz-setup').style.display = 'none';
+    document.getElementById('quiz-active').style.display = 'block';
+    document.getElementById('quiz-results').style.display = 'none';
+
+    // Start timer
+    quizSeconds = 0;
+    if (quizTimer) clearInterval(quizTimer);
+    quizTimer = setInterval(() => {
+        quizSeconds++;
+        const m = Math.floor(quizSeconds / 60).toString().padStart(2, '0');
+        const s = (quizSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('quiz-timer').textContent = m + ':' + s;
+    }, 1000);
+
+    renderQuestion(currentQuestion);
+}
+
+function renderQuestion(q) {
+    if (!q) return showQuizResults();
+
+    document.getElementById('quiz-counter').textContent = `Question ${answeredCount + 1}/${totalQuestions}`;
+    document.getElementById('quiz-q-text').textContent = q.question_text;
+
+    const feedbackEl = document.getElementById('quiz-feedback-area');
+    feedbackEl.style.display = 'none';
+    feedbackEl.className = 'quiz-feedback';
+
+    document.getElementById('btn-submit-answer').style.display = 'inline-block';
+    document.getElementById('btn-next-question').style.display = 'none';
+
+    const optionsEl = document.getElementById('quiz-options');
+    const textEl = document.getElementById('quiz-text-input');
+
+    if (q.question_type === 'mcq' || q.question_type === 'true_false') {
+        optionsEl.style.display = 'block';
+        textEl.style.display = 'none';
+        optionsEl.innerHTML = (q.options || []).map((opt, i) =>
+            `<div class="quiz-option" data-value="${opt}" onclick="selectOption(this)">${opt}</div>`
+        ).join('');
+    } else {
+        optionsEl.style.display = 'none';
+        textEl.style.display = 'block';
+        document.getElementById('quiz-answer-text').value = '';
+    }
+}
+
+function selectOption(el) {
+    document.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+async function submitAnswer() {
+    if (!currentQuestion || !currentAttemptId) return;
+
+    let answer = '';
+    if (currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'true_false') {
+        const selected = document.querySelector('.quiz-option.selected');
+        if (!selected) return alert('Selectionnez une reponse');
+        answer = selected.dataset.value;
+    } else {
+        answer = document.getElementById('quiz-answer-text').value.trim();
+        if (!answer) return alert('Entrez votre reponse');
+    }
+
+    document.getElementById('btn-submit-answer').disabled = true;
+
+    const form = new FormData();
+    form.append('attempt_id', currentAttemptId);
+    form.append('question_id', currentQuestion.id);
+    form.append('answer', answer);
+    form.append('time_spent', quizSeconds);
+
+    try {
+        const resp = await fetch('/api/elearning/quiz/answer', {method: 'POST', body: form});
+        const data = await resp.json();
+
+        answeredCount++;
+
+        // Show feedback
+        const feedbackEl = document.getElementById('quiz-feedback-area');
+        feedbackEl.style.display = 'block';
+        feedbackEl.className = 'quiz-feedback ' + (data.is_correct ? 'correct' : 'wrong');
+        feedbackEl.innerHTML = `
+            <strong>${data.is_correct ? 'Correct !' : 'Incorrect'}</strong>
+            <p style="margin: 0.3rem 0 0;">${data.explanation || data.feedback || ''}</p>
+            ${data.difficulty_changed ? '<p style="margin: 0.3rem 0 0; font-size: 0.85rem; color: #6b7280;">Difficulte ajustee: <strong>' + data.current_difficulty + '</strong></p>' : ''}
+        `;
+
+        // Update difficulty badge
+        const badgeEl = document.getElementById('quiz-difficulty-badge');
+        badgeEl.textContent = data.current_difficulty;
+        badgeEl.className = 'badge badge-' + data.current_difficulty;
+
+        // Highlight correct/wrong options
+        if (currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'true_false') {
+            document.querySelectorAll('.quiz-option').forEach(o => {
+                if (o.classList.contains('selected') && !data.is_correct) o.classList.add('wrong');
+                if (o.classList.contains('selected') && data.is_correct) o.classList.add('correct');
+            });
+        }
+
+        currentQuestion = data.next_question;
+
+        document.getElementById('btn-submit-answer').style.display = 'none';
+        document.getElementById('btn-submit-answer').disabled = false;
+        document.getElementById('btn-next-question').style.display = 'inline-block';
+
+        if (!data.next_question) {
+            document.getElementById('btn-next-question').textContent = 'Voir les resultats';
+        }
+    } catch(e) {
+        document.getElementById('btn-submit-answer').disabled = false;
+        alert('Erreur: ' + e.message);
+    }
+}
+
+function nextQuestion() {
+    if (currentQuestion) {
+        renderQuestion(currentQuestion);
+    } else {
+        showQuizResults();
+    }
+}
+
+async function showQuizResults() {
+    if (quizTimer) clearInterval(quizTimer);
+
+    const resp = await fetch('/api/elearning/quiz/results/' + currentAttemptId);
+    const data = await resp.json();
+    const r = data.results;
+
+    document.getElementById('quiz-active').style.display = 'none';
+    document.getElementById('quiz-results').style.display = 'block';
+
+    const score = r.score_percentage || 0;
+    document.getElementById('quiz-score').textContent = Math.round(score) + '%';
+    document.getElementById('quiz-score').style.color = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444';
+
+    document.getElementById('quiz-stats').innerHTML = `
+        <div><strong>${r.correct_answers}</strong><br><span style="font-size: 0.8rem; color: #6b7280;">Correctes</span></div>
+        <div><strong>${r.total_questions}</strong><br><span style="font-size: 0.8rem; color: #6b7280;">Questions</span></div>
+        <div><strong>${Math.floor(quizSeconds / 60)}m ${quizSeconds % 60}s</strong><br><span style="font-size: 0.8rem; color: #6b7280;">Temps</span></div>
+    `;
+
+    // Breakdown
+    const answers = r.answers || [];
+    document.getElementById('quiz-breakdown').innerHTML = '<h4>Detail des reponses</h4>' +
+        answers.map((a, i) => `
+            <div style="padding: 0.5rem; border-left: 3px solid ${a.is_correct ? '#10b981' : '#ef4444'}; margin: 0.3rem 0; background: ${a.is_correct ? '#f0fdf4' : '#fef2f2'}; border-radius: 0 6px 6px 0;">
+                <strong>Q${i+1}:</strong> ${a.question_text}
+                <br><span style="font-size: 0.85rem;">Votre reponse: ${a.student_answer} ${a.is_correct ? '&#10003;' : '&#10007; (Attendu: ' + a.correct_answer + ')'}</span>
+            </div>
+        `).join('');
+}
+
+function resetQuiz() {
+    document.getElementById('quiz-setup').style.display = 'block';
+    document.getElementById('quiz-active').style.display = 'none';
+    document.getElementById('quiz-results').style.display = 'none';
+    currentAttemptId = null;
+    currentQuestion = null;
+}
+
+function createPathFromQuiz() {
+    const courseId = document.getElementById('quiz-course').value;
+    if (courseId) currentCourseId = parseInt(courseId);
+    switchTab('path');
+    setTimeout(() => {
+        if (currentCourseId) document.getElementById('path-course').value = currentCourseId;
+    }, 100);
+}
+
+// ==================
+// LEARNING PATH
+// ==================
+
+function populatePathCourseSelect() {
+    const sel = document.getElementById('path-course');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Selectionner un cours...</option>';
+    coursesCache.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.title}</option>`;
+    });
+    if (current) sel.value = current;
+}
+
+async function generatePath() {
+    const courseId = document.getElementById('path-course').value;
+    if (!courseId) return alert('Selectionner un cours');
+
+    const goalsText = document.getElementById('path-goals').value.trim();
+    const goals = goalsText ? goalsText.split('\n').filter(g => g.trim()) : ['Completer le cours'];
+
+    const btn = document.getElementById('btn-gen-path');
+    btn.disabled = true;
+
+    const progress = document.getElementById('path-gen-progress');
+    progress.style.display = 'block';
+
+    const form = new FormData();
+    form.append('session_identifier', sessionId);
+    form.append('course_id', courseId);
+    form.append('goals', JSON.stringify(goals));
+
+    try {
+        const resp = await fetch('/api/elearning/learning-path/create', {method: 'POST', body: form});
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        await streamJob(data.job_id, 'path-gen-bar', 'path-gen-steps', (result) => {
+            btn.disabled = false;
+            loadLearningPath(courseId);
+        });
+    } catch(e) {
+        alert('Erreur: ' + e.message);
+        btn.disabled = false;
+    }
+}
+
+async function loadLearningPath(courseId) {
+    try {
+        const resp = await fetch('/api/elearning/learning-path/' + sessionId + '/' + courseId);
+        if (!resp.ok) return;
+
+        const data = await resp.json();
+        const path = data.path;
+        if (!path) return;
+
+        document.getElementById('path-dashboard').style.display = 'block';
+
+        // Progress
+        const pct = path.current_progress_percentage || 0;
+        document.getElementById('path-progress-pct').textContent = Math.round(pct) + '%';
+        document.getElementById('path-progress-bar').style.width = pct + '%';
+
+        // Gaps
+        const gaps = path.knowledge_gaps || [];
+        document.getElementById('path-gaps').innerHTML = gaps.length ?
+            '<h4 style="color: #dc2626;">Lacunes identifiees</h4>' +
+            gaps.map(g => `<div style="padding: 0.5rem; background: #fef2f2; border-radius: 6px; margin: 0.3rem 0; font-size: 0.9rem;">
+                <strong>${g.title || 'Module ' + g.module_id}</strong>: ${g.reason || ''}
+            </div>`).join('') : '';
+
+        // Recommendations
+        const recs = path.recommendations || [];
+        document.getElementById('path-recommendations').innerHTML = recs.length ?
+            '<h4>Recommandations</h4>' +
+            recs.map(r => `<div class="path-step">
+                <div style="flex: 1;">
+                    <strong>${r.type || 'Etude'}</strong> - Module ${r.module_id || ''}
+                    <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: #6b7280;">${r.reason || ''}</p>
+                </div>
+            </div>`).join('') : '';
+
+        // Module progress
+        const modProgress = path.module_progress || [];
+        document.getElementById('path-modules').innerHTML = modProgress.length ?
+            modProgress.map(mp => `
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin: 0.5rem 0;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">Module ${mp.module_id}</div>
+                        <div class="el-progress" style="margin-top: 0.3rem;">
+                            <div class="el-progress-fill" style="width: ${mp.completion_percentage || 0}%;"></div>
+                        </div>
+                    </div>
+                    <span class="badge badge-${mp.mastery_level || 'none'}">${mp.mastery_level || 'none'}</span>
+                    <span style="font-size: 0.85rem; color: #6b7280;">${Math.round(mp.completion_percentage || 0)}%</span>
+                </div>
+            `).join('') :
+            '<p style="color: #6b7280; font-size: 0.85rem;">Commencez des quiz pour suivre votre progression.</p>';
+
+    } catch(e) { console.error('Load path error:', e); }
+}
+
+// ==================
+// SSE STREAMING
+// ==================
+
+async function streamJob(jobId, barId, stepsId, onDone) {
+    const bar = document.getElementById(barId);
+    const stepsEl = document.getElementById(stepsId);
+    let progress = 20;
+
+    return new Promise((resolve) => {
+        const es = new EventSource('/api/elearning/course/stream/' + jobId);
+
+        // Try quiz and path streams too
+        let stream = null;
+        try {
+            stream = new EventSource(getStreamUrl(jobId));
+        } catch(e) {
+            stream = es;
+        }
+
+        function handleEvent(event) {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.status === 'done') {
+                    bar.style.width = '100%';
+                    stepsEl.innerHTML += '<div class="step-log" style="color: #10b981;">&#10003; Termine</div>';
+                    if (onDone) onDone(data.result || {});
+                    this.close();
+                    resolve();
+                } else if (data.status === 'error') {
+                    stepsEl.innerHTML += '<div class="step-log" style="color: #ef4444;">&#10007; Erreur: ' + (data.error || '') + '</div>';
+                    this.close();
+                    resolve();
+                } else if (data.step) {
+                    progress = Math.min(progress + 15, 90);
+                    bar.style.width = progress + '%';
+                    stepsEl.innerHTML += '<div class="step-log">' + (data.detail || data.step) + '</div>';
+                }
+            } catch(e) {}
+        }
+
+        es.onmessage = handleEvent;
+        es.onerror = () => { es.close(); resolve(); };
+    });
+}
+
+function getStreamUrl(jobId) {
+    // The stream endpoints all follow the same pattern
+    return '/api/elearning/course/stream/' + jobId;
+}
+</script>
+{% endblock %}

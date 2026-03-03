@@ -1,7 +1,9 @@
 """
 Test rapide du mail de partage de compte rendu
 """
+
 import sys
+
 from agents.meeting_summarizer import MeetingSummarizerAgent
 
 # Transcript d'exemple
@@ -47,10 +49,11 @@ Sophie: Ok pour moi.
 [Fin de la réunion - 14h45]
 """
 
+
 def main():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST - Génération de mail de compte rendu")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     agent = MeetingSummarizerAgent()
 
@@ -61,17 +64,18 @@ def main():
 
     result = agent.run(transcript=sample_transcript)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("COMPTE RENDU GÉNÉRÉ")
-    print("="*60 + "\n")
-    print(result['minutes'])
+    print("=" * 60 + "\n")
+    print(result["minutes"])
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("MAIL DE PARTAGE")
-    print("="*60 + "\n")
-    print(result['email'])
+    print("=" * 60 + "\n")
+    print(result["email"])
 
     print(f"\n✅ Sauvegardé : {result['md_path']}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

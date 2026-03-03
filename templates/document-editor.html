@@ -656,6 +656,7 @@ async function generateDocument() {
         evtSource.addEventListener('status', (e) => {
             const data = JSON.parse(e.data);
             document.getElementById('gen-status').textContent = data.message;
+            if (data.substep) document.getElementById('gen-substatus').textContent = data.substep;
         });
 
         evtSource.addEventListener('chunk', (e) => {
@@ -761,6 +762,7 @@ async function regenerateWithFeedback() {
         evtSource.addEventListener('status', (e) => {
             const data = JSON.parse(e.data);
             document.getElementById('gen-status').textContent = data.message;
+            if (data.substep) document.getElementById('gen-substatus').textContent = data.substep;
         });
 
         evtSource.addEventListener('chunk', (e) => {

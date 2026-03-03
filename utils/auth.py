@@ -2,12 +2,13 @@
 Module d'authentification pour Wenvision Agents
 Gère les sessions utilisateur et la vérification des credentials
 """
+
 import os
 import secrets
 from typing import Optional
+
+from fastapi import HTTPException, Request, status
 from passlib.context import CryptContext
-from fastapi import Request, HTTPException, status
-from starlette.middleware.sessions import SessionMiddleware
 
 # Configuration du hashage de mots de passe
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -41,10 +42,7 @@ def get_user_credentials() -> dict:
     else:
         hashed_password = password
 
-    return {
-        "username": username,
-        "hashed_password": hashed_password
-    }
+    return {"username": username, "hashed_password": hashed_password}
 
 
 def authenticate_user(username: str, password: str) -> bool:
@@ -121,7 +119,7 @@ def get_session_secret() -> str:
     if not secret:
         # Générer une clé par défaut (à remplacer en production)
         secret = generate_session_secret()
-        print(f"⚠️  Aucune SESSION_SECRET définie dans .env")
+        print("⚠️  Aucune SESSION_SECRET définie dans .env")
         print(f"   Utilisez cette clé générée: {secret}")
 
     return secret

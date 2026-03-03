@@ -1,0 +1,159 @@
+"""
+Tests unitaires pour document_parser
+"""
+
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.document_parser import extract_text_from_file, parse_docx, parse_pdf, parse_txt
+
+
+class TestParsePdf:
+    """Tests pour parse_pdf"""
+
+    def test_parse_valid_pdf(self):
+        """Test parsing d'un PDF valide"""
+        # Créer un PDF de test
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            # Note: Dans un test réel, utiliseriez PyPDF2 pour créer un vrai PDF
+            pdf_path = f.name
+
+        try:
+            # Mock du parsing PDF
+            with pytest.raises(Exception):
+                # Le fichier temporaire n'est pas un vrai PDF
+                result = parse_pdf(pdf_path)
+        finally:
+            os.unlink(pdf_path)
+
+    def test_parse_nonexistent_pdf(self):
+        """Test parsing PDF inexistant"""
+        with pytest.raises(FileNotFoundError):
+            parse_pdf("/nonexistent/file.pdf")
+
+    def test_parse_invalid_pdf(self):
+        """Test parsing fichier non-PDF"""
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+            f.write(b"Not a PDF")
+            txt_path = f.name
+
+        try:
+            with pytest.raises(Exception):
+                parse_pdf(txt_path)
+        finally:
+            os.unlink(txt_path)
+
+
+class TestParseDocx:
+    """Tests pour parse_docx"""
+
+    def test_parse_nonexistent_docx(self):
+        """Test parsing DOCX inexistant"""
+        with pytest.raises(FileNotFoundError):
+            parse_docx("/nonexistent/file.docx")
+
+    def test_parse_invalid_docx(self):
+        """Test parsing fichier non-DOCX"""
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+            f.write(b"Not a DOCX")
+            txt_path = f.name
+
+        try:
+            with pytest.raises(Exception):
+                parse_docx(txt_path)
+        finally:
+            os.unlink(txt_path)
+
+
+class TestParseTxt:
+    """Tests pour parse_txt"""
+
+    def test_parse_valid_txt(self):
+        """Test parsing fichier texte valide"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("Hello World\nSecond line")
+            txt_path = f.name
+
+        try:
+            result = parse_txt(txt_path)
+            assert "Hello World" in result
+            assert "Second line" in result
+        finally:
+            os.unlink(txt_path)
+
+    def test_parse_empty_txt(self):
+        """Test parsing fichier texte vide"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            txt_path = f.name
+
+        try:
+            result = parse_txt(txt_path)
+            assert result == ""
+        finally:
+            os.unlink(txt_path)
+
+    def test_parse_txt_with_encoding(self):
+        """Test parsing avec encodage UTF-8"""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
+            f.write("Texte avec accents: é, à, ü")
+            txt_path = f.name
+
+        try:
+            result = parse_txt(txt_path)
+            assert "accents" in result
+            assert "é" in result
+        finally:
+            os.unlink(txt_path)
+
+    def test_parse_nonexistent_txt(self):
+        """Test parsing fichier inexistant"""
+        with pytest.raises(FileNotFoundError):
+            parse_txt("/nonexistent/file.txt")
+
+
+class TestExtractTextFromFile:
+    """Tests pour extract_text_from_file"""
+
+    def test_extract_from_txt(self):
+        """Test extraction depuis fichier texte"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("Test content")
+            txt_path = f.name
+
+        try:
+            result = extract_text_from_file(txt_path)
+            assert "Test content" in result
+        finally:
+            os.unlink(txt_path)
+
+    def test_extract_unsupported_format(self):
+        """Test extraction format non supporté"""
+        with tempfile.NamedTemporaryFile(suffix=".xyz", delete=False) as f:
+            unknown_path = f.name
+
+        try:
+            with pytest.raises(ValueError, match="Unsupported file format"):
+                extract_text_from_file(unknown_path)
+        finally:
+            os.unlink(unknown_path)
+
+    def test_extract_determines_format_by_extension(self):
+        """Test détection du format par extension"""
+        # Test avec .txt
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("Text file")
+            txt_path = f.name
+
+        try:
+            result = extract_text_from_file(txt_path)
+            assert isinstance(result, str)
+        finally:
+            os.unlink(txt_path)

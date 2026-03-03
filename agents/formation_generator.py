@@ -2,15 +2,17 @@
 Agent de génération de Programmes de Formation
 Prend en entrée un besoin client et remplit le Template Programme Formation
 """
+
 import os
 import sys
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any, Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 from utils.llm_client import LLMClient
 
@@ -26,10 +28,10 @@ class FormationGeneratorAgent:
         """Charge le template Programme Formation"""
         template_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "[Template Programme Formation].md"
+            "[Template Programme Formation].md",
         )
         try:
-            with open(template_path, 'r', encoding='utf-8') as f:
+            with open(template_path, "r", encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
             print(f"⚠️ Template non trouvé: {template_path}")
@@ -38,10 +40,10 @@ class FormationGeneratorAgent:
     def generate_programme(self, client_needs: str) -> Dict[str, Any]:
         """
         Génère un programme de formation complet à partir du besoin client.
-        
+
         Args:
             client_needs: Description du besoin client en texte libre
-            
+
         Returns:
             Dict avec le programme structuré et le markdown généré
         """
@@ -76,19 +78,15 @@ Remplace chaque placeholder ({{{{...}}}}) et chaque indication entre accolades p
 Conserve la structure markdown exacte du template.
 Retourne UNIQUEMENT le document markdown rempli, sans explication ni commentaire."""
 
-        result = self.llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.7
-        )
+        result = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
 
         # Nettoyer le résultat
         result = result.strip()
-        if result.startswith('```markdown'):
-            result = result[len('```markdown'):]
-        if result.startswith('```'):
+        if result.startswith("```markdown"):
+            result = result[len("```markdown") :]
+        if result.startswith("```"):
             result = result[3:]
-        if result.endswith('```'):
+        if result.endswith("```"):
             result = result[:-3]
         result = result.strip()
 
@@ -100,7 +98,7 @@ Retourne UNIQUEMENT le document markdown rempli, sans explication ni commentaire
         return {
             "markdown": result,
             "metadata": metadata,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
     def regenerate_with_feedback(self, previous_programme: str, feedback: str) -> Dict[str, Any]:
@@ -123,19 +121,15 @@ Voici le feedback de l'utilisateur :
 
 Modifie le programme en tenant compte du feedback. Retourne UNIQUEMENT le document markdown modifié."""
 
-        result = self.llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.7
-        )
+        result = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
 
         # Nettoyer
         result = result.strip()
-        if result.startswith('```markdown'):
-            result = result[len('```markdown'):]
-        if result.startswith('```'):
+        if result.startswith("```markdown"):
+            result = result[len("```markdown") :]
+        if result.startswith("```"):
             result = result[3:]
-        if result.endswith('```'):
+        if result.endswith("```"):
             result = result[:-3]
         result = result.strip()
 
@@ -144,27 +138,27 @@ Modifie le programme en tenant compte du feedback. Retourne UNIQUEMENT le docume
         return {
             "markdown": result,
             "metadata": metadata,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
     def _extract_metadata(self, markdown: str) -> Dict[str, str]:
         """Extrait les métadonnées du programme (titre, durée, niveau)"""
         metadata = {}
-        lines = markdown.split('\n')
+        lines = markdown.split("\n")
 
         for i, line in enumerate(lines):
             stripped = line.strip()
-            if stripped.startswith('# **') and stripped.endswith('**'):
-                metadata['title'] = stripped.replace('# **', '').replace('**', '').strip()
-            elif 'Durée du cours' in stripped:
-                parts = stripped.split(':')
+            if stripped.startswith("# **") and stripped.endswith("**"):
+                metadata["title"] = stripped.replace("# **", "").replace("**", "").strip()
+            elif "Durée du cours" in stripped:
+                parts = stripped.split(":")
                 if len(parts) > 1:
-                    metadata['duration'] = parts[-1].strip()
-            elif stripped.startswith('## ') and not stripped.startswith('## {'):
+                    metadata["duration"] = parts[-1].strip()
+            elif stripped.startswith("## ") and not stripped.startswith("## {"):
                 # Capture le code du cours
-                code = stripped.replace('## ', '').strip()
-                if not metadata.get('code'):
-                    metadata['code'] = code
+                code = stripped.replace("## ", "").strip()
+                if not metadata.get("code"):
+                    metadata["code"] = code
 
         return metadata
 

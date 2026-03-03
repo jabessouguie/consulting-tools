@@ -1,10 +1,12 @@
 """
 LinkedIn API client pour OAuth et publication de posts
 """
+
 import os
-import requests
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 from urllib.parse import urlencode
+
+import requests
 
 
 class LinkedInClient:
@@ -20,10 +22,10 @@ class LinkedInClient:
             LINKEDIN_REDIRECT_URI: OAuth redirect URI
             LINKEDIN_ACCESS_TOKEN: Access token (obtained via OAuth flow)
         """
-        self.client_id = os.getenv('LINKEDIN_CLIENT_ID')
-        self.client_secret = os.getenv('LINKEDIN_CLIENT_SECRET')
-        self.redirect_uri = os.getenv('LINKEDIN_REDIRECT_URI')
-        self.access_token = os.getenv('LINKEDIN_ACCESS_TOKEN')
+        self.client_id = os.getenv("LINKEDIN_CLIENT_ID")
+        self.client_secret = os.getenv("LINKEDIN_CLIENT_SECRET")
+        self.redirect_uri = os.getenv("LINKEDIN_REDIRECT_URI")
+        self.access_token = os.getenv("LINKEDIN_ACCESS_TOKEN")
 
         if not all([self.client_id, self.client_secret, self.redirect_uri]):
             raise ValueError(
@@ -46,11 +48,11 @@ class LinkedInClient:
             Authorization URL to redirect user to
         """
         params = {
-            'response_type': 'code',
-            'client_id': self.client_id,
-            'redirect_uri': self.redirect_uri,
-            'scope': 'w_member_social r_liteprofile',
-            'state': state
+            "response_type": "code",
+            "client_id": self.client_id,
+            "redirect_uri": self.redirect_uri,
+            "scope": "w_member_social r_liteprofile",
+            "state": state,
         }
 
         auth_url = f"https://www.linkedin.com/oauth/v2/authorization?{urlencode(params)}"
@@ -72,18 +74,18 @@ class LinkedInClient:
         token_url = "https://www.linkedin.com/oauth/v2/accessToken"
 
         data = {
-            'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': self.redirect_uri,
-            'client_id': self.client_id,
-            'client_secret': self.client_secret
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": self.redirect_uri,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
         }
 
         response = requests.post(token_url, data=data)
         response.raise_for_status()
 
         token_data = response.json()
-        self.access_token = token_data['access_token']
+        self.access_token = token_data["access_token"]
 
         return token_data
 
@@ -101,23 +103,17 @@ class LinkedInClient:
             raise ValueError("No access token. Complete OAuth flow first.")
 
         url = "https://api.linkedin.com/v2/me"
-        headers = {
-            'Authorization': f'Bearer {self.access_token}'
-        }
+        headers = {"Authorization": f"Bearer {self.access_token}"}
 
         response = requests.get(url, headers=headers)
         response.raise_for_status()
 
         data = response.json()
-        person_id = data.get('id')
+        person_id = data.get("id")
 
         return f"urn:li:person:{person_id}"
 
-    def publish_post(
-        self,
-        text: str,
-        visibility: str = "PUBLIC"
-    ) -> Dict[str, Any]:
+    def publish_post(self, text: str, visibility: str = "PUBLIC") -> Dict[str, Any]:
         """
         Publish a post to LinkedIn
 
@@ -141,8 +137,7 @@ class LinkedInClient:
         # Validate text length
         if len(text) > 3000:
             raise ValueError(
-                f"Post text too long ({len(text)} chars). "
-                "LinkedIn limit is 3000 characters."
+                f"Post text too long ({len(text)} chars). " "LinkedIn limit is 3000 characters."
             )
 
         # Get person ID
@@ -154,9 +149,9 @@ class LinkedInClient:
         # Build request
         url = "https://api.linkedin.com/v2/ugcPosts"
         headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json',
-            'X-Restli-Protocol-Version': '2.0.0'
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0",
         }
 
         body = {
@@ -164,15 +159,11 @@ class LinkedInClient:
             "lifecycleState": "PUBLISHED",
             "specificContent": {
                 "com.linkedin.ugc.ShareContent": {
-                    "shareCommentary": {
-                        "text": text
-                    },
-                    "shareMediaCategory": "NONE"
+                    "shareCommentary": {"text": text},
+                    "shareMediaCategory": "NONE",
                 }
             },
-            "visibility": {
-                "com.linkedin.ugc.MemberNetworkVisibility": visibility
-            }
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": visibility},
         }
 
         # Send request
@@ -180,12 +171,12 @@ class LinkedInClient:
         response.raise_for_status()
 
         result = response.json()
-        post_id = result.get('id', '')
+        post_id = result.get("id", "")
 
         return {
-            'id': post_id,
-            'status': 'published',
-            'url': f"https://www.linkedin.com/feed/update/{post_id}" if post_id else None
+            "id": post_id,
+            "status": "published",
+            "url": f"https://www.linkedin.com/feed/update/{post_id}" if post_id else None,
         }
 
 
@@ -196,11 +187,7 @@ def is_linkedin_configured() -> bool:
     Returns:
         True if all required credentials are present
     """
-    required_vars = [
-        'LINKEDIN_CLIENT_ID',
-        'LINKEDIN_CLIENT_SECRET',
-        'LINKEDIN_REDIRECT_URI'
-    ]
+    required_vars = ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "LINKEDIN_REDIRECT_URI"]
 
     return all(os.getenv(var) for var in required_vars)
 
@@ -212,4 +199,4 @@ def has_linkedin_access_token() -> bool:
     Returns:
         True if LINKEDIN_ACCESS_TOKEN is set
     """
-    return bool(os.getenv('LINKEDIN_ACCESS_TOKEN'))
+    return bool(os.getenv("LINKEDIN_ACCESS_TOKEN"))

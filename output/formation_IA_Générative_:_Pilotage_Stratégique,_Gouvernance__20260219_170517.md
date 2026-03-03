@@ -6,7 +6,7 @@ Durée du cours (en jours et en heures) : 2 jours (14 heures)
 
 # Description
 
-À l'heure où l'IA Générative redéfinit radicalement les avantages concurrentiels, les dirigeants et managers doivent impérativement passer de la curiosité technologique à l'exécution stratégique. Cette formation intensive, conçue par les experts de Wenvision, offre aux décideurs les leviers indispensables pour transformer le potentiel des Large Language Models (LLM) en valeur business tangible et mesurable. 
+À l'heure où l'IA Générative redéfinit radicalement les avantages concurrentiels, les dirigeants et managers doivent impérativement passer de la curiosité technologique à l'exécution stratégique. Cette formation intensive, conçue par les experts de Wenvision, offre aux décideurs les leviers indispensables pour transformer le potentiel des Large Language Models (LLM) en valeur business tangible et mesurable.
 
 Nous dépassons le simple discours technique pour nous concentrer sur ce qui compte pour votre organisation : l'identification de cas d'usage à fort impact, la structuration d'une gouvernance de données robuste, la maîtrise des risques (éthiques, juridiques, cyber) et, surtout, le calcul précis du Retour sur Investissement (ROI). À travers des benchmarks sectoriels concrets et des méthodologies de design thinking appliquées à l'IA, vous apprendrez à prioriser vos investissements et à orchestrer le changement culturel nécessaire au sein de vos équipes. Ne subissez plus la révolution GenAI, pilotez-la avec pragmatisme et vision pour garantir la pérennité et la performance de votre modèle d'affaires dans un monde "AI-First".
 
@@ -50,7 +50,7 @@ Dans le cas où la formation se déroule sur le site du client, il doit être pr
 
 # Programme
 
-**Jour 1** 
+**Jour 1**
 
 **Décrypter l'écosystème et identifier la valeur**
 
@@ -74,7 +74,7 @@ Ateliers:
 Ateliers:
 * Atelier "Scoring Matrix" : Utilisation d'un framework Wenvision pour prioriser 3 cas d'usage prioritaires sur une matrice Impact/Complexité.
 
-**Jour 2** 
+**Jour 2**
 
 **Gouvernance, ROI et Déploiement**
 

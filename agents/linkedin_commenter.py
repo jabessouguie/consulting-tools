@@ -2,21 +2,23 @@
 Agent de generation de commentaires LinkedIn pertinents
 Analyse un post et genere un commentaire engageant avec le persona Parisien GenZ
 """
+
 import os
 import sys
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 import requests
 from bs4 import BeautifulSoup
 
-from utils.llm_client import LLMClient
 from config import get_consultant_info
+from utils.llm_client import LLMClient
 
 
 class LinkedInCommenterAgent:
@@ -39,52 +41,49 @@ class LinkedInCommenterAgent:
             Dictionnaire avec le contenu du post
         """
         # Si c'est une URL LinkedIn, essayer de scraper (sinon utiliser le texte tel quel)
-        if post_input.strip().startswith('http'):
-            print(f"🌐 Tentative de recuperation du post depuis l'URL...")
+        if post_input.strip().startswith("http"):
+            print("🌐 Tentative de recuperation du post depuis l'URL...")
             try:
                 headers = {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                                  'Chrome/120.0.0.0 Safari/537.36'
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
                 }
                 response = requests.get(post_input, headers=headers, timeout=10)
 
                 if response.status_code == 200:
-                    soup = BeautifulSoup(response.content, 'html.parser')
+                    soup = BeautifulSoup(response.content, "html.parser")
                     # Essayer d'extraire le contenu (structure LinkedIn peut varier)
-                    post_text = ''
-                    for selector in ['.feed-shared-update-v2__description',
-                                   '.feed-shared-text',
-                                   'article']:
+                    post_text = ""
+                    for selector in [
+                        ".feed-shared-update-v2__description",
+                        ".feed-shared-text",
+                        "article",
+                    ]:
                         element = soup.select_one(selector)
                         if element:
                             post_text = element.get_text(strip=True)
                             break
 
                     if post_text:
-                        print(f"   ✅ Post recupere depuis l'URL")
-                        return {
-                            'content': post_text,
-                            'url': post_input,
-                            'source': 'scraped'
-                        }
+                        print("   ✅ Post recupere depuis l'URL")
+                        return {"content": post_text, "url": post_input, "source": "scraped"}
                 else:
-                    print(f"   ⚠️  Impossible de recuperer l'URL (status {response.status_code}), utilisation du texte fourni")
+                    print(
+                        f"   ⚠️  Impossible de recuperer l'URL (status {response.status_code}), utilisation du texte fourni"
+                    )
             except Exception as e:
                 from utils.validation import sanitize_error_message
-                print(f"   ⚠️  Erreur lors du scraping: {sanitize_error_message(str(e))}, utilisation du texte fourni")
+
+                print(
+                    f"   ⚠️  Erreur lors du scraping: {sanitize_error_message(str(e))}, utilisation du texte fourni"
+                )
 
         # Fallback: utiliser le texte tel quel
-        return {
-            'content': post_input,
-            'url': None,
-            'source': 'direct'
-        }
+        return {"content": post_input, "url": None, "source": "direct"}
 
     def generate_comments(
-        self,
-        post_content: Dict[str, Any],
-        style: str = "insightful"
+        self, post_content: Dict[str, Any], style: str = "insightful"
     ) -> Dict[str, Any]:
         """
         Genere des commentaires pertinents sur un post LinkedIn
@@ -99,25 +98,32 @@ class LinkedInCommenterAgent:
         print("✍️  Generation des commentaires...")
 
         # Charger le persona depuis le fichier
-        persona_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "linkedin_persona.md")
+        persona_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "data",
+            "linkedin_persona.md",
+        )
         persona_style = ""
         if os.path.exists(persona_path):
-            with open(persona_path, 'r', encoding='utf-8') as f:
+            with open(persona_path, "r", encoding="utf-8") as f:
                 persona_content = f.read()
                 # Extraire la section Ton & Style
                 start_idx = persona_content.find("### ✨ Ton & Style")
                 end_idx = persona_content.find("### 📝 Structure de posts")
                 if start_idx != -1 and end_idx != -1:
-                    persona_style = "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n" + persona_content[start_idx:end_idx]
+                    persona_style = (
+                        "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n"
+                        + persona_content[start_idx:end_idx]
+                    )
 
         style_instructions = {
             "insightful": "Apporte un insight complementaire, une perspective experte. Enrichis la discussion.",
             "question": "Pose une question pertinente qui prolonge la reflexion. Creuse un point specifique.",
             "experience": "Partage brievement une experience similaire de ton cote (mission, observation terrain).",
-            "reaction": "Reagis au point principal avec ton analyse. Valide ou nuance avec tact."
+            "reaction": "Reagis au point principal avec ton analyse. Valide ou nuance avec tact.",
         }
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = """Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
 Base : Paris | Génération Z assumée
 {persona_style}
 
@@ -136,7 +142,7 @@ REGLES IMPERATIVES pour les commentaires :
 
 {style_instructions.get(style, style_instructions['insightful'])}"""
 
-        prompt = f"""Genere 3 variantes de commentaire pour ce post LinkedIn :
+        prompt = """Genere 3 variantes de commentaire pour ce post LinkedIn :
 
 CONTENU DU POST :
 {post_content['content']}
@@ -175,7 +181,7 @@ VERSION_LONGUE: [texte]"""
         )
 
         # Parser les 3 variantes
-        parts = response.split('---')
+        parts = response.split("---")
 
         short = ""
         medium = ""
@@ -183,17 +189,21 @@ VERSION_LONGUE: [texte]"""
 
         for part in parts:
             part = part.strip()
-            if 'VERSION_COURTE:' in part:
-                short = part.replace('VERSION_COURTE:', '').strip()
-            elif 'VERSION_MOYENNE:' in part:
-                medium = part.replace('VERSION_MOYENNE:', '').strip()
-            elif 'VERSION_LONGUE:' in part:
-                long = part.replace('VERSION_LONGUE:', '').strip()
+            if "VERSION_COURTE:" in part:
+                short = part.replace("VERSION_COURTE:", "").strip()
+            elif "VERSION_MOYENNE:" in part:
+                medium = part.replace("VERSION_MOYENNE:", "").strip()
+            elif "VERSION_LONGUE:" in part:
+                long = part.replace("VERSION_LONGUE:", "").strip()
 
         # Fallback si le parsing echoue
         if not short or not medium or not long:
-            lines = response.split('\n')
-            comments = [l.strip() for l in lines if l.strip() and not l.strip().startswith('VERSION')]
+            lines = response.split("\n")
+            comments = [
+                line.strip()
+                for line in lines
+                if line.strip() and not line.strip().startswith("VERSION")
+            ]
             short = comments[0] if len(comments) > 0 else response[:150]
             medium = comments[1] if len(comments) > 1 else response[:300]
             long = comments[2] if len(comments) > 2 else response[:500]
@@ -201,20 +211,20 @@ VERSION_LONGUE: [texte]"""
         print("   ✅ Commentaires generes (3 variantes)")
 
         return {
-            'short': short,
-            'medium': medium,
-            'long': long,
-            'style': style,
-            'post_preview': post_content['content'][:200] + '...' if len(post_content['content']) > 200 else post_content['content'],
-            'generated_at': datetime.now().isoformat(),
-            'consultant': self.consultant_info,
+            "short": short,
+            "medium": medium,
+            "long": long,
+            "style": style,
+            "post_preview": (
+                post_content["content"][:200] + "..."
+                if len(post_content["content"]) > 200
+                else post_content["content"]
+            ),
+            "generated_at": datetime.now().isoformat(),
+            "consultant": self.consultant_info,
         }
 
-    def run(
-        self,
-        post_input: str,
-        style: str = "insightful"
-    ) -> Dict[str, Any]:
+    def run(self, post_input: str, style: str = "insightful") -> Dict[str, Any]:
         """
         Pipeline complet: extrait post -> genere commentaires
 
@@ -239,22 +249,22 @@ VERSION_LONGUE: [texte]"""
         os.makedirs(output_dir, exist_ok=True)
 
         md_path = os.path.join(output_dir, f"linkedin_comment_{timestamp}.md")
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(f"# Commentaires LinkedIn\n\n")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write("# Commentaires LinkedIn\n\n")
             f.write(f"**Style:** {style}\n")
             f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("## Post original (extrait)\n\n")
             f.write(f"> {result['post_preview']}\n\n")
             f.write("---\n\n")
             f.write("## Commentaire Court\n\n")
-            f.write(result['short'])
+            f.write(result["short"])
             f.write("\n\n---\n\n## Commentaire Moyen\n\n")
-            f.write(result['medium'])
+            f.write(result["medium"])
             f.write("\n\n---\n\n## Commentaire Long\n\n")
-            f.write(result['long'])
+            f.write(result["long"])
             f.write("\n")
 
-        result['md_path'] = md_path
+        result["md_path"] = md_path
         print(f"\n✅ Commentaires sauvegardes: {md_path}")
 
         return result
@@ -263,10 +273,13 @@ VERSION_LONGUE: [texte]"""
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Generer des commentaires LinkedIn pertinents')
-    parser.add_argument('post', help='Texte du post OU URL LinkedIn')
-    parser.add_argument('--style', choices=['insightful', 'question', 'experience', 'reaction'],
-                       default='insightful')
+    parser = argparse.ArgumentParser(description="Generer des commentaires LinkedIn pertinents")
+    parser.add_argument("post", help="Texte du post OU URL LinkedIn")
+    parser.add_argument(
+        "--style",
+        choices=["insightful", "question", "experience", "reaction"],
+        default="insightful",
+    )
 
     args = parser.parse_args()
 
@@ -276,10 +289,10 @@ def main():
     print(f"\n{'='*50}")
     print("COMMENTAIRES GENERES")
     print(f"{'='*50}\n")
-    print("📝 Court:\n" + result['short'])
-    print("\n📝 Moyen:\n" + result['medium'])
-    print("\n📝 Long:\n" + result['long'])
+    print("📝 Court:\n" + result["short"])
+    print("\n📝 Moyen:\n" + result["medium"])
+    print("\n📝 Long:\n" + result["long"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

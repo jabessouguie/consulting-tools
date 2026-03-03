@@ -3,17 +3,19 @@ Agent de conversion de documents en presentation
 Prend un ou plusieurs documents (md, pdf, docx) + public cible + objectif
 et genere une presentation PPTX structuree
 """
+
+import json
 import os
 import sys
-import json
-from typing import Dict, Any, Optional, List
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 from utils.llm_client import LLMClient
 
@@ -25,23 +27,25 @@ class DocToPresentationAgent:
         self.llm = LLMClient(max_tokens=8192)
         self.base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.consultant_info = {
-            'name': os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha'),
-            'company': os.getenv('COMPANY_NAME', 'Wenvision'),
+            "name": os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha"),
+            "company": os.getenv("COMPANY_NAME", "Wenvision"),
         }
 
     def parse_document(self, file_path: str, file_content: bytes = None, filename: str = "") -> str:
         """Parse un document et retourne son contenu texte"""
         ext = Path(filename or file_path).suffix.lower()
 
-        if ext == '.md':
+        if ext == ".md":
             if file_content:
-                return file_content.decode('utf-8')
-            with open(file_path, 'r', encoding='utf-8') as f:
+                return file_content.decode("utf-8")
+            with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
 
-        elif ext == '.pdf':
-            from PyPDF2 import PdfReader
+        elif ext == ".pdf":
             import io
+
+            from PyPDF2 import PdfReader
+
             if file_content:
                 reader = PdfReader(io.BytesIO(file_content))
             else:
@@ -51,28 +55,32 @@ class DocToPresentationAgent:
                 text += page.extract_text() + "\n"
             return text
 
-        elif ext == '.docx':
-            from docx import Document
+        elif ext == ".docx":
             import io
+
+            from docx import Document
+
             if file_content:
                 doc = Document(io.BytesIO(file_content))
             else:
                 doc = Document(file_path)
             return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
 
-        elif ext == '.txt':
+        elif ext == ".txt":
             if file_content:
-                return file_content.decode('utf-8')
-            with open(file_path, 'r', encoding='utf-8') as f:
+                return file_content.decode("utf-8")
+            with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
 
         return ""
 
-    def analyze_and_structure(self, documents_text: str, target_audience: str, objective: str) -> List[Dict]:
+    def analyze_and_structure(
+        self, documents_text: str, target_audience: str, objective: str
+    ) -> List[Dict]:
         """Analyse les documents et genere la structure des slides en JSON"""
         print("  [2/4] Analyse et structuration des slides...")
 
-        system_prompt = f"""Tu es un expert en creation de presentations professionnelles pour {self.consultant_info['company']}.
+        system_prompt = """Tu es un expert en creation de presentations professionnelles pour {self.consultant_info['company']}.
 Tu crees des presentations claires, visuelles et percutantes adaptees au public cible.
 
 REGLES :
@@ -83,7 +91,7 @@ REGLES :
 - Adapter le ton et le vocabulaire au public cible
 - Structurer logiquement : intro, developpement par themes, conclusion"""
 
-        prompt = f"""A partir des documents suivants, genere une presentation structuree.
+        prompt = """A partir des documents suivants, genere une presentation structuree.
 
 PUBLIC CIBLE : {target_audience}
 OBJECTIF : {objective}
@@ -116,14 +124,14 @@ Reponds UNIQUEMENT avec le JSON :
         response = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.5)
 
         try:
-            if '```json' in response:
-                json_str = response.split('```json')[1].split('```')[0].strip()
-            elif '```' in response:
-                json_str = response.split('```')[1].split('```')[0].strip()
+            if "```json" in response:
+                json_str = response.split("```json")[1].split("```")[0].strip()
+            elif "```" in response:
+                json_str = response.split("```")[1].split("```")[0].strip()
             else:
                 json_str = response.strip()
             data = json.loads(json_str)
-            return data.get('slides', [])
+            return data.get("slides", [])
         except json.JSONDecodeError as e:
             print(f"  Erreur JSON: {e}")
             return []
@@ -159,25 +167,28 @@ Reponds UNIQUEMENT avec le JSON :
         print("  [4/4] Generation des illustrations...")
         try:
             from utils.image_generator import NanoBananaGenerator
+
             generator = NanoBananaGenerator()
 
             output_dir = self.base_dir / "output" / "images"
             output_dir.mkdir(parents=True, exist_ok=True)
 
             for i, slide in enumerate(slides):
-                if slide.get('type') in ('cover', 'section', 'highlight'):
+                if slide.get("type") in ("cover", "section", "highlight"):
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     img_path = str(output_dir / f"slide_{i}_{timestamp}.png")
                     prompt = f"Corporate tech illustration for a presentation slide titled '{slide.get('title', '')}'. Style: minimalist, professional, cool blue and warm gold lighting, isometric view."
                     result = generator.generate_image(prompt, img_path)
                     if result:
-                        slide['image_path'] = result
+                        slide["image_path"] = result
         except Exception as e:
             print(f"  Erreur images: {e}")
 
         return slides
 
-    def run(self, documents: List[Dict[str, Any]], target_audience: str, objective: str) -> Dict[str, Any]:
+    def run(
+        self, documents: List[Dict[str, Any]], target_audience: str, objective: str
+    ) -> Dict[str, Any]:
         """
         Pipeline complet : parse -> analyse -> images -> PPTX
 
@@ -186,7 +197,7 @@ Reponds UNIQUEMENT avec le JSON :
             target_audience: Public cible
             objective: Objectif de la presentation
         """
-        print(f"\n  GENERATION DE PRESENTATION")
+        print("\n  GENERATION DE PRESENTATION")
         print(f"  Public: {target_audience}")
         print(f"  Objectif: {objective[:80]}...")
 
@@ -197,7 +208,7 @@ Reponds UNIQUEMENT avec le JSON :
             text = self.parse_document(
                 file_path="",
                 file_content=doc.get("content"),
-                filename=doc.get("filename", "document.txt")
+                filename=doc.get("filename", "document.txt"),
             )
             all_text += f"\n--- {doc.get('filename', 'Document')} ---\n{text}\n"
 

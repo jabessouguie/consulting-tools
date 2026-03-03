@@ -2,11 +2,11 @@
 Base de donnees pour la veille technologique
 Stockage et consultation des articles collectes
 """
+
 import sqlite3
-import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 class ArticleDatabase:
@@ -28,7 +28,8 @@ class ArticleDatabase:
             cursor = conn.cursor()
 
             # Table articles
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS articles (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
@@ -42,10 +43,12 @@ class ArticleDatabase:
                     read BOOLEAN DEFAULT 0,
                     favorite BOOLEAN DEFAULT 0
                 )
-            """)
+            """
+            )
 
             # Table digests
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS digests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     period TEXT NOT NULL,
@@ -54,17 +57,22 @@ class ArticleDatabase:
                     generated_at TEXT NOT NULL,
                     file_path TEXT
                 )
-            """)
+            """
+            )
 
             # Index pour recherche rapide
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_articles_date
                 ON articles(date DESC)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_articles_source
                 ON articles(source)
-            """)
+            """
+            )
 
             conn.commit()
 
@@ -85,18 +93,21 @@ class ArticleDatabase:
 
             for article in articles:
                 try:
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO articles
                         (title, link, summary, date, source, collected_at)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        article.get('title', ''),
-                        article.get('link', ''),
-                        article.get('summary', ''),
-                        article.get('date'),
-                        article.get('source', ''),
-                        datetime.now().isoformat()
-                    ))
+                    """,
+                        (
+                            article.get("title", ""),
+                            article.get("link", ""),
+                            article.get("summary", ""),
+                            article.get("date"),
+                            article.get("source", ""),
+                            datetime.now().isoformat(),
+                        ),
+                    )
                     saved_count += 1
                 except sqlite3.IntegrityError:
                     # Article deja existant (link unique)
@@ -112,7 +123,7 @@ class ArticleDatabase:
         offset: int = 0,
         source: Optional[str] = None,
         keyword: Optional[str] = None,
-        days: Optional[int] = None
+        days: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Recupere des articles avec filtres
@@ -144,8 +155,7 @@ class ArticleDatabase:
                 params.extend([kw_pattern, kw_pattern])
 
             if days:
-                cutoff = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                cutoff = cutoff.replace(day=cutoff.day - days).isoformat()
+                cutoff = (datetime.now() - timedelta(days=days)).isoformat()
                 query += " AND date >= ?"
                 params.append(cutoff)
 
@@ -167,47 +177,38 @@ class ArticleDatabase:
             total = cursor.fetchone()[0]
 
             # Articles par source
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT source, COUNT(*) as count
                 FROM articles
                 GROUP BY source
                 ORDER BY count DESC
                 LIMIT 10
-            """)
+            """
+            )
             by_source = [{"source": row[0], "count": row[1]} for row in cursor.fetchall()]
 
             # Articles des 7 derniers jours
-            week_ago = datetime.now().replace(day=datetime.now().day - 7).isoformat()
+            week_ago = (datetime.now() - timedelta(days=7)).isoformat()
             cursor.execute("SELECT COUNT(*) FROM articles WHERE date >= ?", (week_ago,))
             last_week = cursor.fetchone()[0]
 
-            return {
-                "total_articles": total,
-                "last_week": last_week,
-                "by_source": by_source
-            }
+            return {"total_articles": total, "last_week": last_week, "by_source": by_source}
 
     def save_digest(
-        self,
-        period: str,
-        content: str,
-        num_articles: int,
-        file_path: str = None
+        self, period: str, content: str, num_articles: int, file_path: str = None
     ) -> int:
         """Sauvegarde un digest genere"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO digests (period, content, num_articles, generated_at, file_path)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                period,
-                content,
-                num_articles,
-                datetime.now().isoformat(),
-                file_path
-            ))
+            """,
+                (period, content, num_articles, datetime.now().isoformat(), file_path),
+            )
 
             conn.commit()
             return cursor.lastrowid
@@ -218,12 +219,15 @@ class ArticleDatabase:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM digests
                 WHERE period = ?
                 ORDER BY generated_at DESC
                 LIMIT 1
-            """, (period,))
+            """,
+                (period,),
+            )
 
             row = cursor.fetchone()
             return dict(row) if row else None
@@ -239,9 +243,12 @@ class ArticleDatabase:
         """Toggle favori sur un article"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE articles
                 SET favorite = NOT favorite
                 WHERE id = ?
-            """, (article_id,))
+            """,
+                (article_id,),
+            )
             conn.commit()
