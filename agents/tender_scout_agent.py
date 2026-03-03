@@ -97,7 +97,7 @@ class TenderScoutAgent:
                 response = requests.get(
                     BOAMP_API_URL,
                     params={
-                        "where": f'fulltext like "{keyword}"',
+                        "where": f'search("{keyword}")',
                         "limit": limit,
                         "order_by": "-dateparution",
                     },
@@ -118,21 +118,20 @@ class TenderScoutAgent:
                 ) from exc
 
             for record in data.get("results", []):
-                ref = str(record.get("idweb") or record.get("id_internal") or "")
+                ref = str(record.get("idweb") or record.get("id") or "")
                 if not ref or ref in seen_refs:
                     continue
                 seen_refs.add(ref)
 
-                fields = record
-                titre = fields.get("objet") or fields.get("titre") or "Sans titre"
-                acheteur = (
-                    fields.get("donnees", {}).get("PA", {}).get("denomination")
-                    if isinstance(fields.get("donnees"), dict)
-                    else None
-                ) or fields.get("acheteur") or ""
-                date_pub = fields.get("dateparution") or ""
-                date_limite = fields.get("datelimitereponse") or ""
-                description = fields.get("descripteur") or fields.get("objet") or ""
+                # Extraction robuste des champs v2.1
+                titre = record.get("objet") or record.get("titre") or "Sans titre"
+                acheteur = record.get("nomacheteur") or ""
+                if not acheteur and isinstance(record.get("donnees"), dict):
+                     acheteur = record.get("donnees", {}).get("PA", {}).get("denomination") or ""
+                
+                date_pub = record.get("dateparution") or ""
+                date_limite = record.get("datelimitereponse") or ""
+                description = record.get("descripteur_libelle") or record.get("objet") or ""
                 url = f"https://www.boamp.fr/avis/detail/{ref}"
 
                 results.append(
