@@ -40,11 +40,19 @@ class ElearningDatabase:
                     difficulty_level TEXT NOT NULL,
                     duration_hours INTEGER,
                     learning_objectives TEXT,
+                    mode TEXT DEFAULT 'free',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
             """
             )
+
+            # Migration: add mode column if missing
+            try:
+                cursor.execute("ALTER TABLE courses ADD COLUMN mode TEXT DEFAULT 'free'")
+            except sqlite3.OperationalError:
+                # Column already exists
+                pass
 
             cursor.execute(
                 """
@@ -258,8 +266,8 @@ class ElearningDatabase:
                 INSERT INTO courses
                 (title, description, topic, target_audience,
                  difficulty_level, duration_hours, learning_objectives,
-                 created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 mode, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     data.get("title", ""),
@@ -272,6 +280,7 @@ class ElearningDatabase:
                         data.get("learning_objectives", []),
                         ensure_ascii=False,
                     ),
+                    data.get("mode", "free"),
                     now,
                     now,
                 ),
@@ -392,7 +401,7 @@ class ElearningDatabase:
             cursor.execute(
                 """
                 SELECT c.id, c.title, c.topic, c.difficulty_level,
-                    c.duration_hours, c.target_audience, c.created_at,
+                    c.duration_hours, c.target_audience, c.mode, c.created_at,
                     (SELECT COUNT(*) FROM modules
                      WHERE course_id = c.id) as modules_count,
                     (SELECT COUNT(*) FROM lessons l
