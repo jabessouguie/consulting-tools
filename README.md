@@ -69,7 +69,7 @@ cp .env.example .env
 python3 app.py
 \`\`\`
 
-Application accessible : **http://localhost:8000**
+Application accessible : **http://localhost:8443**
 
 ---
 
