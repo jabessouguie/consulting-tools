@@ -266,32 +266,21 @@ class ImageGenerator:
     ) -> Optional[str]:
         """
         Genere une image de diagramme via DALL-E
-
-        Args:
-            description: Description du diagramme a generer
-            context: Contexte de la proposition (client, projet, etc.)
-            style: Style de l'image ('professional', 'modern', 'minimalist')
-
-        Returns:
-            Chemin vers l'image generee ou None en cas d'erreur
         """
         if not self.api_key:
             print("   DALL-E non configure: OPENAI_API_KEY manquante")
             return None
 
-        # Construire le prompt pour DALL-E
-        style_prompts = {
+        style_desc = {
             "professional": "professional business diagram, clean corporate style, simple and clear",
             "modern": "modern tech diagram, gradient colors, sleek design",
             "minimalist": "minimalist diagram, black and white, simple lines",
-        }
+        }.get(style, "professional business diagram")
 
-        style_prompts.get(style, style_prompts["professional"])
+        client_name = context.get("client_name", "client")
+        project_title = context.get("project_title", "project")
 
-        context.get("client_name", "client")
-        context.get("project_title", "project")
-
-        prompt = """{style_desc}, {description},
+        prompt = f"""{style_desc}, {description},
 for {client_name} - {project_title},
 no text labels, icon-based, suitable for business presentation,
 high quality, 16:9 aspect ratio"""
@@ -304,9 +293,9 @@ high quality, 16:9 aspect ratio"""
 
             data = {
                 "model": "dall-e-3",
-                "prompt": prompt[:1000],  # DALL-E limite
+                "prompt": prompt[:1000],
                 "n": 1,
-                "size": "1792x1024",  # Format paysage
+                "size": "1792x1024",
                 "quality": "standard",
                 "style": "natural",
             }
@@ -318,7 +307,6 @@ high quality, 16:9 aspect ratio"""
                 result = response.json()
                 image_url = result["data"][0]["url"]
 
-                # Telecharger l'image
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"diagram_{timestamp}.png"
                 filepath = self.output_dir / filename
@@ -329,9 +317,12 @@ high quality, 16:9 aspect ratio"""
                         f.write(img_response.content)
                     print(f"   Image generee: {filepath}")
                     return str(filepath)
+                else:
+                    print(f"   Erreur telechargement image: {img_response.status_code}")
             else:
                 print(f"   Erreur DALL-E: {response.status_code} - {response.text}")
-                return None
+            
+            return None
 
         except Exception as e:
             print(f"   Erreur generation image: {e}")
@@ -538,62 +529,57 @@ class ImageLibrary:
 
 
 class NanoBananaGenerator:
-    """Generateur d'images via Imagen 3 avec SDK google-genai"""
+    """Generateur d'images via Nano Banana Pro (gemini-3-pro-image-preview)"""
 
     def __init__(self):
         try:
-            from google import genai as genai_new
+            import google.generativeai as genai
 
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 raise ValueError("GEMINI_API_KEY non trouvee dans .env")
 
-            self.client = genai_new.Client(api_key=api_key)
-            self.model_name = "imagen-3.0-generate-001"
+            genai.configure(api_key=api_key)
+            self.model_name = "gemini-3-pro-image-preview"
+            self.model = genai.GenerativeModel(self.model_name)
             print(f"  [NanoBanana] Initialise avec {self.model_name}")
 
         except Exception as e:
             print(f"  [NanoBanana] Erreur initialisation: {e}")
-            self.client = None
+            self.model = None
 
     def generate_image(self, prompt: str, output_path: str) -> Optional[str]:
         """
-        Genere une image a partir d'un prompt via Imagen 3
-
-        Args:
-            prompt: Description de l'image a generer
-            output_path: Chemin de sortie pour l'image
-
-        Returns:
-            Chemin du fichier image genere, ou None si echec
+        Genere une image a partir d'un prompt via Nano Banana Pro
         """
-        if not self.client:
+        if not self.model:
             print("  [NanoBanana] API non initialisee")
             return None
 
         try:
-            result = self.client.models.generate_images(
-                model=self.model_name,
-                prompt=prompt[:4000],
-                config={
-                    "number_of_images": 1,
-                    "output_mime_type": "image/jpeg",
-                    "aspect_ratio": "16:9",
+            # Appel specifique tel que demande par l'utilisateur
+            # Note: Si le mime type 'image/png' n'est pas supporté en direct, 
+            # certains environnements utilisent d'autres méthodes, mais on suit le code fourni.
+            response = self.model.generate_content(
+                f"Create a high-quality visual for: {prompt}",
+                generation_config={
+                    "response_mime_type": "image/png",
                 },
             )
 
-            if result.generated_images and len(result.generated_images) > 0:
-                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            # Recuperation et sauvegarde de l'image
+            for candidate in response.candidates:
+                if hasattr(candidate.content, 'parts'):
+                    for part in candidate.content.parts:
+                        if part.inline_data:
+                            image_data = part.inline_data.data
+                            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                            with open(output_path, "wb") as f:
+                                f.write(image_data)
+                            print(f"  [NanoBanana] Image generee: {output_path}")
+                            return output_path
 
-                image_data = result.generated_images[0].image.image_bytes
-                with open(output_path, "wb") as f:
-                    f.write(image_data)
-
-                size_kb = len(image_data) / 1024
-                print(f"  [NanoBanana] Image generee: {output_path}" f" ({size_kb:.0f} KB)")
-                return output_path
-
-            print("  [NanoBanana] Aucune image dans la reponse")
+            print("  [NanoBanana] Aucune donnee image dans la reponse")
             return None
 
         except Exception as e:
@@ -603,32 +589,11 @@ class NanoBananaGenerator:
     def generate_article_illustration(self, article_text: str, output_path: str) -> Optional[str]:
         """
         Genere une illustration pour un article de blog avec le prompt Art Director
-
-        Args:
-            article_text: Texte de l'article
-            output_path: Chemin de sortie
-
-        Returns:
-            Chemin du fichier image
         """
-        prompt = """Role & Objective: You are an expert Art Director for a high-end tech consultancy firm.
-Your task is to generate a premium, cinematic illustration based on the Blog Post provided below.
-
-Analysis Instructions:
-1. Read the blog post below.
-2. Extract the core metaphor: Focus on the contrast between "AI speed/chaos" and "Human strategic guidance".
-3. Ignore literal elements. Focus on the concept of "Orchestrating Intelligence".
-
-Visual Style Guidelines:
-* Aesthetic: Unreal Engine 5 render, isometric or wide-angle, 8k resolution.
-* Mood: Sophisticated, futuristic but grounded, "Corporate Tech".
-* Lighting: Dramatic contrast between cool electric blues (representing the AI data stream) and warm amber/gold (representing the human touch/value).
-* Composition: A central human figure (silhouette or back view) controlling or structuring a massive, complex digital structure.
-
-Input Text (The Blog Post):
-{article_text[:3000]}
-
-Action: Generate the illustration now based on this analysis."""
+        prompt = f"""Role & Objective: You are an expert Art Director.
+Generate a premium illustration based on:
+{article_text[:2000]}
+Focus on Orchestrating Intelligence. Cinematic style, UE5 render."""
 
         return self.generate_image(prompt, output_path)
 
