@@ -14,7 +14,7 @@ from googleapiclient.errors import HttpError
 SCOPES = [
     "https://www.googleapis.com/auth/drive.file",  # Créer et modifier des fichiers
     "https://www.googleapis.com/auth/presentations",  # Créer et modifier des présentations
-    "https://www.googleapis.com/auth/documents.readonly",
+    "https://www.googleapis.com/auth/documents",  # Lire ET écrire les Google Docs
     "https://www.googleapis.com/auth/gmail.send",  # Envoyer des emails
 ]
 
@@ -884,8 +884,11 @@ class GoogleAPIClient:
 
         # Skip image placeholder block (> **[IMAGE PLACEHOLDER]**)
         in_code_block = False
+        skip_lines: set = set()
 
         for line_num in range(start, len(lines)):
+            if line_num in skip_lines:
+                continue
             line = lines[line_num]
             stripped = line.strip()
 
@@ -944,6 +947,84 @@ class GoogleAPIClient:
                 text = "\n"
                 requests.append({"insertText": {"location": {"index": index}, "text": text}})
                 index += len(text)
+                continue
+
+            # Ligne de séparation horizontale (---, ***, ___)
+            if _re.match(r"^(-{3,}|\*{3,}|_{3,})$", stripped):
+                text = "\n"
+                requests.append({"insertText": {"location": {"index": index}, "text": text}})
+                requests.append(
+                    {
+                        "updateParagraphStyle": {
+                            "range": {"startIndex": index, "endIndex": index + 1},
+                            "paragraphStyle": {
+                                "borderBottom": {
+                                    "color": {
+                                        "color": {
+                                            "rgbColor": {"red": 0.8, "green": 0.8, "blue": 0.8}
+                                        }
+                                    },
+                                    "width": {"magnitude": 1, "unit": "PT"},
+                                    "dashStyle": "SOLID",
+                                    "padding": {"magnitude": 4, "unit": "PT"},
+                                }
+                            },
+                            "fields": "borderBottom",
+                        }
+                    }
+                )
+                index += len(text)
+                continue
+
+            # Tableau Markdown (lignes avec |)
+            if "|" in stripped and stripped.startswith("|"):
+                # Collecter toutes les lignes du tableau
+                table_lines = [stripped]
+                peek = line_num + 1
+                while peek < len(lines):
+                    pk = lines[peek].strip()
+                    if pk.startswith("|") and "|" in pk:
+                        table_lines.append(pk)
+                        peek += 1
+                    else:
+                        break
+
+                # Filtrer la ligne de séparation (|----|)
+                rows = [
+                    [c.strip() for c in row.strip("|").split("|")]
+                    for row in table_lines
+                    if not _re.match(r"^\|[\s\-|:]+\|$", row)
+                ]
+
+                if rows:
+                    num_rows = len(rows)
+                    num_cols = max(len(r) for r in rows)
+                    requests.append(
+                        {
+                            "insertTable": {
+                                "rows": num_rows,
+                                "columns": num_cols,
+                                "location": {"index": index},
+                            }
+                        }
+                    )
+                    # Après insertion d'un tableau, l'index avance de 1
+                    # Les cellules sont indexées séquentiellement
+                    # Note: on insère le texte dans les cellules via batchUpdate séparé
+                    # Pour simplifier, on insère le tableau comme texte tabulé
+                    index += 1
+
+                    # Insérer contenu en texte tabulé (fallback si batchUpdate table complexe)
+                    for row in rows:
+                        row_text = "\t".join(row) + "\n"
+                        requests.append(
+                            {"insertText": {"location": {"index": index}, "text": row_text}}
+                        )
+                        index += len(row_text)
+
+                # Marquer les lignes du tableau comme traitées
+                for skip_i in range(line_num + 1, line_num + len(table_lines)):
+                    skip_lines.add(skip_i)
                 continue
 
             # Determine line type

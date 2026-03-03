@@ -805,6 +805,27 @@ class ConsultantDatabase:
             cursor.execute("DELETE FROM consultants")
             conn.commit()
 
+    def update_photo_url(self, consultant_id: int, photo_url: str) -> bool:
+        """
+        Met a jour la photo de profil d'un consultant.
+
+        Args:
+            consultant_id: ID du consultant
+            photo_url: URL ou chemin relatif vers la photo
+
+        Returns:
+            True si le consultant existe et a ete mis a jour, False sinon
+        """
+        now = datetime.now().isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE consultants SET photo_url = ?, updated_at = ? WHERE id = ?",
+                (photo_url, now, consultant_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def update_consultant_analysis(
         self,
         consultant_id: int,

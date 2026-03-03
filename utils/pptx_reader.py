@@ -138,9 +138,9 @@ def extract_template_structure(pptx_path: str) -> str:
     for slide in template["slides"]:
         content = slide["content"]
         if content:
-            slide_text = f"### Slide {
-                slide['slide_number']} ({
-                slide['layout']})\n"
+            slide_num = slide['slide_number']
+            slide_layout = slide['layout']
+            slide_text = f"### Slide {slide_num} ({slide_layout})\n"
             slide_text += "\n".join(f"- {t}" for t in content[:10])
             sections.append(slide_text)
 

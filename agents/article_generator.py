@@ -1,3 +1,8 @@
+"""
+Agent de génération d'articles de thought leadership
+Génère des articles LinkedIn / blog structurés, avec illustration et post de partage
+"""
+
 import ast
 import json
 import os

@@ -236,13 +236,9 @@ class MonitoringTool:
             Score de pertinence (0-1)
         """
         score = 0.0
-        text = f"{
-            article.get(
-                'title',
-                '')} {
-            article.get(
-                'summary',
-                '')}".lower()
+        title = article.get("title", "")
+        summary = article.get("summary", "")
+        text = f"{title} {summary}".lower()
 
         # Vérifier la présence de mots-clés
         for keyword in keywords:
@@ -344,10 +340,8 @@ class MonitoringTool:
         print(f"   ✅ {downloaded} articles telecharges")
 
         print(f"\n📊 Total: {len(all_articles)} articles collectés")
-        print(
-            f"   📌 {
-                len(ranked_articles)} articles pertinents après filtrage\n"
-        )
+        n_relevant = len(ranked_articles)
+        print(f"   📌 {n_relevant} articles pertinents après filtrage\n")
 
         return {
             "articles": ranked_articles,
@@ -391,12 +385,10 @@ def extract_key_insights(articles: List[Dict[str, Any]], top_n: int = 5) -> List
     insights = []
 
     for article in articles[:top_n]:
-        insight = f"📰 {
-            article.get('title')}\n   {
-            article.get(
-                'summary', '')[
-                :200]}...\n   🔗 {
-                    article.get('link')}"
+        title = article.get('title')
+        summary = article.get('summary', '')[:200]
+        link = article.get('link')
+        insight = f"📰 {title}\n   {summary}...\n   🔗 {link}"
         insights.append(insight)
 
     return insights
