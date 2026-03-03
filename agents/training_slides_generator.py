@@ -355,7 +355,7 @@ RAPPELS :
     </div>
 </section>
 """
-            # 3. Déterminer le contenu détaillé via Gemini
+            # 3. Déterminer le prompt de l'infographie via Gemini
             content_details = self._determine_slide_content(slide_info, title)
 
             # 4. Utiliser Nano Banana pour créer l'infographie
@@ -366,12 +366,11 @@ RAPPELS :
                 prompt=content_details["image_prompt"], output_path=str(image_path)
             )
 
-            # 5. Insérer l'infographie et le contenu dans la slide au format HTML
+            # 5. Insérer l'infographie dans la slide au format HTML
             relative_image_path = f"images/{image_filename}" if infographic_image else ""
 
             final_slide_html = self._assemble_final_slide(
                 title=slide_info["title"],
-                content=content_details["text_content"],
                 image_path=relative_image_path,
                 slide_index=i,
             )
@@ -420,19 +419,24 @@ Retourne UNIQUEMENT un JSON listant les titres :
 
     def _determine_slide_content(self, slide_info: Dict, formation_title: str) -> Dict:
         """Détermine le contenu détaillé et le prompt image pour une slide"""
-        prompt = f"""Slide Title: {slide_info['title']}
+        prompt = f"""Slide Title: {slide_info['title']} 
 Formation: {formation_title}
 
-Détermine le contenu pédagogique et le concept visuel.
-Style attendu : Adopte un style minimaliste et percutant, inspiré de Seth Godin et des formations Wision. Évite les listes à puces. Max 4 points.
+Génère un prompt ultra-détaillé pour Nano Banana (Imagen 3) afin de créer l'infographie centrale de cette slide.
+
+CONSIGNES POUR LE PROMPT IMAGE :
+- Basé UNIQUEMENT sur le titre : {slide_info['title']}
+- Style : Minimaliste et percutant, inspiré par Seth Godin (une image ou une idée par diapositive).
+- Complexité : Simple et facile à assimiler, maximum de QUATRE éléments visuels (schémas, icônes).
+- Design : Style premium tech-business, ultra-didactique.
+- Couleurs : Fond blanc ou très clair, accentuations avec le Corail (#FF6B58) et le Noir Profond (#1F1F1F).
 
 Retourne un JSON avec:
 {{
-    "text_content": ["Point 1", "Point 2"],
-    "image_prompt": "Prompt détaillé pour Nano Banana (Imagen 3) suivant la directive: Génère une infographie claire... utilise des analogies visuelles (robots, pop culture)..."
+    "image_prompt": "Le prompt détaillé en anglais pour une génération d'image haute fidélité..."
 }}"""
         result = self.llm.generate(
-            prompt=prompt, system_prompt="Tu es un designer pédagogique expert."
+            prompt=prompt, system_prompt="Tu es un directeur artistique expert en pédagogie visuelle."
         )
 
         # Nettoyer et parser
@@ -446,15 +450,12 @@ Retourne un JSON avec:
 
         return json.loads(self._sanitize_json_string(result))
 
-    def _assemble_final_slide(
-        self, title: str, content: List[str], image_path: str, slide_index: int
-    ) -> str:
+    def _assemble_final_slide(self, title: str, image_path: str, slide_index: int) -> str:
         """Assemble les éléments dans le template HTML d'une slide"""
-        content_html = "".join([f"<p>{point}</p>" for point in content])
         image_html = (
             f'<div class="infographic"><img src="{image_path}" alt="Infographie"></div>'
             if image_path
-            else ""
+            else '<div class="no-image">Génération de l\'infographie...</div>'
         )
 
         return f"""
@@ -462,13 +463,8 @@ Retourne un JSON avec:
     <div class="slide-header">
         <h1>{title}</h1>
     </div>
-    <div class="slide-body">
-        <div class="text-side">
-            {content_html}
-        </div>
-        <div class="visual-side">
-            {image_html}
-        </div>
+    <div class="slide-body-full">
+        {image_html}
     </div>
 </section>
 """
@@ -513,27 +509,23 @@ Retourne un JSON avec:
         }}
         .slide-header h1 {{
             font-family: 'Chakra Petch', sans-serif;
-            font-size: 2.5em;
-            margin: 0 0 30px 0;
+            font-size: 2.2em;
+            margin: 0 0 20px 0;
             color: var(--dark);
+            text-align: center;
         }}
-        .slide-body {{
-            display: flex;
-            gap: 40px;
-            height: 100%;
-        }}
-        .text-side {{
+        .slide-body-full {{
             flex: 1;
-            font-size: 1.25em;
-            line-height: 1.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #fff;
+            border-radius: 12px;
         }}
-        .text-side p {{
-            margin-bottom: 20px;
-            padding-left: 20px;
-            border-left: 3px solid var(--coral);
-        }}
-        .visual-side {{
-            flex: 1.2;
+        .infographic {{
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -541,8 +533,12 @@ Retourne un JSON avec:
         .infographic img {{
             max-width: 100%;
             max-height: 100%;
+            object-fit: contain;
             border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }}
+        .no-image {{
+            color: #999;
+            font-style: italic;
         }}
         @media print {{
             body {{ padding: 0; background: none; }}
