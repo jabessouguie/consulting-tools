@@ -151,11 +151,9 @@ Identifie particulièrement:
 - Les mots-clés techniques importants"""
 
         analysis = self.llm_client.extract_structured_data(prompt, schema)
+        project_title = analysis.get('project_title', 'Sans titre')
         print(
-            f"   Analyse terminée: {
-                analysis.get(
-                    'project_title',
-                    'Sans titre')}"
+            f"   Analyse terminée: {project_title}"
         )
 
         return analysis
@@ -183,26 +181,18 @@ Identifie particulièrement:
         # Construire le contexte des references JSON
         json_context = ""
         for project in references.get("projects", []):
-            json_context += f"\n--- Projet: {
-                project.get(
-                    'title', 'N/A')} ---\n"
+            proj_title = project.get('title', 'N/A')
+            json_context += f"\n--- Projet: {proj_title} ---\n"
             json_context += f"Client: {project.get('client', 'N/A')}\n"
             json_context += f"Secteur: {project.get('sector', 'N/A')}\n"
-            json_context += f"Description: {
-                project.get(
-                    'description', 'N/A')}\n"
+            proj_desc = project.get('description', 'N/A')
+            json_context += f"Description: {proj_desc}\n"
             json_context += f"Challenge: {project.get('challenge', 'N/A')}\n"
             json_context += f"Solution: {project.get('solution', 'N/A')}\n"
-            json_context += f"Technologies: {
-                ', '.join(
-                    project.get(
-                        'technologies',
-                        []))}\n"
-            json_context += f"Résultats: {
-                ', '.join(
-                    project.get(
-                        'results',
-                        []))}\n"
+            proj_techs = ', '.join(project.get('technologies', []))
+            json_context += f"Technologies: {proj_techs}\n"
+            proj_results = ', '.join(project.get('results', []))
+            json_context += f"Résultats: {proj_results}\n"
 
         prompt = """À partir de cet appel d'offre analysé:
 {json.dumps(tender_analysis, indent=2, ensure_ascii=False)}
@@ -243,8 +233,7 @@ Pour chaque référence, explique pourquoi elle est pertinente."""
 
         if not os.path.exists(self.biographies_path):
             print(
-                f"   Fichier biographies non trouvé: {
-                    self.biographies_path}"
+                f"   Fichier biographies non trouvé: {self.biographies_path}"
             )
             return []
 
@@ -436,9 +425,9 @@ Exigences techniques: {', '.join(tender_analysis.get('requirements', {}).get('te
         if references and references.get("all_references"):
             projects = references["all_references"].get("projects", [])[:2]
             for p in projects:
-                refs_summary += f"\n- {p.get('title',
-                                             'Projet')}: {p.get('description',
-                                                                '')[:100]}"
+                p_title = p.get('title', 'Projet')
+                p_desc = p.get('description', '')[:100]
+                refs_summary += f"\n- {p_title}: {p_desc}"
 
         prompt = """Genere une proposition commerciale VISUELLE et MODERNE en slides PowerPoint.
 
@@ -707,11 +696,9 @@ IMPORTANT - STRUCTURE VISUELLE:
                     bullets = slide.get("bullets", [])
                     components = [b.split(":")[0].strip() for b in bullets[:6]]
 
+                    slide_title_arch = slide.get('title', 'Architecture')
                     print(
-                        f"   Generation diagramme architecture pour: {
-                            slide.get(
-                                'title',
-                                'Architecture')}"
+                        f"   Generation diagramme architecture pour: {slide_title_arch}"
                     )
 
                     # Methode 1: Claude + Mermaid (privilegie, gratuit)
@@ -750,11 +737,9 @@ IMPORTANT - STRUCTURE VISUELLE:
                 steps = [b.split(":")[0].strip() for b in bullets[:6]]
 
                 if len(steps) >= 3:
+                    slide_title_flux = slide.get('title', 'Processus')
                     print(
-                        f"   Generation diagramme flux pour: {
-                            slide.get(
-                                'title',
-                                'Processus')}"
+                        f"   Generation diagramme flux pour: {slide_title_flux}"
                     )
                     image_path = self.diagram_generator.generate_flow_diagram(
                         steps=steps, context=context, description=slide.get("title", "Processus")
@@ -1077,8 +1062,8 @@ Retourne UNIQUEMENT en JSON:
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
         if "feedback_instructions" in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
-                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
+            _fb = tender_analysis['feedback_instructions']
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
         prompt = """Génère des slides de contexte VISUELLES et IMPACTANTES (style Veolia) pour cette mission:
 
@@ -1142,9 +1127,9 @@ Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
             json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 slides_data = json.loads(response[json_start:json_end])
+                n_slides = len(slides_data)
                 print(
-                    f"   {
-                        len(slides_data)} slides de contexte générées (approche visuelle)"
+                    f"   {n_slides} slides de contexte générées (approche visuelle)"
                 )
                 return slides_data
         except Exception as e:
@@ -1188,9 +1173,9 @@ Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
         elif references and references.get("all_references"):
             projects = references["all_references"].get("projects", [])[:2]
             for p in projects:
-                refs_summary += f"\n- {p.get('title',
-                                             'Projet')}: {p.get('description',
-                                                                '')[:100]}"
+                p_title = p.get('title', 'Projet')
+                p_desc = p.get('description', '')[:100]
+                refs_summary += f"\n- {p_title}: {p_desc}"
 
         # Extraire les objectifs pour contexte
         objectives = ", ".join(tender_analysis.get("objectives", [])[:3])
@@ -1198,8 +1183,8 @@ Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
         if "feedback_instructions" in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
-                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
+            _fb = tender_analysis['feedback_instructions']
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
         prompt = """Génère des slides VISUELLES et IMPACTANTES (style Veolia) pour notre vision et approche:
 
@@ -1253,9 +1238,9 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
             json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 slides_data = json.loads(response[json_start:json_end])
+                n_slides = len(slides_data)
                 print(
-                    f"   {
-                        len(slides_data)} slides d'approche générées (approche visuelle)"
+                    f"   {n_slides} slides d'approche générées (approche visuelle)"
                 )
                 return slides_data
         except (json.JSONDecodeError, ValueError) as e:
@@ -1268,10 +1253,7 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
                 "type": "content",
                 "title": "Notre vision",
                 "bullets": [
-                    f"Accompagner {
-                        tender_analysis.get(
-                            'client_name',
-                            'le client')} dans sa transformation",
+                    "Accompagner " + tender_analysis.get('client_name', 'le client') + " dans sa transformation",
                     "Approche pragmatique orientée résultats",
                 ],
             },
@@ -1310,8 +1292,8 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
         if "feedback_instructions" in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
-                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
+            _fb = tender_analysis['feedback_instructions']
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
         prompt = """Génère un planning VISUEL pour cette mission:
 
@@ -1359,9 +1341,9 @@ OU si besoin d'un tableau détaillé en plus:
             json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 planning_data = json.loads(response[json_start:json_end])
+                n_planning = len(planning_data)
                 print(
-                    f"   {
-                        len(planning_data)} slide(s) de planning générée(s) (approche visuelle)"
+                    f"   {n_planning} slide(s) de planning générée(s) (approche visuelle)"
                 )
                 return planning_data
         except Exception as e:
@@ -1398,8 +1380,8 @@ OU si besoin d'un tableau détaillé en plus:
         # Vérifier s'il y a des instructions de feedback
         feedback_instructions = ""
         if "feedback_instructions" in tender_analysis:
-            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{
-                tender_analysis['feedback_instructions']}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT (ex: augmenter budget 20% = multiplier par 1.2).\n"
+            _fb = tender_analysis['feedback_instructions']
+            feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT (ex: augmenter budget 20% = multiplier par 1.2).\n"
 
         prompt = """Génère un chiffrage SIMPLIFIÉ et VISUEL pour cette mission:
 

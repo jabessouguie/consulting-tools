@@ -51,3 +51,41 @@ class TestAgentsBasic:
         agent = DocToPresentationAgent()
         assert agent is not None
         assert hasattr(agent, "llm")
+
+
+class TestStripPreamble:
+    """Tests pour la fonction _strip_preamble du meeting summarizer"""
+
+    def test_strip_absolument(self):
+        from agents.meeting_summarizer import _strip_preamble
+        result = _strip_preamble("Absolument. Voici le compte rendu :\n## Titre")
+        assert result.startswith("#")
+
+    def test_strip_bien_sur(self):
+        from agents.meeting_summarizer import _strip_preamble
+        result = _strip_preamble("Bien sûr, voici le résumé:\n## Résumé")
+        assert result.startswith("#")
+
+    def test_strip_parfait(self):
+        from agents.meeting_summarizer import _strip_preamble
+        result = _strip_preamble("Parfait! ## Titre du compte rendu")
+        assert "Parfait" not in result
+
+    def test_no_preamble_unchanged(self):
+        from agents.meeting_summarizer import _strip_preamble
+        text = "# Compte Rendu\n\n**Date** : 01/01/2025"
+        assert _strip_preamble(text) == text
+
+    def test_strip_empty_string(self):
+        from agents.meeting_summarizer import _strip_preamble
+        assert _strip_preamble("") == ""
+
+    def test_strip_voici(self):
+        from agents.meeting_summarizer import _strip_preamble
+        result = _strip_preamble("Voici l'analyse :\n## Contenu")
+        assert result.startswith("#")
+
+    def test_strip_multiple_preambles(self):
+        from agents.meeting_summarizer import _strip_preamble
+        result = _strip_preamble("Absolument. Bien sûr, ## Corps")
+        assert "Absolument" not in result

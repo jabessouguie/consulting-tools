@@ -712,3 +712,210 @@ class TestModes:
         call_args = agent.llm.generate.call_args
         system = call_args.kwargs.get("system_prompt", "") or call_args[1].get("system_prompt", "")
         assert "entretien" in system
+
+
+# ==================
+# NORMALIZE / MCQ MATCH (Phase 1.5)
+# ==================
+
+
+class TestNormalizeAndMcqMatch:
+    @pytest.mark.unit
+    def test_normalize_strips_whitespace(self, agent):
+        assert agent._normalize_text("  Bonjour  ") == "bonjour"
+
+    @pytest.mark.unit
+    def test_normalize_lowercases(self, agent):
+        assert agent._normalize_text("Python") == "python"
+
+    @pytest.mark.unit
+    def test_normalize_strips_trailing_punctuation(self, agent):
+        assert agent._normalize_text("python.") == "python"
+        assert agent._normalize_text("ok!") == "ok"
+
+    @pytest.mark.unit
+    def test_normalize_apostrophe(self, agent):
+        result = agent._normalize_text("l'IA")
+        assert "ia" in result
+
+    @pytest.mark.unit
+    def test_mcq_match_exact(self, agent):
+        assert agent._mcq_match("Python", "python") is True
+
+    @pytest.mark.unit
+    def test_mcq_match_letter_vs_full(self, agent):
+        # Student types just "A", correct is "A. Paris"
+        assert agent._mcq_match("A", "A. Paris") is True
+        assert agent._mcq_match("a", "A) Paris") is True
+
+    @pytest.mark.unit
+    def test_mcq_match_full_vs_letter(self, agent):
+        # Student types "A. Paris", correct is just "A"
+        assert agent._mcq_match("A. Paris", "A") is True
+
+    @pytest.mark.unit
+    def test_mcq_match_text_after_letter(self, agent):
+        # Both have letter prefix but same text
+        assert agent._mcq_match("A. Paris", "A. Paris") is True
+
+    @pytest.mark.unit
+    def test_mcq_match_wrong(self, agent):
+        assert agent._mcq_match("A", "B") is False
+        assert agent._mcq_match("Paris", "Lyon") is False
+
+    @pytest.mark.unit
+    def test_evaluate_mcq_letter_answer(self, agent):
+        """Student types 'A' for correct_answer 'A. Python'"""
+        question = {
+            "question_type": "mcq",
+            "correct_answer": "A. Python",
+            "explanation": "Python est le langage",
+        }
+        result = agent.evaluate_answer(question, "A")
+        assert result["is_correct"] is True
+
+    @pytest.mark.unit
+    def test_evaluate_true_false_vrai(self, agent):
+        """'vrai' should match 'true'"""
+        question = {
+            "question_type": "true_false",
+            "correct_answer": "true",
+            "explanation": "C'est vrai",
+        }
+        result = agent.evaluate_answer(question, "Vrai")
+        assert result["is_correct"] is True
+
+    @pytest.mark.unit
+    def test_evaluate_true_false_faux(self, agent):
+        """'faux' should match 'false'"""
+        question = {
+            "question_type": "true_false",
+            "correct_answer": "false",
+            "explanation": "C'est faux",
+        }
+        result = agent.evaluate_answer(question, "faux")
+        assert result["is_correct"] is True
+
+    @pytest.mark.unit
+    def test_evaluate_fill_blank_partial_match(self, agent):
+        """All significant words of correct answer present in student answer"""
+        question = {
+            "question_type": "fill_blank",
+            "correct_answer": "Machine Learning",
+            "explanation": "ML",
+        }
+        result = agent.evaluate_answer(question, "du machine learning")
+        assert result["is_correct"] is True
+
+    @pytest.mark.unit
+    def test_evaluate_unknown_type(self, agent):
+        question = {"question_type": "unknown", "correct_answer": "x"}
+        result = agent.evaluate_answer(question, "x")
+        assert result["is_correct"] is False
+
+
+# ==================
+# INTERVIEW CHAT (Phase 1.7)
+# ==================
+
+
+class TestInterviewChat:
+    @pytest.mark.unit
+    def test_interview_chat_returns_string(self, agent):
+        agent.llm.generate_with_context = MagicMock(return_value="Bonne réponse!")
+        messages = [{"role": "user", "content": "Parlez-moi de vous."}]
+        result = agent.interview_chat(messages, topic="Python", role="Dev")
+        assert isinstance(result, str)
+        assert "Bonne" in result
+
+    @pytest.mark.unit
+    def test_interview_chat_passes_messages(self, agent):
+        agent.llm.generate_with_context = MagicMock(return_value="Ok")
+        messages = [
+            {"role": "user", "content": "Question 1"},
+            {"role": "assistant", "content": "Réponse"},
+            {"role": "user", "content": "Question 2"},
+        ]
+        agent.interview_chat(messages)
+        agent.llm.generate_with_context.assert_called_once()
+        call_kwargs = agent.llm.generate_with_context.call_args
+        passed_messages = call_kwargs[1].get("messages") or call_kwargs[0][0]
+        assert len(passed_messages) == 3
+
+    @pytest.mark.unit
+    def test_analyze_interview_performance_empty(self, agent):
+        result = agent.analyze_interview_performance([])
+        assert result["overall_score"] == 0
+        assert len(result["improvements"]) > 0
+
+    @pytest.mark.unit
+    def test_analyze_interview_performance_llm(self, agent):
+        agent.llm.generate.return_value = json.dumps({
+            "overall_score": 75,
+            "grade": "B",
+            "strengths": ["Clarté"],
+            "improvements": ["Exemples concrets"],
+            "detailed_feedback": "Bon entretien",
+            "technical_score": 70,
+            "communication_score": 80,
+            "recommendations": ["Pratiquer STAR"],
+        })
+        messages = [
+            {"role": "assistant", "content": "Présentez-vous"},
+            {"role": "user", "content": "Je suis dev Python depuis 5 ans"},
+        ]
+        result = agent.analyze_interview_performance(messages, topic="Python")
+        assert result["overall_score"] == 75
+        assert result["grade"] == "B"
+
+    @pytest.mark.unit
+    def test_analyze_interview_fallback(self, agent):
+        agent.llm.generate.side_effect = Exception("LLM error")
+        messages = [{"role": "user", "content": "Réponse candidat"}]
+        result = agent.analyze_interview_performance(messages)
+        assert result["overall_score"] == 50
+        assert "detailed_feedback" in result
+
+
+# ==================
+# PREMIUM RESOURCES (Phase 1.6)
+# ==================
+
+
+class TestPremiumResources:
+    @pytest.mark.unit
+    def test_generate_premium_all_types(self, agent):
+        agent.llm.generate.return_value = "<div>Contenu</div>"
+        course = {
+            "title": "Python Avancé",
+            "modules": [
+                {
+                    "id": 1,
+                    "title": "Module 1",
+                    "lessons": [{"title": "Leçon 1", "content": "Contenu de la leçon"}],
+                }
+            ],
+        }
+        result = agent.generate_premium_resources(course)
+        assert "memo_cards" in result
+        assert "module_summaries" in result
+        assert "cheatsheet" in result
+        assert result["course_title"] == "Python Avancé"
+
+    @pytest.mark.unit
+    def test_generate_premium_only_memo(self, agent):
+        agent.llm.generate.return_value = "<div>Memo</div>"
+        course = {
+            "title": "Test",
+            "modules": [{"id": 1, "title": "M1", "lessons": []}],
+        }
+        result = agent.generate_premium_resources(course, resource_types=["memo"])
+        assert "memo_cards" in result
+        assert "module_summaries" not in result
+        assert "cheatsheet" not in result
+
+    @pytest.mark.unit
+    def test_generate_premium_empty_modules(self, agent):
+        course = {"title": "Test", "modules": []}
+        result = agent.generate_premium_resources(course, resource_types=["memo"])
+        assert result["memo_cards"] == []
