@@ -90,7 +90,24 @@ Voir [VALIDATION_COMPLETE.md](VALIDATION_COMPLETE.md) pour configuration complè
 
 ---
 
-## 💻 Utilisation
+## 🤖 Utilisation avec Antigravity
+
+Antigravity est votre assistant de développement intégré. Vous pouvez l'utiliser pour automatiser vos tâches quotidiennes.
+
+### Commandes Courantes
+- **"Antigravity, lance l'application"** : Démarre le serveur FastAPI.
+- **"Génère une proposition pour [Client] sur [Sujet]"** : Automatise la création de PPTX.
+- **"Vérifie la qualité du code"** : Lance les hooks de pre-commit.
+- **"Ajoute un nouvel agent pour [Fonctionnalité]"** : Aide à l'extension du framework.
+
+### Pourquoi utiliser Antigravity ?
+- **Vitesse** : Pas besoin de se souvenir des commandes Bash complexes.
+- **Fiabilité** : Il respecte les standards du projet (PEP8, Pre-commit).
+- **Proactivité** : Il peut suggérer des améliorations ou corriger des bugs de configuration.
+
+---
+
+## 💻 Utilisation Classique (Manuelle)
 
 ### Slide Editor
 1. Accéder à http://localhost:8000/slide-editor

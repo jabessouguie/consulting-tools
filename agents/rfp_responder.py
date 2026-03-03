@@ -2,18 +2,20 @@
 Agent de réponse aux RFP (Request for Proposal)
 Analyse un RFP et génère une ébauche de réponse structurée
 """
+
 import os
 import sys
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any, Dict
+
+from dotenv import load_dotenv
+
+from config import get_consultant_info
+from utils.llm_client import LLMClient
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
-
-from utils.llm_client import LLMClient
-from config import get_consultant_info
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 
 class RFPResponderAgent:
@@ -37,10 +39,13 @@ class RFPResponderAgent:
         """
         print("🔍 Analyse du RFP...")
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = """Tu es {
+            self.consultant_info['name']}, {
+            self.consultant_info['title']} chez {
+            self.consultant_info['company']}.
 Tu analyses des appels d'offres pour préparer des réponses."""
 
-        prompt = f"""Analyse cet appel d'offres et extrais les éléments clés:
+        prompt = """Analyse cet appel d'offres et extrais les éléments clés:
 
 {rfp_text[:4000]}
 
@@ -65,9 +70,10 @@ Format JSON uniquement."""
 
         # Parser le JSON
         import json
+
         try:
             analysis = json.loads(analysis_json)
-        except:
+        except BaseException:
             # Fallback si le parsing échoue
             analysis = {
                 "client": "Client non spécifié",
@@ -75,16 +81,12 @@ Format JSON uniquement."""
                 "key_requirements": [],
                 "deliverables": [],
                 "constraints": [],
-                "evaluation_criteria": []
+                "evaluation_criteria": [],
             }
 
         return analysis
 
-    def generate_response(
-        self,
-        rfp_text: str,
-        analysis: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def generate_response(self, rfp_text: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
         Génère une ébauche de réponse au RFP
 
@@ -97,10 +99,13 @@ Format JSON uniquement."""
         """
         print("✍️  Génération de la réponse...")
 
-        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = """Tu es {
+            self.consultant_info['name']}, {
+            self.consultant_info['title']} chez {
+            self.consultant_info['company']}.
 Tu rédiges des réponses professionnelles à des appels d'offres."""
 
-        prompt = f"""Rédige une ébauche de réponse à cet appel d'offres.
+        prompt = """Rédige une ébauche de réponse à cet appel d'offres.
 
 ANALYSE DU RFP:
 Client: {analysis.get('client', 'N/A')}
@@ -216,9 +221,9 @@ Ton : professionnel, confiant mais pas arrogant."""
         print("   ✅ Réponse générée")
 
         return {
-            'response': response,
-            'analysis': analysis,
-            'generated_at': datetime.now().isoformat(),
+            "response": response,
+            "analysis": analysis,
+            "generated_at": datetime.now().isoformat(),
         }
 
     def run(self, rfp_text: str) -> Dict[str, Any]:
@@ -231,9 +236,9 @@ Ton : professionnel, confiant mais pas arrogant."""
         Returns:
             Résultat complet
         """
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print("📋 RÉPONSE À APPEL D'OFFRES")
-        print(f"{'='*50}\n")
+        print(f"{'=' * 50}\n")
 
         analysis = self.analyze_rfp(rfp_text)
         result = self.generate_response(rfp_text, analysis)
@@ -245,13 +250,13 @@ Ton : professionnel, confiant mais pas arrogant."""
         os.makedirs(output_dir, exist_ok=True)
 
         md_path = os.path.join(output_dir, f"rfp_response_{timestamp}.md")
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(f"# Réponse à l'appel d'offres\n\n")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write("# Réponse à l'appel d'offres\n\n")
             f.write(f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("---\n\n")
-            f.write(result['response'])
+            f.write(result["response"])
 
-        result['md_path'] = md_path
+        result["md_path"] = md_path
 
         print(f"\n✅ Réponse sauvegardée: {md_path}")
 
@@ -261,8 +266,8 @@ Ton : professionnel, confiant mais pas arrogant."""
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Génération de réponse à RFP')
-    parser.add_argument('rfp_file', help='Fichier contenant le RFP (.txt ou .md)')
+    parser = argparse.ArgumentParser(description="Génération de réponse à RFP")
+    parser.add_argument("rfp_file", help="Fichier contenant le RFP (.txt ou .md)")
 
     args = parser.parse_args()
 
@@ -270,17 +275,17 @@ def main():
         print(f"❌ Fichier introuvable: {args.rfp_file}")
         return
 
-    with open(args.rfp_file, 'r', encoding='utf-8') as f:
+    with open(args.rfp_file, "r", encoding="utf-8") as f:
         rfp_text = f.read()
 
     agent = RFPResponderAgent()
     result = agent.run(rfp_text=rfp_text)
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("RÉPONSE GÉNÉRÉE")
-    print(f"{'='*50}\n")
-    print(result['response'][:1000] + "...")
+    print(f"{'=' * 50}\n")
+    print(result["response"][:1000] + "...")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

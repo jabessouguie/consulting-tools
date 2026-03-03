@@ -20,10 +20,10 @@
     --linkedin-hover: #004182;
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-    --shadow-lg: 0 10px 15px rgba(0,0,0,0.15);
-    --shadow-xl: 0 20px 25px rgba(0,0,0,0.2);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.2);
 }
 
 /* === TOAST NOTIFICATIONS === */
@@ -111,6 +111,7 @@
         transform: translateX(400px);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -122,6 +123,7 @@
         transform: translateX(0);
         opacity: 1;
     }
+
     to {
         transform: translateX(400px);
         opacity: 0;
@@ -177,8 +179,13 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes scaleIn {
@@ -186,6 +193,7 @@
         transform: scale(0.9);
         opacity: 0;
     }
+
     to {
         transform: scale(1);
         opacity: 1;
@@ -349,13 +357,22 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* === SUCCESS ANIMATIONS === */
 @keyframes successPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
 }
 
 .success-animation {
@@ -363,8 +380,13 @@
 }
 
 @keyframes checkmarkDraw {
-    0% { stroke-dashoffset: 100; }
-    100% { stroke-dashoffset: 0; }
+    0% {
+        stroke-dashoffset: 100;
+    }
+
+    100% {
+        stroke-dashoffset: 0;
+    }
 }
 
 .checkmark-svg {
@@ -391,6 +413,7 @@
         transform: translateY(20px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -414,4 +437,21 @@
         margin: 20px;
         padding: 1.5rem;
     }
+}
+
+/* === BUG REPORT BUTTON === */
+.btn-bug-report {
+    background: none;
+    border: 1px solid var(--gris-clair, #ccc);
+    color: var(--gris-moyen, #888);
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-bug-report:hover {
+    border-color: var(--corail, #FF6B6B);
+    color: var(--corail, #FF6B6B);
 }

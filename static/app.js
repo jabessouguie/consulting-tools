@@ -15,7 +15,7 @@
                 selector.value = data.current_model;
             }
         })
-        .catch(() => {});
+        .catch(() => { });
 })();
 
 function changeGeminiModel(model) {
@@ -24,15 +24,15 @@ function changeGeminiModel(model) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: model })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const selector = document.getElementById('model-selector');
-            selector.style.borderColor = '#4CAF50';
-            setTimeout(() => { selector.style.borderColor = ''; }, 1500);
-        }
-    })
-    .catch(err => console.error('Model change error:', err));
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const selector = document.getElementById('model-selector');
+                selector.style.borderColor = '#4CAF50';
+                setTimeout(() => { selector.style.borderColor = ''; }, 1500);
+            }
+        })
+        .catch(err => console.error('Model change error:', err));
 }
 
 // === PROPOSAL PAGE ===
@@ -394,6 +394,13 @@ function connectSSE(url, pageType) {
             resetButton(document.getElementById('regenerate-article-btn'), 'Regenerer avec feedback');
         } else if (pageType === 'doc-to-presentation') {
             displayDocToPresentationResult(data);
+        } else if (pageType === 'html-slides') {
+            displayHtmlSlidesResult(data);
+            const hsForm = document.getElementById('html-slides-form');
+            if (hsForm) {
+                const submitBtn = hsForm.querySelector('button[type="submit"]');
+                resetButton(submitBtn, 'Generer la presentation HTML');
+            }
         } else {
             displayLinkedInResult(data);
             resetButton(document.getElementById('linkedin-btn'), 'Lancer la veille + generation');
@@ -447,6 +454,12 @@ function connectSSE(url, pageType) {
             if (form) {
                 const submitBtn = form.querySelector('button[type="submit"]');
                 resetButton(submitBtn, '✍️ Générer l\'article');
+            }
+        } else if (pageType === 'html-slides') {
+            const form = document.getElementById('html-slides-form');
+            if (form) {
+                const submitBtn = form.querySelector('button[type="submit"]');
+                resetButton(submitBtn, 'Generer la presentation HTML');
             }
         } else {
             resetButton(document.getElementById('linkedin-btn'), 'Lancer la veille + generation');
@@ -2955,8 +2968,55 @@ function copyArticle() {
         });
 }
 
+async function exportArticleToGDocs() {
+    if (!window.currentArticleData || !window.currentArticleData.content) {
+        alert('Aucun article a exporter.');
+        return;
+    }
+
+    const btn = document.getElementById('export-gdocs-btn');
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Export en cours...';
+
+    try {
+        const formData = new FormData();
+        formData.append('content', window.currentArticleData.content);
+
+        // Extract title from content metadata or use default
+        let title = 'Article de Blog';
+        const titleMatch = window.currentArticleData.content.match(/title:\s*"?([^"\n]+)"?/);
+        if (titleMatch) title = titleMatch[1].trim();
+
+        formData.append('title', title);
+
+        const response = await fetch('/api/article-generator/export-gdocs', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (data.doc_url) {
+            btn.textContent = 'Exporte !';
+            window.open(data.doc_url, '_blank');
+        } else if (data.setup_required) {
+            alert('Google API non configuree. Veuillez configurer vos credentials Google.');
+        } else {
+            alert('Erreur: ' + (data.error || 'Echec de l\'export'));
+        }
+    } catch (err) {
+        alert('Erreur de connexion: ' + err.message);
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = origText;
+        }, 2000);
+    }
+}
+
 window.initArticleGeneratorPage = initArticleGeneratorPage;
 window.copyArticle = copyArticle;
+window.exportArticleToGDocs = exportArticleToGDocs;
 
 // ====================================
 // PDF CONVERSION & DOWNLOAD
@@ -3340,7 +3400,7 @@ function createSlidePreview(slide, index) {
 function generateSlideHTML(slide) {
     const type = slide.type || 'content';
 
-    switch(type) {
+    switch (type) {
         case 'cover':
             return `
                 <h4>${slide.title || ''}</h4>
@@ -3464,11 +3524,11 @@ function showLoading() {
     const loadingState = document.getElementById('loading-state');
     const emptyCanvas = document.getElementById('empty-canvas');
     const slidesContainer = document.getElementById('slides-container');
-    
+
     if (loadingState) loadingState.style.display = 'flex';
     if (emptyCanvas) emptyCanvas.style.display = 'none';
     if (slidesContainer) slidesContainer.style.display = 'none';
-    
+
     // Reset all steps to pending
     const steps = document.querySelectorAll('.progress-step');
     steps.forEach(step => {
@@ -3483,9 +3543,9 @@ function hideLoading() {
     const loadingState = document.getElementById('loading-state');
     const emptyCanvas = document.getElementById('empty-canvas');
     const slidesContainer = document.getElementById('slides-container');
-    
+
     if (loadingState) loadingState.style.display = 'none';
-    
+
     // Show slides container if there are slides, otherwise show empty state
     const hasSlides = currentProposal && currentProposal.slides && currentProposal.slides.length > 0;
     if (slidesContainer) slidesContainer.style.display = hasSlides ? 'flex' : 'none';
@@ -3495,10 +3555,10 @@ function hideLoading() {
 function updateProgress(stepName, status) {
     const step = document.querySelector(`.progress-step[data-step="${stepName}"]`);
     if (!step) return;
-    
+
     step.classList.remove('pending', 'active', 'done');
     step.classList.add(status);
-    
+
     const icon = step.querySelector('.step-icon');
     if (status === 'done' && icon) {
         // Store original number
@@ -3520,7 +3580,7 @@ async function downloadFile(format) {
         alert('Aucun fichier à télécharger. Générez d\'abord une proposition.');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/proposal-canva/download', {
             method: 'POST',
@@ -3531,19 +3591,19 @@ async function downloadFile(format) {
                 slides: currentProposal.slides
             })
         });
-        
+
         if (!response.ok) {
             throw new Error('Erreur lors du téléchargement');
         }
-        
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        
+
         const extensions = { pptx: 'pptx', pdf: 'pdf', md: 'md', odt: 'odt' };
         a.download = `proposition_${Date.now()}.${extensions[format] || format}`;
-        
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -3559,7 +3619,7 @@ async function exportToGoogleSlides() {
         alert('Aucune slide à exporter. Générez d\'abord une proposition.');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/proposal-canva/export-google-slides', {
             method: 'POST',
@@ -3569,9 +3629,9 @@ async function exportToGoogleSlides() {
                 pptx_path: currentPptxPath
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.error) {
             alert('Erreur: ' + data.error);
         } else if (data.url) {
@@ -3597,7 +3657,7 @@ function regenerateAll() {
         alert('Aucune proposition à régénérer.');
         return;
     }
-    
+
     if (confirm('Voulez-vous régénérer toute la proposition ?')) {
         currentProposal = null;
         const textarea = document.getElementById('user-input');
@@ -3760,3 +3820,110 @@ function displayDocToPresentationResult(data) {
     resultSection.classList.add('active');
     resultSection.scrollIntoView({ behavior: 'smooth' });
 }
+
+// ===================================
+// HTML SLIDES PREMIUM
+// ===================================
+
+function initHtmlSlidesPage() {
+    console.log('Init HTML slides page');
+
+    const form = document.getElementById('html-slides-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const topic = document.getElementById('slide-topic').value.trim();
+        if (!topic) {
+            alert('Veuillez saisir un sujet pour la presentation.');
+            return;
+        }
+
+        const numSlides = document.getElementById('num-slides').value;
+        const language = document.getElementById('slide-language').value;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner"></span> Generation en cours...';
+
+        const progress = document.getElementById('progress');
+        progress.style.display = 'block';
+        document.querySelectorAll('.progress-step').forEach(step => {
+            step.classList.remove('active', 'done');
+            step.classList.add('pending');
+        });
+
+        // Hide previous result
+        const resultSection = document.getElementById('result');
+        if (resultSection) resultSection.style.display = 'none';
+
+        const errorContainer = document.getElementById('error-container');
+        if (errorContainer) errorContainer.innerHTML = '';
+
+        const formData = new FormData();
+        formData.append('topic', topic);
+        formData.append('num_slides', numSlides);
+        formData.append('language', language);
+
+        try {
+            const response = await fetch('/api/html-slides/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.job_id) {
+                connectSSE('/api/html-slides/stream/' + data.job_id, 'html-slides');
+            } else if (data.error) {
+                showError('html-slides', data.error);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generer la presentation HTML';
+            }
+        } catch (err) {
+            showError('html-slides', 'Erreur de connexion: ' + err.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Generer la presentation HTML';
+        }
+    });
+}
+
+function displayHtmlSlidesResult(data) {
+    const progress = document.getElementById('progress');
+    const resultSection = document.getElementById('result');
+
+    if (progress) progress.style.display = 'none';
+    if (!resultSection) return;
+
+    // Update title
+    const resultTitle = document.getElementById('result-title');
+    if (resultTitle) resultTitle.textContent = 'Presentation HTML generee';
+
+    const resultSubtitle = document.getElementById('result-subtitle');
+    if (resultSubtitle) {
+        resultSubtitle.textContent = data.topic || '';
+    }
+
+    // Load HTML into iframe preview
+    const iframe = document.getElementById('preview-iframe');
+    if (iframe && data.html_content) {
+        iframe.srcdoc = data.html_content;
+    }
+
+    // Set download link
+    const downloadBtn = document.getElementById('download-html');
+    if (downloadBtn && data.html_path) {
+        downloadBtn.href = `/api/download?path=${encodeURIComponent(data.html_path)}`;
+    }
+
+    // Set open link
+    const openBtn = document.getElementById('open-html');
+    if (openBtn && data.html_path) {
+        openBtn.href = `/api/download?path=${encodeURIComponent(data.html_path)}`;
+    }
+
+    resultSection.style.display = 'block';
+    resultSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+window.initHtmlSlidesPage = initHtmlSlidesPage;

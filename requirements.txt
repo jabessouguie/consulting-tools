@@ -3,7 +3,7 @@ google-auth==2.28.0
 google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
 google-api-python-client==2.115.0
-anthropic==0.39.0
+anthropic>=0.39.0
 openai==1.54.0
 
 # Web scraping et veille
@@ -13,7 +13,7 @@ requests==2.31.0
 httpx==0.26.0
 
 # Data processing
-pandas==2.2.0
+pandas==2.2.3
 python-dotenv==1.0.1
 
 # LinkedIn API (unofficial)
@@ -45,4 +45,5 @@ pytz==2024.1
 python-pptx==1.0.2
 PyPDF2==3.0.1
 google-generativeai>=0.8.0
+google-genai>=1.0.0
 Pillow>=10.2.0

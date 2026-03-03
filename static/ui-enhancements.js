@@ -288,7 +288,7 @@ function triggerSuccessAnimation(element) {
 
 // === AUTO-INIT ===
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Auto-check LinkedIn status if on LinkedIn page
     if (window.location.pathname.includes('/linkedin')) {
         checkLinkedInStatus();
@@ -410,6 +410,88 @@ async function publishToLinkedIn(index) {
     }
 }
 
+// === BUG REPORT ===
+
+function openBugReportModal() {
+    document.getElementById('bug-page-url').textContent = window.location.pathname;
+    document.getElementById('bug-description').value = '';
+    document.getElementById('bug-severity').value = 'medium';
+    document.getElementById('bug-screenshot').value = '';
+    const overlay = document.getElementById('bug-report-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('bug-description').focus();
+    document.addEventListener('keydown', handleBugModalEscape);
+}
+
+function closeBugReportModal() {
+    document.getElementById('bug-report-overlay').style.display = 'none';
+    document.removeEventListener('keydown', handleBugModalEscape);
+}
+
+function handleBugModalEscape(e) {
+    if (e.key === 'Escape') closeBugReportModal();
+}
+
+async function submitBugReport() {
+    const description = document.getElementById('bug-description').value.trim();
+    if (!description) {
+        document.getElementById('bug-description').style.borderColor = '#FF6B6B';
+        setTimeout(() => {
+            document.getElementById('bug-description').style.borderColor = '#ddd';
+        }, 2000);
+        return;
+    }
+
+    const btn = document.getElementById('btn-submit-bug');
+    btn.disabled = true;
+    btn.textContent = 'Envoi...';
+
+    const severity = document.getElementById('bug-severity').value;
+    const pageUrl = window.location.pathname;
+    const userAgent = navigator.userAgent;
+
+    // Read screenshot as base64 if provided
+    let screenshotBase64 = '';
+    const fileInput = document.getElementById('bug-screenshot');
+    if (fileInput.files.length > 0) {
+        screenshotBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(fileInput.files[0]);
+        });
+    }
+
+    try {
+        const resp = await fetch('/api/bug-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                description,
+                severity,
+                page_url: pageUrl,
+                user_agent: userAgent,
+                screenshot: screenshotBase64
+            })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            closeBugReportModal();
+            showToast(
+                `Bug #${data.id} enregistre: ${data.title}`,
+                'success',
+                'Bug signale'
+            );
+        } else {
+            showToast(data.error || 'Erreur', 'error', 'Echec');
+        }
+    } catch (err) {
+        showToast('Erreur de connexion', 'error', 'Echec');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Envoyer';
+    }
+}
+
 // Export functions for global access
 window.showToast = showToast;
 window.showConfirmModal = showConfirmModal;
@@ -421,3 +503,6 @@ window.checkLinkedInStatus = checkLinkedInStatus;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.triggerSuccessAnimation = triggerSuccessAnimation;
+window.openBugReportModal = openBugReportModal;
+window.closeBugReportModal = closeBugReportModal;
+window.submitBugReport = submitBugReport;

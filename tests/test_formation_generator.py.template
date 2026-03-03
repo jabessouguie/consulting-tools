@@ -1,0 +1,97 @@
+"""
+Tests unitaires pour FormationGeneratorAgent
+"""
+
+import os
+import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from agents.formation_generator import FormationGeneratorAgent
+
+
+class TestFormationGeneratorAgent:
+    """Tests pour FormationGeneratorAgent"""
+
+    @patch("agents.formation_generator.LLMClient")
+    def test_init(self, mock_llm):
+        """Test initialisation de l'agent"""
+        agent = FormationGeneratorAgent()
+        assert agent is not None
+        assert hasattr(agent, "llm_client")
+
+    @patch("agents.formation_generator.LLMClient")
+    def test_generate_formation_program(self, mock_llm):
+        """Test génération programme de formation"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = """
+        # Programme de Formation: Python
+
+        ## Module 1: Introduction
+        - Concepts de base
+        - Installation
+        """
+        mock_llm.return_value = mock_client
+
+        agent = FormationGeneratorAgent()
+        result = agent.generate(
+            topic="Python pour débutants", duration="3 jours", audience="Développeurs juniors"
+        )
+
+        assert result is not None
+        assert "Module 1" in result
+        mock_client.generate.assert_called_once()
+
+    @patch("agents.formation_generator.LLMClient")
+    def test_generate_with_custom_requirements(self, mock_llm):
+        """Test génération avec exigences personnalisées"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = "Formation program"
+        mock_llm.return_value = mock_client
+
+        agent = FormationGeneratorAgent()
+        result = agent.generate(
+            topic="Data Science",
+            duration="5 jours",
+            audience="Data analysts",
+            requirements="Include hands-on exercises",
+        )
+
+        assert result is not None
+        call_args = mock_client.generate.call_args
+        assert "hands-on exercises" in str(call_args)
+
+    @patch("agents.formation_generator.LLMClient")
+    def test_generate_handles_llm_error(self, mock_llm):
+        """Test gestion des erreurs LLM"""
+        mock_client = MagicMock()
+        mock_client.generate.side_effect = Exception("LLM Error")
+        mock_llm.return_value = mock_client
+
+        agent = FormationGeneratorAgent()
+        with pytest.raises(Exception, match="LLM Error"):
+            agent.generate(topic="Test", duration="1 jour", audience="Test")
+
+    @patch("agents.formation_generator.LLMClient")
+    def test_generate_with_empty_topic_raises_error(self, mock_llm):
+        """Test que topic vide lève une erreur"""
+        agent = FormationGeneratorAgent()
+
+        with pytest.raises(ValueError, match="Topic cannot be empty"):
+            agent.generate(topic="", duration="1 jour", audience="Test")
+
+    @patch("agents.formation_generator.LLMClient")
+    def test_format_output_as_markdown(self, mock_llm):
+        """Test que la sortie est formatée en Markdown"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = "# Formation\n\n## Module 1"
+        mock_llm.return_value = mock_client
+
+        agent = FormationGeneratorAgent()
+        result = agent.generate(topic="Test", duration="1 jour", audience="Test")
+
+        assert result.startswith("#")
+        assert "##" in result

@@ -2,19 +2,21 @@
 Agent de synthèse de réunion
 Analyse un transcript de réunion et génère un compte rendu structuré + email de partage
 """
+
 import os
 import sys
-from typing import Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
-from utils.llm_client import LLMClient
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+
 from config import get_consultant_info
+from utils.llm_client import LLMClient
 
 
 class MeetingSummarizerAgent:
@@ -55,11 +57,7 @@ Extrais et structure les éléments suivants :
 
 Retourne les informations en format structuré et clair."""
 
-        response = self.llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.4
-        )
+        response = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.4)
 
         return {"extracted_info": response}
 
@@ -76,8 +74,8 @@ Retourne les informations en format structuré et clair."""
         """
         print("  [2/3] Generation du compte rendu...")
 
-        consultant_name = os.getenv('CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha')
-        company_name = os.getenv('COMPANY_NAME', 'Wenvision')
+        consultant_name = os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha")
+        company_name = os.getenv("COMPANY_NAME", "Wenvision")
 
         system_prompt = f"""Tu es un assistant de {consultant_name}, consultant en strategie data et IA chez {company_name}.
 Tu transformes des transcripts bruts de reunions en comptes rendus structures, professionnels et synthetiques.
@@ -152,11 +150,7 @@ REGLES IMPORTANTES :
 - Factuel et structure
 - Pas de meta-informations sur la generation"""
 
-        minutes = self.llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.5
-        )
+        minutes = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.5)
 
         return minutes
 
@@ -174,7 +168,7 @@ REGLES IMPORTANTES :
         print("📧 Génération de l'email de partage...")
 
         # Charger nom depuis config centralisee
-        consultant_name = get_consultant_info()['name']
+        consultant_name = get_consultant_info()["name"]
 
         system_prompt = f"""Tu es {consultant_name}, tu rédiges un email professionnel pour partager un compte rendu de réunion."""
 
@@ -205,37 +199,30 @@ OBJET: [objet de l'email]
 CORPS:
 [corps de l'email]"""
 
-        response = self.llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.5
-        )
+        response = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.5)
 
         # Parser la réponse pour extraire objet et corps
-        lines = response.strip().split('\n')
+        lines = response.strip().split("\n")
         subject = ""
         body_lines = []
         in_body = False
 
         for line in lines:
-            if line.startswith('OBJET:'):
-                subject = line.replace('OBJET:', '').strip()
-            elif line.startswith('CORPS:'):
+            if line.startswith("OBJET:"):
+                subject = line.replace("OBJET:", "").strip()
+            elif line.startswith("CORPS:"):
                 in_body = True
             elif in_body:
                 body_lines.append(line)
 
-        body = '\n'.join(body_lines).strip()
+        body = "\n".join(body_lines).strip()
 
         if not subject:
             subject = "Compte rendu de réunion"
         if not body:
             body = response
 
-        return {
-            "subject": subject,
-            "body": body
-        }
+        return {"subject": subject, "body": body}
 
     def run(self, transcript: str, generate_email: bool = True) -> Dict[str, Any]:
         """
@@ -269,7 +256,7 @@ CORPS:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         minutes_path = output_dir / f"meeting_minutes_{timestamp}.md"
 
-        with open(minutes_path, 'w', encoding='utf-8') as f:
+        with open(minutes_path, "w", encoding="utf-8") as f:
             f.write(minutes)
 
         print(f"\n✅ Compte rendu sauvegardé : {minutes_path.relative_to(self.base_dir)}")
@@ -277,7 +264,7 @@ CORPS:
         result = {
             "minutes": minutes,
             "minutes_path": str(minutes_path.relative_to(self.base_dir)),
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
         if email:

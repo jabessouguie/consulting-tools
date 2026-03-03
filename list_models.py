@@ -3,6 +3,7 @@
 Liste tous les modeles disponibles via google-genai SDK
 """
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,10 +24,10 @@ try:
 
     for model in models:
         model_name = model.name
-        capabilities = getattr(model, 'supported_generation_methods', [])
+        capabilities = getattr(model, "supported_generation_methods", [])
 
         # Filtrer les modeles d'images
-        if 'imagen' in model_name.lower() or 'image' in str(capabilities).lower():
+        if "imagen" in model_name.lower() or "image" in str(capabilities).lower():
             image_models.append((model_name, capabilities))
         else:
             text_models.append((model_name, capabilities))
@@ -52,4 +53,5 @@ try:
 except Exception as e:
     print(f"❌ Erreur: {e}")
     import traceback
+
     traceback.print_exc()

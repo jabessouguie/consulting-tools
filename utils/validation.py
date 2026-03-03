@@ -2,10 +2,11 @@
 Validation et sanitization des inputs utilisateur
 Protection contre injections, uploads malicieux, etc.
 """
-from typing import Optional
-from fastapi import UploadFile, HTTPException
-import re
 
+import re
+from typing import Optional
+
+from fastapi import HTTPException, UploadFile
 
 # Constantes de validation
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
@@ -13,26 +14,28 @@ MAX_TEXT_INPUT_LENGTH = 50000  # 50k caracteres max pour inputs texte
 MAX_SHORT_INPUT_LENGTH = 500  # Pour titres, noms, etc.
 
 ALLOWED_DOCUMENT_EXTENSIONS = {
-    '.pdf', '.doc', '.docx', '.txt', '.md',
-    '.csv', '.xlsx', '.xls',
-    '.pptx', '.ppt',
-    '.json'
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".txt",
+    ".md",
+    ".csv",
+    ".xlsx",
+    ".xls",
+    ".pptx",
+    ".ppt",
+    ".json",
 }
 
-ALLOWED_IMAGE_EXTENSIONS = {
-    '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'
-}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 
 
 class ValidationError(Exception):
     """Erreur de validation custom"""
-    pass
 
 
 async def validate_file_upload(
-    file: UploadFile,
-    allowed_extensions: Optional[set] = None,
-    max_size: int = MAX_UPLOAD_SIZE
+    file: UploadFile, allowed_extensions: Optional[set] = None, max_size: int = MAX_UPLOAD_SIZE
 ) -> bytes:
     """
     Valide un fichier uploade (taille, type, contenu)
@@ -62,7 +65,8 @@ async def validate_file_upload(
     if not extension:
         raise HTTPException(
             status_code=400,
-            detail=f"Type de fichier non autorise. Extensions acceptees : {', '.join(allowed_extensions)}"
+            detail=f"Type de fichier non autorise. Extensions acceptees : {
+                ', '.join(allowed_extensions)}",
         )
 
     # Lire contenu
@@ -74,23 +78,20 @@ async def validate_file_upload(
         max_mb = max_size / (1024 * 1024)
         raise HTTPException(
             status_code=413,
-            detail=f"Fichier trop volumineux ({size_mb:.1f}MB). Taille max : {max_mb:.0f}MB"
+            detail=f"Fichier trop volumineux ({
+                size_mb:.1f}MB). Taille max : {
+                max_mb:.0f}MB",
         )
 
     # Verifier que le fichier n est pas vide
     if len(content) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Le fichier est vide"
-        )
+        raise HTTPException(status_code=400, detail="Le fichier est vide")
 
     return content
 
 
 def sanitize_text_input(
-    text: str,
-    max_length: int = MAX_TEXT_INPUT_LENGTH,
-    field_name: str = "input"
+    text: str, max_length: int = MAX_TEXT_INPUT_LENGTH, field_name: str = "input"
 ) -> str:
     """
     Nettoie et valide un input texte utilisateur
@@ -120,7 +121,7 @@ def sanitize_text_input(
         )
 
     # Enlever caracteres de controle dangereux (sauf \n, \t, \r)
-    text = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]', '', text)
+    text = re.sub(r"[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]", "", text)
 
     return text
 
@@ -139,19 +140,19 @@ def sanitize_filename(filename: str) -> str:
         return "unknown"
 
     # Enlever path traversal attempts
-    filename = filename.replace('../', '').replace('..\\', '')
-    filename = filename.replace('/', '_').replace('\\', '_')
+    filename = filename.replace("../", "").replace("..\\", "")
+    filename = filename.replace("/", "_").replace("\\", "_")
 
     # Garder seulement caracteres safe
-    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+    filename = re.sub(r"[^a-zA-Z0-9._-]", "_", filename)
 
     # Limiter longueur
     if len(filename) > 255:
         # Garder extension
-        parts = filename.rsplit('.', 1)
+        parts = filename.rsplit(".", 1)
         if len(parts) == 2:
             name, ext = parts
-            filename = name[:250] + '.' + ext
+            filename = name[:250] + "." + ext
         else:
             filename = filename[:255]
 
@@ -172,7 +173,7 @@ def validate_email(email: str) -> bool:
         return False
 
     # Pattern basique mais securise
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
 
 
@@ -195,11 +196,11 @@ def sanitize_url(url: str) -> str:
     url = url.strip()
 
     # Verifier protocole safe
-    if not url.startswith(('http://', 'https://')):
+    if not url.startswith(("http://", "https://")):
         raise ValidationError("URL doit commencer par http:// ou https://")
 
     # Bloquer javascript: et autres protocoles dangereux
-    dangerous_protocols = ['javascript:', 'data:', 'vbscript:', 'file:']
+    dangerous_protocols = ["javascript:", "data:", "vbscript:", "file:"]
     for proto in dangerous_protocols:
         if proto in url.lower():
             raise ValidationError(f"Protocole {proto} non autorise")
@@ -228,6 +229,7 @@ def validate_title(title: str) -> str:
 
 
 # === SECRET MASKING (Phase 3 Security) ===
+
 
 def mask_secret(secret: Optional[str], show_chars: int = 4) -> str:
     """
@@ -311,15 +313,15 @@ def sanitize_error_message(error_msg: str) -> str:
     # Patterns de secrets courants
     patterns = [
         # API keys Anthropic
-        (r'sk-ant-[a-zA-Z0-9-_]{40,}', '******'),
+        (r"sk-ant-[a-zA-Z0-9-_]{40,}", "******"),
         # API keys OpenAI
-        (r'sk-[a-zA-Z0-9]{32,}', '******'),
+        (r"sk-[a-zA-Z0-9]{32,}", "******"),
         # API keys Google/Gemini
-        (r'AIza[a-zA-Z0-9_-]{35,}', '******'),
+        (r"AIza[a-zA-Z0-9_-]{35,}", "******"),
         # Tokens generiques
-        (r'[a-zA-Z0-9_-]{40,}', lambda m: mask_secret(m.group(0), show_chars=3)),
+        (r"[a-zA-Z0-9_-]{40,}", lambda m: mask_secret(m.group(0), show_chars=3)),
         # Passwords dans URLs
-        (r'://[^:]+:([^@]+)@', r'://*****:*****@'),
+        (r"://[^:]+:([^@]+)@", r"://*****:*****@"),
     ]
 
     sanitized = error_msg
