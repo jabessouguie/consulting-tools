@@ -1288,6 +1288,8 @@ REGLES:
         messages: List[Dict[str, str]],
         topic: str = "",
         role: str = "",
+        interviewer_name: str = "",
+        interviewer_linkedin: str = "",
     ) -> str:
         """
         Répond dans un mode chat d'entretien interactif.
@@ -1300,13 +1302,22 @@ REGLES:
                 [{"role": "user"|"assistant", "content": "..."}]
             topic: Sujet de l'entretien (ex: "Data Engineering", "Python")
             role: Poste visé (ex: "Data Engineer Senior")
+            interviewer_name: Nom/Poste de l'interviewer réel ou simulé
+            interviewer_linkedin: Lien LinkedIn de l'interviewer pour contexte
 
         Returns:
             Réponse de l'interviewer (texte)
         """
+        interviewer_info = ""
+        if interviewer_name:
+            interviewer_info += f"Tu t'appelles {interviewer_name} ou tu occupes ce poste. "
+        if interviewer_linkedin:
+            interviewer_info += f"Voici ton profil pour inspiration : {interviewer_linkedin}. "
+
         topic_line = f"Poste : {role}\nDomaine : {topic}" if topic or role else ""
         system_prompt = f"""Tu es un recruteur technique expérimenté dans un entretien simulé.
 {topic_line}
+{interviewer_info}
 
 Ton rôle :
 - Jouer le rôle d'un interviewer professionnel, bienveillant mais exigeant
@@ -1330,6 +1341,8 @@ Style : conversationnel, professionnel, concis (2-4 phrases max par tour)."""
         conversation: List[Dict[str, str]],
         topic: str = "",
         role: str = "",
+        interviewer_name: str = "",
+        interviewer_linkedin: str = "",
     ) -> Dict[str, Any]:
         """
         Analyse les performances d'un entretien simulé.
@@ -1338,6 +1351,8 @@ Style : conversationnel, professionnel, concis (2-4 phrases max par tour)."""
             conversation: Historique complet de la conversation
             topic: Sujet de l'entretien
             role: Poste visé
+            interviewer_name: Nom de l'interviewer
+            interviewer_linkedin: Profil LinkedIn de l'interviewer
 
         Returns:
             {overall_score, strengths, improvements, detailed_feedback, recommendations}
@@ -1358,7 +1373,9 @@ Style : conversationnel, professionnel, concis (2-4 phrases max par tour)."""
             for m in conversation
         )
 
-        prompt = f"""Analyse cet entretien simulé et évalue les performances du candidat.
+        interviewer_ctx = f" (Interviewer: {interviewer_name})" if interviewer_name else ""
+
+        prompt = f"""Analyse cet entretien simulé{interviewer_ctx} et évalue les performances du candidat.
 
 POSTE VISÉ : {role or "Non précisé"}
 DOMAINE : {topic or "Non précisé"}
