@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch, mock_open, PropertyMock
 
 import pytest
 
@@ -505,6 +505,122 @@ class TestThemeManagerImportFromPptx:
         assert "primary_color" in result
         assert result["primary_color"] == "#CC5500"
 
+    def test_import_from_pptx_handles_rgb_exception(self):
+        """Exception sur run.font.color.rgb est silencieusement ignoree (lines 132-133)."""
+        mock_pptx_mod = MagicMock()
+        mock_color_mod = MagicMock()
+
+        mock_run = MagicMock()
+        mock_color = MagicMock()
+        mock_color.type = "RGB"
+        type(mock_color).rgb = PropertyMock(side_effect=Exception("rgb error"))
+        mock_run.font.color = mock_color
+
+        mock_para = MagicMock()
+        mock_para.runs = [mock_run]
+        mock_tf = MagicMock()
+        mock_tf.paragraphs = [mock_para]
+        mock_shape = MagicMock()
+        mock_shape.has_text_frame = True
+        mock_shape.text_frame = mock_tf
+        mock_shape.fill.type = None
+
+        mock_slide = MagicMock()
+        mock_slide.shapes = [mock_shape]
+        mock_layout = MagicMock()
+        mock_layout.placeholders = []
+        mock_master = MagicMock()
+        mock_master.theme_color_map = MagicMock()
+        mock_master.slide_layouts = [mock_layout]
+        mock_prs = MagicMock()
+        mock_prs.slide_master = mock_master
+        mock_prs.slides = [mock_slide]
+        mock_pptx_mod.Presentation.return_value = mock_prs
+
+        with patch.dict("sys.modules", {"pptx": mock_pptx_mod, "pptx.dml.color": mock_color_mod}):
+            result = ThemeManager.import_from_pptx("/fake/path.pptx")
+
+        # No crash — exception was caught silently
+        assert isinstance(result, dict)
+
+    def test_import_from_pptx_handles_fill_rgb_exception(self):
+        """Exception sur shape.fill.fore_color.rgb est silencieusement ignoree (lines 140-141)."""
+        mock_pptx_mod = MagicMock()
+        mock_color_mod = MagicMock()
+
+        mock_shape = MagicMock()
+        mock_shape.has_text_frame = False
+        mock_shape.fill.type = "SOLID"
+        mock_shape.fill.fore_color.rgb = property(lambda self: (_ for _ in ()).throw(Exception("fill rgb error")))
+        # Make fore_color.rgb raise
+        mock_shape.fill.fore_color = MagicMock()
+        type(mock_shape.fill.fore_color).rgb = property(lambda self: (_ for _ in ()).throw(Exception("fill error")))
+
+        mock_slide = MagicMock()
+        mock_slide.shapes = [mock_shape]
+        mock_layout = MagicMock()
+        mock_layout.placeholders = []
+        mock_master = MagicMock()
+        mock_master.theme_color_map = MagicMock()
+        mock_master.slide_layouts = [mock_layout]
+        mock_prs = MagicMock()
+        mock_prs.slide_master = mock_master
+        mock_prs.slides = [mock_slide]
+        mock_pptx_mod.Presentation.return_value = mock_prs
+
+        with patch.dict("sys.modules", {"pptx": mock_pptx_mod, "pptx.dml.color": mock_color_mod}):
+            result = ThemeManager.import_from_pptx("/fake/path.pptx")
+
+        assert isinstance(result, dict)
+
+    def test_import_from_pptx_extracts_body_font(self):
+        """Extrait title_font et body_font quand 2 polices distinctes (line 162)."""
+        mock_pptx_mod = MagicMock()
+        mock_color_mod = MagicMock()
+
+        def make_run_font(name):
+            r = MagicMock()
+            r.font.name = name
+            return r
+
+        def make_ph(font_name):
+            run = make_run_font(font_name)
+            para = MagicMock()
+            para.runs = [run]
+            tf = MagicMock()
+            tf.paragraphs = [para]
+            ph = MagicMock()
+            ph.has_text_frame = True
+            ph.text_frame = tf
+            return ph
+
+        # Two layouts, each with a different font
+        layout1 = MagicMock()
+        layout1.placeholders = [make_ph("TitleFont")]
+        layout2 = MagicMock()
+        layout2.placeholders = [make_ph("BodyFont")]
+
+        mock_shape_slide = MagicMock()
+        mock_shape_slide.has_text_frame = False
+        mock_shape_slide.fill.type = None
+        mock_slide = MagicMock()
+        mock_slide.shapes = [mock_shape_slide]
+
+        mock_master = MagicMock()
+        mock_master.theme_color_map = MagicMock()
+        mock_master.slide_layouts = [layout1, layout2]
+        mock_prs = MagicMock()
+        mock_prs.slide_master = mock_master
+        mock_prs.slides = [mock_slide]
+        mock_pptx_mod.Presentation.return_value = mock_prs
+
+        with patch.dict("sys.modules", {"pptx": mock_pptx_mod, "pptx.dml.color": mock_color_mod}):
+            result = ThemeManager.import_from_pptx("/fake/path.pptx")
+
+        # Both title_font and body_font should be extracted
+        assert "title_font" in result
+        assert "body_font" in result
+
 
 # ---------------------------------------------------------------------------
 # ThemeManager.import_from_pdf()
@@ -630,6 +746,83 @@ class TestThemeManagerImportFromPdf:
             result = ThemeManager.import_from_pdf("/fake/path.pdf")
 
         assert isinstance(result, dict)
+
+    def test_import_from_pdf_filters_exact_black_white_and_near(self):
+        """Pixels exact blanc, exact noir, near-blanc et near-noir sont filtres (continue paths)."""
+        mock_fitz = MagicMock()
+        mock_pix = MagicMock()
+        mock_pix.tobytes.return_value = b"fake_bytes"
+        mock_page = MagicMock()
+        mock_page.get_pixmap.return_value = mock_pix
+        mock_doc = MagicMock()
+        mock_doc.__len__ = MagicMock(return_value=1)
+        mock_doc.__getitem__ = MagicMock(return_value=mock_page)
+        mock_fitz.open.return_value = mock_doc
+        mock_fitz.Matrix.return_value = MagicMock()
+
+        mock_img_small = MagicMock()
+        # All four filtered pixel types: exact white, exact black, near-white, near-black
+        mock_img_small.getdata.return_value = [
+            (255, 255, 255),  # exact blanc → ligne 211 continue
+            (0, 0, 0),        # exact noir → ligne 211 continue
+            (245, 245, 245),  # near-blanc (>240) → ligne 213 continue
+            (10, 10, 10),     # near-noir (<15) → ligne 215 continue
+        ]
+        mock_converted = MagicMock()
+        mock_converted.resize.return_value = mock_img_small
+        mock_img = MagicMock()
+        mock_img.convert.return_value = mock_converted
+        mock_Image = MagicMock()
+        mock_Image.open.return_value = mock_img
+        mock_pil_mod = MagicMock()
+        mock_pil_mod.Image = mock_Image
+
+        with patch.dict("sys.modules", {
+            "fitz": mock_fitz,
+            "PIL": mock_pil_mod,
+            "PIL.Image": mock_Image,
+        }):
+            result = ThemeManager.import_from_pdf("/fake/path.pdf")
+
+        # Tous les pixels sont filtrés → color_counts vide → retourne {}
+        assert result == {}
+
+    def test_import_from_pdf_extracts_accent_color(self):
+        """Extrait la couleur secondaire quand plusieurs couleurs dominantes."""
+        mock_fitz = MagicMock()
+        mock_pix = MagicMock()
+        mock_pix.tobytes.return_value = b"fake_bytes"
+        mock_page = MagicMock()
+        mock_page.get_pixmap.return_value = mock_pix
+        mock_doc = MagicMock()
+        mock_doc.__len__ = MagicMock(return_value=1)
+        mock_doc.__getitem__ = MagicMock(return_value=mock_page)
+        mock_fitz.open.return_value = mock_doc
+        mock_fitz.Matrix.return_value = MagicMock()
+
+        mock_img_small = MagicMock()
+        # Two distinct non-filtered colors → two entries in sorted_colors → accent extracted
+        mock_img_small.getdata.return_value = (
+            [(128, 64, 32)] * 60 + [(64, 128, 192)] * 40
+        )
+        mock_converted = MagicMock()
+        mock_converted.resize.return_value = mock_img_small
+        mock_img = MagicMock()
+        mock_img.convert.return_value = mock_converted
+        mock_Image = MagicMock()
+        mock_Image.open.return_value = mock_img
+        mock_pil_mod = MagicMock()
+        mock_pil_mod.Image = mock_Image
+
+        with patch.dict("sys.modules", {
+            "fitz": mock_fitz,
+            "PIL": mock_pil_mod,
+            "PIL.Image": mock_Image,
+        }):
+            result = ThemeManager.import_from_pdf("/fake/path.pdf")
+
+        assert "primary_color" in result
+        assert "accent_color" in result
 
 
 # ---------------------------------------------------------------------------

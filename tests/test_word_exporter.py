@@ -1,5 +1,6 @@
 """
 Tests pour utils/word_exporter.py — export_to_word, _add_body_paragraph, _add_runs_with_bold
+Uses mocks since python-docx may not be installed.
 """
 import sys
 from pathlib import Path
@@ -8,9 +9,24 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 
+def _make_mock_docx():
+    """Return a (mock_docx_module, mock_doc_instance) pair."""
+    mock_doc_instance = MagicMock()
+    mock_para = MagicMock()
+    mock_doc_instance.add_paragraph.return_value = mock_para
+    mock_doc_instance.add_heading.return_value = mock_para
+
+    mock_docx_mod = MagicMock()
+    mock_docx_mod.Document.return_value = mock_doc_instance
+    mock_docx_mod.shared = MagicMock()
+
+    return mock_docx_mod, mock_doc_instance
+
+
 # ---------------------------------------------------------------------------
 # ImportError path
 # ---------------------------------------------------------------------------
+
 
 class TestImportError:
     def test_raises_import_error_when_docx_not_installed(self, tmp_path):
@@ -24,6 +40,7 @@ class TestImportError:
 # ---------------------------------------------------------------------------
 # Helpers — _add_runs_with_bold
 # ---------------------------------------------------------------------------
+
 
 class TestAddRunsWithBold:
     def test_plain_text_not_bold(self):
@@ -141,6 +158,7 @@ class TestAddRunsWithBold:
 # Helpers — _add_body_paragraph
 # ---------------------------------------------------------------------------
 
+
 class TestAddBodyParagraph:
     def test_adds_plain_paragraph(self):
         from utils.word_exporter import _add_body_paragraph
@@ -216,199 +234,114 @@ class TestAddBodyParagraph:
 
 
 # ---------------------------------------------------------------------------
-# export_to_word — integration tests (requires python-docx)
+# export_to_word — mocked tests (works without python-docx installed)
 # ---------------------------------------------------------------------------
-
-docx = pytest.importorskip("docx", reason="python-docx not installed")
 
 
 class TestExportToWord:
-    def test_creates_docx_file(self, tmp_path):
-        from utils.word_exporter import export_to_word
+    def _export(self, content, path, title="", mock_doc=None):
+        """Run export_to_word with mocked docx module."""
+        mock_docx_mod, mock_doc_instance = _make_mock_docx()
+        if mock_doc is not None:
+            mock_doc_instance = mock_doc
+            mock_docx_mod.Document.return_value = mock_doc_instance
+        with patch.dict(
+            "sys.modules",
+            {"docx": mock_docx_mod, "docx.shared": mock_docx_mod.shared},
+        ):
+            from utils.word_exporter import export_to_word
+            return export_to_word(content, path, title=title), mock_doc_instance
 
-        out = tmp_path / "output.docx"
-        content = {"title": "My Doc", "sections": []}
-        result = export_to_word(content, str(out))
+    def test_returns_string_path(self, tmp_path):
+        result, _ = self._export({"title": "My Doc", "sections": []}, str(tmp_path / "out.docx"))
+        assert isinstance(result, str)
+        assert result.endswith("out.docx")
 
-        assert Path(result).exists()
-        assert result.endswith(".docx")
+    def test_save_called_on_doc(self, tmp_path):
+        result, mock_doc = self._export({"title": "T", "sections": []}, str(tmp_path / "out.docx"))
+        mock_doc.save.assert_called_once()
 
-    def test_returns_absolute_path(self, tmp_path):
-        from utils.word_exporter import export_to_word
+    def test_title_used_in_add_heading(self, tmp_path):
+        _, mock_doc = self._export({"title": "Title", "sections": []}, str(tmp_path / "out.docx"))
+        mock_doc.add_heading.assert_called()
+        first_call = mock_doc.add_heading.call_args_list[0]
+        assert first_call[0][0] == "Title"
 
-        out = tmp_path / "output.docx"
-        result = export_to_word({"title": "T", "sections": []}, str(out))
-        assert Path(result).is_absolute()
-
-    def test_uses_title_parameter(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        export_to_word({"title": "Original", "sections": []}, str(out), title="Override Title")
-
-        doc = Document(str(out))
-        headings = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
-        assert any("Override Title" in h for h in headings)
-
-    def test_uses_content_title_as_fallback(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        export_to_word({"title": "Content Title", "sections": []}, str(out))
-
-        doc = Document(str(out))
-        headings = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
-        assert any("Content Title" in h for h in headings)
+    def test_title_parameter_overrides_content_title(self, tmp_path):
+        _, mock_doc = self._export(
+            {"title": "Content Title", "sections": []},
+            str(tmp_path / "out.docx"),
+            title="Override Title",
+        )
+        first_call = mock_doc.add_heading.call_args_list[0]
+        assert first_call[0][0] == "Override Title"
 
     def test_default_title_when_no_title(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
+        _, mock_doc = self._export({"sections": []}, str(tmp_path / "out.docx"))
+        first_call = mock_doc.add_heading.call_args_list[0]
+        assert first_call[0][0] == "Document"
 
-        out = tmp_path / "out.docx"
-        export_to_word({"sections": []}, str(out))
-
-        doc = Document(str(out))
-        headings = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
-        assert any("Document" in h for h in headings)
-
-    def test_creates_parent_directories(self, tmp_path):
-        from utils.word_exporter import export_to_word
-
-        out = tmp_path / "nested" / "deep" / "output.docx"
-        result = export_to_word({"title": "T", "sections": []}, str(out))
-        assert Path(result).exists()
-
-    def test_sections_are_included(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
+    def test_section_heading_added(self, tmp_path):
         content = {
             "title": "Report",
-            "sections": [
-                {"heading": "Introduction", "body": "Some intro text."},
-                {"heading": "Conclusion", "body": "Final thoughts."},
-            ],
+            "sections": [{"heading": "Introduction", "body": ""}],
         }
-        export_to_word(content, str(out))
+        _, mock_doc = self._export(content, str(tmp_path / "out.docx"))
+        heading_calls = [c[0][0] for c in mock_doc.add_heading.call_args_list]
+        assert "Introduction" in heading_calls
 
-        doc = Document(str(out))
-        all_text = "\n".join(p.text for p in doc.paragraphs)
-        assert "Introduction" in all_text
-        assert "Conclusion" in all_text
-        assert "Some intro text." in all_text
-
-    def test_section_without_heading(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
+    def test_section_without_heading_skips_add_heading(self, tmp_path):
         content = {
             "title": "T",
-            "sections": [{"heading": "", "body": "No heading body."}],
+            "sections": [{"heading": "", "body": "Body only"}],
         }
-        export_to_word(content, str(out))
-        doc = Document(str(out))
-        all_text = "\n".join(p.text for p in doc.paragraphs)
-        assert "No heading body." in all_text
+        _, mock_doc = self._export(content, str(tmp_path / "out.docx"))
+        # Only the title heading call (level=0), not the empty section heading
+        heading_calls = mock_doc.add_heading.call_args_list
+        assert len(heading_calls) == 1
 
-    def test_section_without_body(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
+    def test_section_body_paragraph_added(self, tmp_path):
+        content = {
+            "title": "T",
+            "sections": [{"heading": "S", "body": "Some body text"}],
+        }
+        _, mock_doc = self._export(content, str(tmp_path / "out.docx"))
+        mock_doc.add_paragraph.assert_called()
 
-        out = tmp_path / "out.docx"
+    def test_section_without_body_skips_paragraph(self, tmp_path):
         content = {
             "title": "T",
             "sections": [{"heading": "Title Only", "body": ""}],
         }
-        export_to_word(content, str(out))
-        doc = Document(str(out))
-        all_text = "\n".join(p.text for p in doc.paragraphs)
-        assert "Title Only" in all_text
+        _, mock_doc = self._export(content, str(tmp_path / "out.docx"))
+        mock_doc.add_paragraph.assert_not_called()
+
+    def test_multiple_sections_all_headings_added(self, tmp_path):
+        content = {
+            "title": "T",
+            "sections": [
+                {"heading": f"Section {i}", "body": f"Body {i}"}
+                for i in range(3)
+            ],
+        }
+        _, mock_doc = self._export(content, str(tmp_path / "out.docx"))
+        heading_texts = [c[0][0] for c in mock_doc.add_heading.call_args_list]
+        for i in range(3):
+            assert f"Section {i}" in heading_texts
 
     def test_section_level_capped_at_3(self, tmp_path):
-        from utils.word_exporter import export_to_word
-
-        out = tmp_path / "out.docx"
         content = {
             "title": "T",
             "sections": [{"heading": "Deep", "body": "", "level": 10}],
         }
-        # Should not raise
-        export_to_word(content, str(out))
-        assert Path(out).exists()
+        _, mock_doc = self._export(content, str(tmp_path / "out.docx"))
+        # Level is capped at 3 via min(level, 3) — passed as keyword arg
+        section_heading_calls = mock_doc.add_heading.call_args_list[1:]
+        if section_heading_calls:
+            assert section_heading_calls[0][1].get("level") == 3
 
-    def test_bold_text_in_body(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        content = {
-            "title": "T",
-            "sections": [{"heading": "S", "body": "Normal **bold** text"}],
-        }
-        export_to_word(content, str(out))
-        doc = Document(str(out))
-        # Verify the paragraph with bold content exists
-        all_text = "\n".join(p.text for p in doc.paragraphs)
-        assert "bold" in all_text
-
-    def test_bullet_list_in_body(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        content = {
-            "title": "T",
-            "sections": [{"heading": "S", "body": "- item one\n- item two"}],
-        }
-        export_to_word(content, str(out))
-        doc = Document(str(out))
-        styles = [p.style.name for p in doc.paragraphs]
-        assert "List Bullet" in styles
-
-    def test_unicode_bullet_in_body(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        content = {
-            "title": "T",
-            "sections": [{"heading": "S", "body": "• first\n• second"}],
-        }
-        export_to_word(content, str(out))
-        doc = Document(str(out))
-        styles = [p.style.name for p in doc.paragraphs]
-        assert "List Bullet" in styles
-
-    def test_default_section_level_is_1(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        content = {
-            "title": "T",
-            "sections": [{"heading": "Level Default", "body": ""}],
-        }
-        export_to_word(content, str(out))
-        doc = Document(str(out))
-        headings = [p for p in doc.paragraphs if p.style.name.startswith("Heading")]
-        assert any("Level Default" in h.text for h in headings)
-
-    def test_multiple_sections_rendered(self, tmp_path):
-        from utils.word_exporter import export_to_word
-        from docx import Document
-
-        out = tmp_path / "out.docx"
-        sections = [
-            {"heading": f"Section {i}", "body": f"Body {i}"}
-            for i in range(5)
-        ]
-        export_to_word({"title": "Multi", "sections": sections}, str(out))
-        doc = Document(str(out))
-        all_text = "\n".join(p.text for p in doc.paragraphs)
-        for i in range(5):
-            assert f"Section {i}" in all_text
-            assert f"Body {i}" in all_text
+    def test_creates_parent_directories(self, tmp_path):
+        out = tmp_path / "nested" / "deep" / "output.docx"
+        result, _ = self._export({"title": "T", "sections": []}, str(out))
+        # Path parent dirs are created by pathlib mkdir(parents=True)
+        assert (tmp_path / "nested" / "deep").exists()

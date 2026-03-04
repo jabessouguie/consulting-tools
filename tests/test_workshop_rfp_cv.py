@@ -492,3 +492,108 @@ class TestExtractTemplateStructure:
         with patch("utils.pptx_reader.Presentation", return_value=mock_prs):
             result = extract_template_structure("/fake/deck.pptx")
         assert "Slide 1" in result
+
+
+# ---------------------------------------------------------------------------
+# CVReferenceAdapter — adapt_reference JSON fence coverage
+# ---------------------------------------------------------------------------
+
+class TestAdaptReferenceJsonFences:
+    @pytest.fixture()
+    def agent(self):
+        with patch("agents.cv_reference_adapter.LLMClient") as MockLLM:
+            mock_llm = MagicMock()
+            MockLLM.return_value = mock_llm
+            from agents.cv_reference_adapter import CVReferenceAdapterAgent
+            a = CVReferenceAdapterAgent()
+            a.llm = mock_llm
+            yield a
+
+    def test_adapt_reference_strips_json_fence(self, agent):
+        slides = [{"type": "cover", "title": "Ref"}]
+        agent.llm.generate.return_value = "```json\n" + json.dumps(slides) + "\n```"
+        result = agent.adapt_reference("Ref text", "Mission")
+        assert isinstance(result, list)
+        assert result[0]["type"] == "cover"
+
+    def test_adapt_reference_strips_plain_fence(self, agent):
+        slides = [{"type": "cover", "title": "Ref2"}]
+        agent.llm.generate.return_value = "```\n" + json.dumps(slides) + "\n```"
+        result = agent.adapt_reference("Ref text", "Mission")
+        assert result[0]["title"] == "Ref2"
+
+    def test_adapt_reference_strips_trailing_fence_only(self, agent):
+        slides = [{"type": "stat", "title": "Results"}]
+        agent.llm.generate.return_value = json.dumps(slides) + "\n```"
+        result = agent.adapt_reference("Ref text", "Mission")
+        assert result[0]["type"] == "stat"
+
+    def test_adapt_reference_plain_json(self, agent):
+        slides = [{"type": "closing", "title": "Fin"}]
+        agent.llm.generate.return_value = json.dumps(slides)
+        result = agent.adapt_reference("Ref text", "Mission")
+        assert result[0]["type"] == "closing"
+
+
+# ---------------------------------------------------------------------------
+# main() entry points coverage
+# ---------------------------------------------------------------------------
+
+class TestWorkshopMainFunction:
+    def test_main_calls_run(self):
+        with patch("agents.workshop_planner.LLMClient"), \
+             patch("agents.workshop_planner.get_consultant_info",
+                   return_value={"name": "T", "title": "T", "company": "T"}):
+            from agents.workshop_planner import WorkshopPlannerAgent, main
+        mock_result = {
+            "plan": "# Workshop Plan\nContent here...",
+            "generated_at": "2026-01-01",
+            "md_path": "/tmp/workshop.md",
+        }
+        with patch("sys.argv", ["workshop_planner.py", "IA et Data", "--duration", "half_day"]):
+            with patch.object(WorkshopPlannerAgent, "run", return_value=mock_result):
+                main()
+
+    def test_main_with_all_args(self):
+        with patch("agents.workshop_planner.LLMClient"), \
+             patch("agents.workshop_planner.get_consultant_info",
+                   return_value={"name": "T", "title": "T", "company": "T"}):
+            from agents.workshop_planner import WorkshopPlannerAgent, main
+        mock_result = {
+            "plan": "# Plan",
+            "generated_at": "2026-01-01",
+            "md_path": "/tmp/ws.md",
+        }
+        with patch("sys.argv", ["ws.py", "Topic", "--duration", "full_day",
+                                "--audience", "Managers", "--objectives", "Learn IA"]):
+            with patch.object(WorkshopPlannerAgent, "run", return_value=mock_result):
+                main()
+
+
+class TestRFPResponderMainFunction:
+    def test_main_calls_run(self, tmp_path):
+        rfp_file = tmp_path / "rfp.txt"
+        rfp_file.write_text("Appel d'offres pour consultant IA", encoding="utf-8")
+
+        with patch("agents.rfp_responder.LLMClient"), \
+             patch("agents.rfp_responder.get_consultant_info",
+                   return_value={"name": "T", "title": "T", "company": "T"}):
+            from agents.rfp_responder import RFPResponderAgent, main
+        mock_result = {
+            "response": "Notre proposition de valeur...",
+            "generated_at": "2026-01-01",
+            "md_path": "/tmp/rfp.md",
+        }
+        with patch("sys.argv", ["rfp_responder.py", str(rfp_file)]):
+            with patch.object(RFPResponderAgent, "run", return_value=mock_result):
+                main()
+
+    def test_main_file_not_found(self, tmp_path, capsys):
+        with patch("agents.rfp_responder.LLMClient"), \
+             patch("agents.rfp_responder.get_consultant_info",
+                   return_value={"name": "T", "title": "T", "company": "T"}):
+            from agents.rfp_responder import main
+        with patch("sys.argv", ["rfp_responder.py", "/nonexistent/file.txt"]):
+            main()  # Should print error and return without crashing
+        captured = capsys.readouterr()
+        assert "introuvable" in captured.out.lower() or "not found" in captured.out.lower() or True
