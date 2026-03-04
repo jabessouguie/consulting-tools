@@ -151,11 +151,11 @@ class TestCheckEnvFile:
         assert any("ANTHROPIC_API_KEY" in issue for issue in result["issues"])
 
     def test_env_file_default_password_warning(self, tmp_path):
-        """Detect use of default consultingtools2026 password."""
+        """Detect use of default Consulting Tools2026 password."""
         env_content = (
             "ANTHROPIC_API_KEY=sk-ant-real\n"
             "AUTH_USERNAME=admin\n"
-            "AUTH_PASSWORD=consultingtools2026\n"
+            "AUTH_PASSWORD=Consulting Tools2026\n"
             "SESSION_SECRET=mysecret\n"
         )
         env_file = tmp_path / ".env"

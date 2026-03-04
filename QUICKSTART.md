@@ -12,7 +12,7 @@ Ce guide vous permet de démarrer avec les agents Consulting Tools en moins de 1
 
 ```bash
 # 1. Aller dans le dossier
-cd consulting-tools
+cd Consulting Tools-agents
 
 # 2. Créer environnement virtuel
 python -m venv venv

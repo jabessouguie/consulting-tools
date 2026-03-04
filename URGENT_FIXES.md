@@ -156,8 +156,8 @@ CMD ["python", "app.py"]
 EOF
 
 # Build et run
-docker build -t consulting-tools .
-docker run -p 8000:8000 -v $(pwd)/config:/app/config consulting-tools
+docker build -t Consulting Tools-tools .
+docker run -p 8000:8000 -v $(pwd)/config:/app/config Consulting Tools-tools
 ```
 
 **Avantages** :

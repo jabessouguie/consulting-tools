@@ -34,7 +34,7 @@ def get_user_credentials() -> dict:
     username = os.getenv("AUTH_USERNAME", "admin")
     # Le mot de passe peut être en clair dans .env (sera hashé à la volée)
     # ou déjà hashé (commence par $2b$)
-    password = os.getenv("AUTH_PASSWORD", "consultingtools2026")
+    password = os.getenv("AUTH_PASSWORD", "Consulting Tools2026")
 
     # Si le mot de passe n'est pas déjà hashé, le hasher
     if not password.startswith("$2b$"):

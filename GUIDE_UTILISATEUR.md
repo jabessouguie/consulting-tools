@@ -13,7 +13,7 @@ Bienvenue ! Ce guide vous explique comment utiliser les agents IA de Consulting 
 1. **Ouvrez le Terminal** (sur Mac) ou **Invite de commandes** (sur Windows)
 2. **Naviguez vers le dossier** du projet :
    ```bash
-   cd /chemin/vers/consulting-tools
+   cd /chemin/vers/Consulting Tools-agents
    ```
 3. **Lancez l'application** :
    ```bash
@@ -319,8 +319,8 @@ Créez un fichier `data/writing_style.md` avec des exemples de votre style :
 
 **Besoin d'aide ?**
 
-- 📧 Email : [votre-email@consulting-tools.com]
-- 💬 Slack : #consulting-tools
+- 📧 Email : [votre-email@Consulting Tools.com]
+- 💬 Slack : #Consulting Tools-agents
 - 🐛 Bug report : [GitHub Issues](https://github.com/votre-repo/issues)
 
 ---

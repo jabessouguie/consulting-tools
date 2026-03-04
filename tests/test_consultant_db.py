@@ -29,7 +29,7 @@ def sample_consultant():
     return {
         "name": "Jean Dupont",
         "title": "Senior Consultant Data & IA",
-        "email": "jean.dupont@consulting-tools.com",
+        "email": "jean.dupont@Consulting Tools.com",
         "bio": "Expert en transformation digitale et IA",
         "raw_pptx_text": "Texte brut du slide PPTX",
         "skills_technical": [

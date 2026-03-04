@@ -7,7 +7,7 @@
 ## 🏗️ Architecture du projet
 
 ```
-consulting-tools/
+Consulting Tools-agents/
 ├── agents/               # Agents IA (logique métier)
 │   ├── article_generator.py
 │   ├── proposal_generator.py
@@ -635,8 +635,8 @@ CMD ["python", "app.py"]
 Build et run :
 
 ```bash
-docker build -t consulting-tools .
-docker run -p 5678:5678 -v $(pwd)/output:/app/output consulting-tools
+docker build -t Consulting Tools-agents .
+docker run -p 5678:5678 -v $(pwd)/output:/app/output Consulting Tools-agents
 ```
 
 ---

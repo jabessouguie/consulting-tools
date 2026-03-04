@@ -45,7 +45,7 @@ Aller dans : **Settings → Secrets and variables → Actions → New repository
 |--------|-------------|---------|
 | `CODECOV_TOKEN` | Token Codecov pour coverage | `abc123...` |
 | `DEPLOY_HOST` | IP/hostname serveur production | `192.168.1.100` |
-| `DEPLOY_USER` | User SSH pour déploiement | `consulting-tools` |
+| `DEPLOY_USER` | User SSH pour déploiement | `Consulting Tools` |
 | `DEPLOY_SSH_KEY` | Clé SSH privée pour déploiement | `-----BEGIN RSA PRIVATE KEY-----...` |
 
 ### Variables d'environnement (optionnel)
@@ -84,17 +84,17 @@ git push origin main
 
 ```bash
 # 1. Générer clé SSH
-ssh-keygen -t rsa -b 4096 -C "deploy@consulting-tools"
+ssh-keygen -t rsa -b 4096 -C "deploy@Consulting Tools-tools"
 
 # 2. Copier clé publique sur serveur
-ssh-copy-id consulting-tools@your-server.com
+ssh-copy-id Consulting Tools@your-server.com
 
 # 3. Ajouter clé privée dans DEPLOY_SSH_KEY (GitHub secret)
 cat ~/.ssh/id_rsa | pbcopy  # macOS
 cat ~/.ssh/id_rsa | xclip   # Linux
 
 # 4. Tester connexion
-ssh consulting-tools@your-server.com
+ssh Consulting Tools@your-server.com
 ```
 
 ---
@@ -251,7 +251,7 @@ pytest tests/ -v
 **Solution** :
 ```bash
 # Tester connexion manuellement
-ssh -v consulting-tools@your-server.com
+ssh -v Consulting Tools@your-server.com
 
 # Vérifier firewall
 sudo ufw status
