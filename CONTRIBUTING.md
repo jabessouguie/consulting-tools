@@ -1,6 +1,6 @@
 # 🚀 Guide de Contribution & Roadmap de Production
 
-Bienvenue dans le projet **Consulting Tools Consulting Tools**. Ce document définit les standards de qualité, le flux de travail et la roadmap critique avant le passage en production.
+Bienvenue dans le projet **Consulting Tools**. Ce document définit les standards de qualité, le flux de travail et la roadmap critique avant le passage en production.
 
 ## 🛠 Phase 1 : Corrections et Évolutions Prioritaires
 
