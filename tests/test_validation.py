@@ -398,6 +398,16 @@ class TestSanitizeUrlExtended:
         with pytest.raises(ValidationError):
             sanitize_url("file:///etc/passwd")
 
+    def test_embedded_javascript_in_http_url_blocked(self):
+        """Protocole dangereux embarqué dans une URL http: bloqué (line 205)."""
+        with pytest.raises(ValidationError, match="javascript"):
+            sanitize_url("http://example.com/javascript:alert(1)")
+
+    def test_embedded_data_in_http_url_blocked(self):
+        """Protocole data: embarqué dans une URL http: bloqué."""
+        with pytest.raises(ValidationError, match="data:"):
+            sanitize_url("http://example.com?x=data:text/html,<h1>xss</h1>")
+
 
 class TestValidateFileUpload:
     """Tests pour validate_file_upload (async)"""

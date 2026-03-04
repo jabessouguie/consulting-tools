@@ -154,6 +154,12 @@ class TestGetVideoAnalyzer:
         assert analyzer.supports_video() is False
 
 
+class TestVideoAnalysisInterface:
+    def test_base_supports_video_returns_false(self):
+        """La méthode de base VideoAnalysisInterface.supports_video() retourne False."""
+        assert VideoAnalysisInterface.supports_video() is False
+
+
 class TestUnsupportedFeatureError:
     def test_is_exception(self):
         err = UnsupportedFeatureError("test message")
