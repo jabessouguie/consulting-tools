@@ -1,5 +1,5 @@
 """
-Consulting Tools Agents - Application Web
+Consulting Tools - Application Web
 FastAPI server exposant les agents de propositions commerciales et veille LinkedIn
 """
 import asyncio
@@ -77,7 +77,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 # === APP SETUP ===
 
-app = FastAPI(title="Consulting Tools Agents", version="1.0.0")
+app = FastAPI(title=os.getenv("APP_NAME", "Consulting Tools") + " Agents", version="1.0.0")
 
 # Rate limiter configuration
 limiter = Limiter(
@@ -95,6 +95,12 @@ app.mount(
             "static")),
     name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+APP_NAME = os.getenv("APP_NAME", "Consulting Tools")
+APP_TAGLINE = os.getenv("APP_TAGLINE", "Agents IA")
+templates.env.globals.update({
+    "app_name": APP_NAME,
+    "app_tagline": APP_TAGLINE,
+})
 
 
 # === CSRF PROTECTION MIDDLEWARE ===

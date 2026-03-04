@@ -250,7 +250,7 @@ Terminez par :
 
 ---
 
-*Script genere par Consulting Tools Agents - Bonne presentation !* 🚀
+*Script genere par Consulting Tools - Bonne presentation !* 🚀
 """
 
         result = {

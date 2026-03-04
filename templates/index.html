@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Consulting Tools Agents - Dashboard{% endblock %}
+{% block title %}{{ app_name }} Agents - Dashboard{% endblock %}
 
 {% block content %}
 <div class="dashboard-hero">
@@ -33,7 +33,7 @@
             </div>
         </div>
         <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">
-            Collez ou uploadez un appel d'offre. L'agent analyse le contenu, selectionne les references Consulting Tools pertinentes, et genere une proposition complete au format du template 2026.
+            Collez ou uploadez un appel d'offre. L'agent analyse le contenu, selectionne les references {{ app_name }} pertinentes, et genere une proposition complete au format du template 2026.
         </p>
         <a href="/proposal" class="btn btn-primary">Generer une proposition &rarr;</a>
     </div>

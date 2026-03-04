@@ -119,7 +119,7 @@ Retourne les informations en format structuré et clair."""
         print("  [2/3] Generation du compte rendu...")
 
         consultant_name = os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha")
-        company_name = os.getenv("COMPANY_NAME", "Consulting Tools")
+        company_name = os.getenv("COMPANY_NAME", "Your Company")
 
         system_prompt = f"""Tu es un assistant de {consultant_name}, consultant en strategie data et IA chez {company_name}.
 Tu transformes des transcripts bruts de reunions en comptes rendus structures, professionnels et synthetiques.

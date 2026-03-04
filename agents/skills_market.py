@@ -12,7 +12,7 @@ from utils.pptx_reader import read_pptx_template
 
 
 class SkillsMarketAgent:
-    """Agent pour le Market of Skills des consultants Consulting Tools"""
+    """Agent pour le Market of Skills des consultants"""
 
     def __init__(self):
         self.llm = LLMClient()
@@ -31,7 +31,7 @@ class SkillsMarketAgent:
             return None
 
         prompt = f"""Analyse ce texte extrait d'un slide de CV/biographie
-d'un consultant Consulting Tools et retourne un JSON structure.
+d'un consultant et retourne un JSON structure.
 
 TEXTE DU SLIDE:
 {slide_text}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Consulting Tools - Propositions Commerciales{% endblock %}
+{% block title %}{{ app_name }} - Propositions Commerciales{% endblock %}
 
 {% block content %}
 <div class="card">
@@ -8,7 +8,7 @@
         <div class="card-icon proposal"></div>
         <div>
             <div class="card-title">Generateur de Propositions Commerciales</div>
-            <div class="card-subtitle">Collez un appel d'offre ou uploadez un fichier pour generer une proposition Consulting Tools</div>
+            <div class="card-subtitle">Collez un appel d'offre ou uploadez un fichier pour generer une proposition {{ app_name }}</div>
         </div>
     </div>
 
@@ -45,7 +45,7 @@
             </li>
             <li class="progress-step pending" data-step="template">
                 <span class="step-icon">2</span>
-                <span>Chargement du template Consulting Tools</span>
+                <span>Chargement du template {{ app_name }}</span>
             </li>
             <li class="progress-step pending" data-step="references">
                 <span class="step-icon">3</span>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slide Editor - Consulting Tools</title>
+    <title>Slide Editor - {{ app_name }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -431,7 +431,7 @@
                     </div>
                     <div id="proposal-hint" class="hidden">
                         <p class="text-[11px] text-wv-corail/70 leading-snug">10 slides : Couverture, Comprehension,
-                            Approche, Demarche, Roadmap, Gouvernance, FCS, Pourquoi Consulting Tools, Equipe, Cloture</p>
+                            Approche, Demarche, Roadmap, Gouvernance, FCS, Pourquoi {{ app_name }}, Equipe, Cloture</p>
                     </div>
                     <div id="rex-hint" class="hidden">
                         <p class="text-[11px] text-wv-corail/70 leading-snug">10 slides : Couverture, Contexte, Enjeux,
@@ -518,7 +518,7 @@
                 type: 'cover',
                 title: 'Strategie Data & IA 2026',
                 subtitle: 'Feuille de route pour la transformation digitale',
-                meta: 'Consulting Tools | Janvier 2026'
+                meta: '{{ app_name }} | Janvier 2026'
             },
             {
                 type: 'section',
@@ -585,7 +585,7 @@
             {
                 type: 'closing',
                 title: 'Merci',
-                subtitle: 'Jean-Sebastien Abessouguie | Consulting Tools\njean-sebastien@consulting-tools.com'
+                subtitle: 'Jean-Sebastien Abessouguie | {{ app_name }}\njean-sebastien@consulting-tools.com'
             }
         ];
 
@@ -722,7 +722,7 @@
                 case 'cover':
                     return `<div class="slide-cover ${pad} flex flex-col justify-center h-full relative">
                 ${badge}${tagsHtml}${marker}
-                <div class="accent font-chakra font-bold ${t ? 'text-[4px]' : 'text-[clamp(0.6rem,1vw,0.85rem)]'} tracking-[0.2em] uppercase mb-2">Consulting Tools</div>
+                <div class="accent font-chakra font-bold ${t ? 'text-[4px]' : 'text-[clamp(0.6rem,1vw,0.85rem)]'} tracking-[0.2em] uppercase mb-2">{{ app_name }}</div>
                 <div ${edit} class="text-primary font-chakra font-bold ${titleSize} leading-tight mb-3">${slide.title || ''}</div>
                 <div class="divider h-0.5 ${t ? 'w-6' : 'w-16'} rounded-full mb-3"></div>
                 <div ${edit} class="text-secondary ${subtitleSize}">${slide.subtitle || ''}</div>
@@ -1613,7 +1613,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = (slides[0]?.title || 'presentation').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40) + '_Consulting Tools.html';
+            a.download = (slides[0]?.title || 'presentation').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40) + '_{{ app_name }}.html';
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -1709,7 +1709,7 @@
                 return;
             }
 
-            const title = slides[0]?.title || 'Présentation Consulting Tools';
+            const title = slides[0]?.title || 'Présentation {{ app_name }}';
 
             // Show loading toast
             const loadingToast = showToast('Export vers Google Slides en cours...', 'info', 'Export', 0);
