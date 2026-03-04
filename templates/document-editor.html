@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Editor - Consulting Tools</title>
+    <title>Document Editor - {{ app_name }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -975,7 +975,7 @@
             btn.innerHTML = '<span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span> Export...';
 
             try {
-                const topic = document.getElementById('doc-topic').value.trim() || 'Document Consulting Tools';
+                const topic = document.getElementById('doc-topic').value.trim() || 'Document {{ app_name }}';
                 const resp = await fetch('/api/document-editor/export-gdocs', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

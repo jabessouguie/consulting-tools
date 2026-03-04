@@ -1,6 +1,6 @@
 """
-Generateur de presentations PPTX Consulting Tools
-Utilise le template Consulting Tools 2026 pour creer des propositions commerciales esthetiques
+Generateur de presentations PPTX
+Utilise le template PPTX pour creer des propositions commerciales esthetiques
 """
 
 import json
@@ -25,7 +25,7 @@ def _load_branding() -> Dict[str, Any]:
                 return json.load(f)
     except Exception:
         pass
-    # Fallback Consulting Tools 2026
+    # Fallback theme defaults
     return {
         "colors": {
             "anthracite": "3A3A3B",
@@ -65,7 +65,7 @@ FONT_BODY = BRANDING["fonts"].get("body", "Inter")
 SLIDE_WIDTH = Inches(13.333)
 SLIDE_HEIGHT = Inches(7.5)
 
-# Layouts du template Consulting Tools (doivent correspondre au template PPTX)
+# Layouts du template PPTX
 LAYOUT_CONTENT = 0  # TITLE_ONLY : titre + sous-titre + corps
 LAYOUT_CONTENT_IMAGE = 1  # TITLE_ONLY_4 : titre + image + corps
 LAYOUT_TWO_COL = 4  # TITLE_ONLY_3_1_1 : titre + 2 colonnes corps
@@ -75,7 +75,7 @@ LAYOUT_TITLE_ONLY = 17  # Corps - Titre seul
 
 
 class ProposalPPTXGenerator:
-    """Generateur de PPTX pour propositions commerciales Consulting Tools"""
+    """Generateur de PPTX pour propositions commerciales"""
 
     def __init__(self, template_path: str):
         """

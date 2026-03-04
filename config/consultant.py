@@ -65,6 +65,8 @@ class ConsultantConfig:
             "email": os.getenv("CONSULTANT_EMAIL", ""),
             "title": os.getenv("CONSULTANT_TITLE", "Consultant"),
             "company": os.getenv("COMPANY_NAME", "Company"),
+            "app_name": os.getenv("APP_NAME", "Consulting Tools"),
+            "app_tagline": os.getenv("APP_TAGLINE", "Agents IA"),
             "profile": os.getenv("CONSULTANT_PROFILE", ""),
             "linkedin_email": os.getenv("LINKEDIN_EMAIL", ""),
         }

@@ -1,5 +1,5 @@
 /* ===========================
-   Consulting Tools Agents - Frontend JS
+   Consulting Tools - Frontend JS
    =========================== */
 
 // === GLOBAL MODEL SELECTOR ===

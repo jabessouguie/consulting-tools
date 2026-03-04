@@ -1,5 +1,5 @@
 """
-Configuration package pour Consulting Tools Consulting Tools
+Configuration package for Consulting Tools
 """
 
 from .consultant import ConsultantConfig, get_consultant_info

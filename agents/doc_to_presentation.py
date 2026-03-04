@@ -28,7 +28,7 @@ class DocToPresentationAgent:
         self.base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.consultant_info = {
             "name": os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha"),
-            "company": os.getenv("COMPANY_NAME", "Consulting Tools"),
+            "company": os.getenv("COMPANY_NAME", "Your Company"),
         }
 
     def parse_document(self, file_path: str, file_content: bytes = None, filename: str = "") -> str:

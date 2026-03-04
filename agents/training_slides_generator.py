@@ -1,7 +1,7 @@
 """
 Agent de génération de supports de formation (slides)
 Prend en entrée un Programme de Formation et génère des slides
-exportables en Google Slides, respectant la charte graphique Consulting Tools.
+exportables en Google Slides, respectant la charte graphique definie dans les settings.
 """
 
 import json
@@ -298,7 +298,7 @@ RAPPELS :
             "bullets": [
                 "Questions & échanges",
                 "Prochaines étapes",
-                f"Contact : {os.getenv('CONSULTANT_NAME', 'Consulting Tools')}",
+                f"Contact : {os.getenv('CONSULTANT_NAME', os.getenv('APP_NAME', 'Consulting Tools'))}",
             ],
         }
         all_slides.append(closing)
@@ -478,7 +478,7 @@ Retourne un JSON avec:
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>{title} - Consulting Tools</title>
+    <title>{title}</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {{
@@ -571,8 +571,8 @@ Retourne un JSON avec:
             slides_data=slides,
             output_path=str(output_path),
             consultant_info={
-                "name": os.getenv("CONSULTANT_NAME", "Consulting Tools"),
-                "company": os.getenv("COMPANY_NAME", "Consulting Tools"),
+                "name": os.getenv("CONSULTANT_NAME", "Consultant"),
+                "company": os.getenv("COMPANY_NAME", "Your Company"),
             },
         )
 

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Consulting Tools Agents{% endblock %}</title>
+    <title>{% block title %}{{ app_name }} Agents{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -19,8 +19,8 @@
     <nav class="navbar">
         <div class="nav-container">
             <a href="/" class="nav-brand">
-                <span class="brand-w">W</span><span class="brand-rest">Envision</span>
-                <span class="brand-tag">Agents IA</span>
+                <span class="brand-text">{{ app_name }}</span>
+                <span class="brand-tag">{{ app_tagline }}</span>
             </a>
             <div class="nav-links">
                 <a href="/" class="nav-link {% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
@@ -59,7 +59,7 @@
 
     <footer class="footer">
         <div class="footer-container" style="display: flex; justify-content: space-between; align-items: center;">
-            <p>Consulting Tools Agents &mdash; Consultant : {{ consultant_name }}</p>
+            <p>{{ app_name }} &mdash; Consultant : {{ consultant_name }}</p>
             <button onclick="openBugReportModal()" class="btn-bug-report" title="Signaler un bug">
                 Signaler un bug
             </button>

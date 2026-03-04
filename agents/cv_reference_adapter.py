@@ -27,7 +27,7 @@ class CVReferenceAdapterAgent:
         self.llm = LLMClient(max_tokens=8192)
         self.consultant_info = {
             "name": os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha"),
-            "company": os.getenv("COMPANY_NAME", "Consulting Tools"),
+            "company": os.getenv("COMPANY_NAME", "Your Company"),
         }
 
     def adapt_cv(self, cv_text: str, mission_brief: str) -> List[Dict]:

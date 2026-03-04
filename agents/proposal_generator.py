@@ -1,7 +1,7 @@
 """
 Agent de génération de propositions commerciales
 Analyse un appel d'offre et génère une proposition commerciale en utilisant
-les références Consulting Tools (fichiers PPTX locaux) et un template PowerPoint
+les références locales (fichiers PPTX) et un template PowerPoint
 """
 
 import json
@@ -1535,7 +1535,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Agent de génération de propositions commerciales Consulting Tools"
+        description="Agent de génération de propositions commerciales"
     )
     parser.add_argument(
         "tender_file", help="Chemin vers le fichier d'appel d'offre (txt, md, pdf)"

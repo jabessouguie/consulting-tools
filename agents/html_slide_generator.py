@@ -34,7 +34,7 @@ class HtmlSlideGeneratorAgent:
     def extract_design_system(self) -> Dict[str, Any]:
         """
         Analyse slides_exemple/ pour extraire le design system.
-        Combine les constantes Consulting Tools avec le contexte du PPTX.
+        Combine les constantes de theme avec le contexte du PPTX.
         Resultat cache en memoire apres le premier appel.
         """
         if HtmlSlideGeneratorAgent._design_cache is not None:

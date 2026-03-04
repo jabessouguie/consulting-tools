@@ -1,3 +1,3 @@
 """
-Tests package for Consulting Tools Consulting Tools
+Tests package for Consulting Tools
 """

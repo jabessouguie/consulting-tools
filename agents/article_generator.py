@@ -26,7 +26,7 @@ from utils.llm_client import LLMClient  # noqa: E402
 
 
 class ArticleGeneratorAgent:
-    """Agent pour generer des articles de blog avec le style Consulting Tools"""
+    """Agent pour generer des articles de blog"""
 
     def __init__(self):
         self.llm = LLMClient(max_tokens=8192)
@@ -35,7 +35,7 @@ class ArticleGeneratorAgent:
         self.consultant_info = {
             "name": os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha"),
             "title": os.getenv("CONSULTANT_TITLE", "Consultant en strategie data et IA"),
-            "company": os.getenv("COMPANY_NAME", "Consulting Tools"),
+            "company": os.getenv("COMPANY_NAME", "Your Company"),
         }
 
         # Profil consultant pour contexte enrichi
@@ -206,7 +206,7 @@ provocatrice qui remet en cause une idee recue.
 3. Appel a l'action (CTA) : Termine par une question ouverte pour lancer \
 la discussion dans les commentaires.
 4. Hashtags : Propose 5 hashtags pertinents et strategiques (#IA, #Data, \
-#GouvernanceDeDonnees, #TransformationDigitale, #Consulting Tools).
+#GouvernanceDeDonnees, #TransformationDigitale).
 
 Livre uniquement le texte du post, sans explication."""
 

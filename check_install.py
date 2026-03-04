@@ -196,7 +196,7 @@ def check_app_syntax():
 
 
 def main():
-    print_header("🔍 Vérification de l'installation Consulting Tools Tools")
+    print_header("🔍 Vérification de l'installation Consulting Tools")
 
     checks = [
         ("Version Python", check_python_version),

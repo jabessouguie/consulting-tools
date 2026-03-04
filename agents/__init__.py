@@ -1,5 +1,5 @@
 """
-Consulting Tools Agents - Agents intelligents
+Agents intelligents
 """
 
 from .linkedin_monitor import LinkedInMonitorAgent
