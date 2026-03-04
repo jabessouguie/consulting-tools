@@ -860,3 +860,92 @@ class ConsultantDatabase:
                 ),
             )
             conn.commit()
+    def get_global_stats(self) -> Dict[str, Any]:
+        """
+        Recupere les statistiques globales pour le module Comex
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # Top 5 Skills
+            cursor.execute(
+                """
+                SELECT name, COUNT(*) as count, category
+                FROM skills
+                GROUP BY name, category
+                ORDER BY count DESC
+                LIMIT 10
+            """
+            )
+            top_skills = [dict(r) for r in cursor.fetchall()]
+
+            # Distribution by Category
+            cursor.execute(
+                """
+                SELECT category, COUNT(*) as count
+                FROM skills
+                GROUP BY category
+            """
+            )
+            category_distribution = {r["category"]: r["count"] for r in cursor.fetchall()}
+
+            # Certifications total
+            cursor.execute("SELECT COUNT(*) FROM certifications")
+            total_certifications = cursor.fetchone()[0]
+
+            # Aggregate AI Improvement Areas
+            cursor.execute("SELECT improvement_areas FROM consultants")
+            all_improvement_areas = []
+            for row in cursor.fetchall():
+                try:
+                    areas = json.loads(row[0] or "[]")
+                    all_improvement_areas.extend(areas)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+            # Basic frequency analysis for improvement areas
+            improvement_trends = {}
+            for area in all_improvement_areas:
+                improvement_trends[area] = improvement_trends.get(area, 0) + 1
+            
+            sorted_trends = sorted(improvement_trends.items(), key=lambda x: x[1], reverse=True)[:10]
+
+            return {
+                "top_skills": top_skills,
+                "category_distribution": category_distribution,
+                "total_certifications": total_certifications,
+                "improvement_trends": sorted_trends,
+                "total_consultants": self.get_consultant_count()
+            }
+
+    def get_consultant_evolution(self, consultant_id: int) -> List[Dict[str, Any]]:
+        """
+        Recupere l'historique d'un consultant (missions + certifications) pour la timeline
+        """
+        timeline = []
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # Missions
+            cursor.execute(
+                "SELECT client_name as title, start_date as date, 'mission' as type "
+                "FROM missions WHERE consultant_id = ? AND start_date IS NOT NULL",
+                (consultant_id,)
+            )
+            for r in cursor.fetchall():
+                timeline.append(dict(r))
+
+            # Certifications
+            cursor.execute(
+                "SELECT name as title, date_obtained as date, 'certification' as type "
+                "FROM certifications WHERE consultant_id = ? AND date_obtained IS NOT NULL",
+                (consultant_id,)
+            )
+            for r in cursor.fetchall():
+                timeline.append(dict(r))
+
+        # Sort by date (handles various formats loosely, but good for a start)
+        timeline.sort(key=lambda x: x["date"], reverse=True)
+        return timeline

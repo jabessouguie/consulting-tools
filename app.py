@@ -7072,6 +7072,29 @@ async def api_skills_market_delete(consultant_id: int):
     return {"message": "Consultant supprime"}
 
 
+@app.get("/skills-market/comex", response_class=HTMLResponse)
+async def skills_market_comex(request: Request):
+    """Page Comex & Strategie du Market of Skills"""
+    return templates.TemplateResponse(
+        "skills-market-comex.html",
+        {"request": request, "active_page": "skills-market"}
+    )
+
+
+@app.get("/api/skills-market/stats/global")
+async def api_skills_market_global_stats():
+    """Recupere les stats globales pour le Comex"""
+    stats = skills_market_db.get_global_stats()
+    return stats
+
+
+@app.get("/api/skills-market/consultants/{consultant_id}/evolution")
+async def api_skills_market_consultant_evolution(consultant_id: int):
+    """Historique d'evolution d'un consultant"""
+    timeline = skills_market_db.get_consultant_evolution(consultant_id)
+    return {"timeline": timeline}
+
+
 @app.get("/api/skills-market/skills")
 async def api_skills_market_skills():
     """Recupere toutes les competences uniques"""

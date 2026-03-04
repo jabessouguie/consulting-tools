@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}Comex & Stratégie - Market of Skills{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div>
+            <h1>Comex & Stratégie</h1>
+            <p class="subtitle">Vision macro et pilotage stratégique des compétences</p>
+        </div>
+        <a href="/skills-market" class="btn btn-secondary">Retour au Market</a>
+    </div>
+</div>
+
+<!-- View Switcher -->
+<div class="tabs-container" style="margin-bottom: 2rem;">
+    <div class="tabs" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--gris-clair);">
+        <button class="tab-btn active" onclick="switchView('macro')">Vision Macro (Entreprise)</button>
+        <button class="tab-btn" onclick="switchView('micro')">Vue Micro (Collaborateur)</button>
+    </div>
+</div>
+
+<!-- MACRO VIEW -->
+<div id="view-macro" class="comex-view">
+    <!-- KPI Row -->
+    <div class="kpi-grid"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card kpi-card">
+            <div class="card-content">
+                <span class="kpi-label">Consultants</span>
+                <h2 id="kpi-consultants" class="kpi-value">--</h2>
+            </div>
+        </div>
+        <div class="card kpi-card">
+            <div class="card-content">
+                <span class="kpi-label">Certifications Actives</span>
+                <h2 id="kpi-certs" class="kpi-value">--</h2>
+            </div>
+        </div>
+        <div class="card kpi-card">
+            <div class="card-content">
+                <span class="kpi-label">Compétences Uniques</span>
+                <h2 id="kpi-skills" class="kpi-value">--</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card">
+            <div class="card-content">
+                <h3>Cartographie des Expertises</h3>
+                <div style="height: 350px; position: relative;">
+                    <canvas id="chart-radar"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-content">
+                <h3>Top 10 Compétences Fortes</h3>
+                <div style="height: 350px; position: relative;">
+                    <canvas id="chart-bar-skills"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Insights Row -->
+    <div class="card">
+        <div class="card-content">
+            <h3>Synthèse IA : Tendances de Formation</h3>
+            <p style="color: var(--gris-moyen); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Agrégation automatique des axes d'amélioration identifiés par l'IA sur l'ensemble des profils.
+            </p>
+            <div id="ai-trends-list"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                <!-- Filled via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MICRO VIEW -->
+<div id="view-micro" class="comex-view" style="display: none;">
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-content">
+            <h3>Sélectionner un collaborateur</h3>
+            <div style="max-width: 400px; margin-top: 1rem;">
+                <select id="consultant-select" class="form-input" onchange="loadConsultantMicro(this.value)">
+                    <option value="">-- Choisir un consultant --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="micro-content" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem;">
+            <!-- Left col: Profile & AI Progress -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="card">
+                    <div class="card-content" style="text-align: center;">
+                        <div id="micro-photo"
+                            style="width: 100px; height: 100px; border-radius: 50%; background: var(--gris-clair); margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--gris-moyen); overflow: hidden;">
+                            <img id="micro-photo-img" src=""
+                                style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                            <span id="micro-photo-initials">--</span>
+                        </div>
+                        <h2 id="micro-name" style="margin: 0;">--</h2>
+                        <p id="micro-title" style="color: var(--corail); font-weight: 500;">--</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-content">
+                        <h3>Progression IA</h3>
+                        <div id="micro-ai-status">
+                            <!-- Progress of AI suggested improvements -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right col: Timeline -->
+            <div class="card">
+                <div class="card-content">
+                    <h3>Timeline d'évolution</h3>
+                    <div id="timeline-container" class="timeline"
+                        style="margin-top: 2rem; position: relative; padding-left: 2rem; border-left: 2px solid var(--gris-clair);">
+                        <!-- Filled via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .kpi-label {
+        font-size: 0.85rem;
+        color: var(--gris-moyen);
+        text-transform: uppercase;
+        letter-spacing: 0.05rem;
+    }
+
+    .kpi-value {
+        font-size: 2.5rem;
+        margin: 0.5rem 0 0 0;
+        color: var(--corail);
+    }
+
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        color: var(--gris-moyen);
+        font-weight: 500;
+        font-family: inherit;
+        transition: color 0.2s, border-bottom 0.2s;
+    }
+
+    .tab-btn.active {
+        color: var(--corail);
+        border-bottom: 2px solid var(--corail);
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2.5rem;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -2.35rem;
+        top: 0.25rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+        background: var(--corail);
+        border: 4px solid white;
+        box-shadow: 0 0 0 2px var(--corail);
+    }
+
+    .timeline-date {
+        font-size: 0.8rem;
+        color: var(--gris-moyen);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-type {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        background: var(--gris-clair);
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+
+    .type-mission {
+        background: var(--rose-poudre);
+        color: var(--terracotta);
+    }
+
+    .type-certification {
+        background: #ebf5fb;
+        color: #3498db;
+    }
+
+    .trend-card {
+        background: var(--gris-ultra-clair, #f9f9f9);
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid var(--corail);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .trend-count {
+        background: white;
+        padding: 0.25rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let radarChart, barChart;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadGlobalStats();
+        await loadConsultantsList();
+    });
+
+    function switchView(view) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+
+        document.getElementById('view-macro').style.display = view === 'macro' ? 'block' : 'none';
+        document.getElementById('view-micro').style.display = view === 'micro' ? 'block' : 'none';
+
+        if (view === 'macro') loadGlobalStats();
+    }
+
+    async function loadGlobalStats() {
+        try {
+            const res = await fetch('/api/skills-market/stats/global');
+            const data = await res.json();
+
+            document.getElementById('kpi-consultants').textContent = data.total_consultants;
+            document.getElementById('kpi-certs').textContent = data.total_certifications;
+
+            // Populate Trends
+            const trendsList = document.getElementById('ai-trends-list');
+            trendsList.innerHTML = data.improvement_trends.map(([name, count]) => `
+            <div class="trend-card">
+                <span>${name}</span>
+                <span class="trend-count">${count} profils</span>
+            </div>
+        `).join('');
+
+            // Charts
+            initRadarChart(data.category_distribution);
+            initBarChart(data.top_skills);
+
+            // Count unique skills
+            document.getElementById('kpi-skills').textContent = data.top_skills.length + "+";
+
+        } catch (e) {
+            console.error('Erreur chargement stats:', e);
+        }
+    }
+
+    function initRadarChart(dist) {
+        const ctx = document.getElementById('chart-radar').getContext('2d');
+        if (radarChart) radarChart.destroy();
+
+        radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: Object.keys(dist),
+                datasets: [{
+                    label: 'Répartition des Expertises',
+                    data: Object.values(dist),
+                    backgroundColor: 'rgba(255, 107, 88, 0.2)',
+                    borderColor: 'rgb(255, 107, 88)',
+                    pointBackgroundColor: 'rgb(255, 107, 88)',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function initBarChart(skills) {
+        const ctx = document.getElementById('chart-bar-skills').getContext('2d');
+        if (barChart) barChart.destroy();
+
+        // Group small values? Not for top 10
+        const top10 = skills.slice(0, 10);
+
+        barChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: top10.map(s => s.name),
+                datasets: [{
+                    label: 'Nombre de consultants',
+                    data: top10.map(s => s.count),
+                    backgroundColor: 'rgba(255, 107, 88, 0.8)',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+    }
+
+    async function loadConsultantsList() {
+        try {
+            const res = await fetch('/api/skills-market/consultants');
+            const data = await res.json();
+            const select = document.getElementById('consultant-select');
+
+            data.consultants.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            console.error('Erreur liste consultants:', e);
+        }
+    }
+
+    async function loadConsultantMicro(id) {
+        if (!id) {
+            document.getElementById('micro-content').style.display = 'none';
+            return;
+        }
+
+        try {
+            const [resDetail, resEval] = await Promise.all([
+                fetch(`/api/skills-market/consultants/${id}`),
+                fetch(`/api/skills-market/consultants/${id}/evolution`)
+            ]);
+
+            const detail = (await resDetail.json()).consultant;
+            const evolution = (await resEval.json()).timeline;
+
+            document.getElementById('micro-content').style.display = 'block';
+            document.getElementById('micro-name').textContent = detail.name;
+            document.getElementById('micro-title').textContent = detail.title || 'Consultant';
+
+            // Photo / Initials
+            if (detail.photo_url) {
+                document.getElementById('micro-photo-img').src = detail.photo_url;
+                document.getElementById('micro-photo-img').style.display = 'block';
+                document.getElementById('micro-photo-initials').style.display = 'none';
+            } else {
+                document.getElementById('micro-photo-img').style.display = 'none';
+                document.getElementById('micro-photo-initials').style.display = 'block';
+                document.getElementById('micro-photo-initials').textContent = detail.name.split(' ').map(n => n[0]).join('');
+            }
+
+            // AI Status
+            const aiStatus = document.getElementById('micro-ai-status');
+            aiStatus.innerHTML = detail.improvement_areas.map(area => `
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                    <span>${area}</span>
+                </div>
+                <div class="progress-bar" style="height: 6px;"><div class="progress-fill" style="width: 100%; background: #fff3e0;"></div></div>
+            </div>
+        `).join('') || '<p style="color: var(--gris-moyen);">Pas d\'analyse disponible.</p>';
+
+            // Timeline
+            const timeline = document.getElementById('timeline-container');
+            timeline.innerHTML = evolution.map(item => `
+            <div class="timeline-item">
+                <div class="timeline-date">${formatDate(item.date)}</div>
+                <div class="timeline-type type-${item.type}">${item.type}</div>
+                <div class="timeline-title">${item.title}</div>
+            </div>
+        `).join('') || '<p style="color: var(--gris-moyen);">Historique vide.</p>';
+
+        } catch (e) {
+            console.error('Erreur chargement micro:', e);
+        }
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'Date inconnue';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        } catch (e) { return dateStr; }
+    }
+</script>
+{% endblock %}
