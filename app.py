@@ -9002,6 +9002,125 @@ async def api_tenderscout_notify(request: Request):
         return JSONResponse({"detail": safe_error_message(exc)}, status_code=500)
 
 
+# === MICROSOFT 365 ===
+
+@app.post("/api/microsoft/test-connection")
+async def test_microsoft_connection(request: Request):
+    """Verifie la connexion Microsoft Graph API avec les credentials configures"""
+    try:
+        from utils.microsoft_client import MicrosoftAuthError, MicrosoftAPIError, MicrosoftClient
+        settings = ThemeManager.load()
+        client = MicrosoftClient(
+            tenant_id=settings.get("microsoft_tenant_id", ""),
+            client_id=settings.get("microsoft_client_id", ""),
+            client_secret=settings.get("microsoft_client_secret", ""),
+        )
+        client.test_connection()
+        return {"ok": True}
+    except (MicrosoftAuthError, MicrosoftAPIError) as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=422)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": safe_error_message(exc)}, status_code=500)
+
+
+@app.post("/api/teams/analyze-meeting")
+async def teams_analyze_meeting(request: Request):
+    """Analyse une reunion Teams via la transcription native Graph API"""
+    try:
+        data = await request.json()
+        meeting_id = sanitize_text_input(data.get("meeting_id", ""))
+        if not meeting_id:
+            return JSONResponse({"error": "meeting_id requis"}, status_code=400)
+
+        from agents.teams_meeting_agent import TeamsMeetingAgent
+        from utils.microsoft_client import MicrosoftAuthError, MicrosoftAPIError
+
+        settings = ThemeManager.load()
+        agent = TeamsMeetingAgent(
+            api_key=os.getenv("GEMINI_API_KEY", ""),
+            tenant_id=settings.get("microsoft_tenant_id", ""),
+            client_id=settings.get("microsoft_client_id", ""),
+            client_secret=settings.get("microsoft_client_secret", ""),
+        )
+        result = agent.analyze_meeting(meeting_id)
+        return result
+    except (MicrosoftAuthError, MicrosoftAPIError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=422)
+    except Exception as exc:
+        return JSONResponse({"error": safe_error_message(exc)}, status_code=500)
+
+
+@app.post("/api/meeting-capture/export-word")
+async def meeting_capture_export_word(request: Request):
+    """Exporte un compte rendu de reunion au format Word (.docx)"""
+    try:
+        data = await request.json()
+        minutes = data.get("minutes", "")
+        title = sanitize_text_input(data.get("title", "Compte Rendu de Reunion"))
+        if not minutes:
+            return JSONResponse({"error": "minutes requis"}, status_code=400)
+
+        from utils.word_exporter import export_to_word
+
+        output_dir = BASE_DIR / "output"
+        output_dir.mkdir(exist_ok=True)
+        from datetime import datetime as _dt
+        ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+        output_path = str(output_dir / ("meeting_minutes_" + ts + ".docx"))
+
+        lines = minutes.split("\n")
+        sections = []
+        current_heading = ""
+        current_body_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("## "):
+                if current_heading or current_body_lines:
+                    sections.append({"heading": current_heading, "body": "\n".join(current_body_lines)})
+                current_heading = stripped[3:]
+                current_body_lines = []
+            elif stripped.startswith("# "):
+                pass  # titre principal géré séparément
+            else:
+                current_body_lines.append(stripped)
+        if current_heading or current_body_lines:
+            sections.append({"heading": current_heading, "body": "\n".join(current_body_lines)})
+
+        content = {"title": title, "sections": sections}
+        path = export_to_word(content, output_path, title=title)
+        return FileResponse(path, filename="compte_rendu.docx",
+                            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    except Exception as exc:
+        return JSONResponse({"error": safe_error_message(exc)}, status_code=500)
+
+
+@app.post("/api/proposal/export-word")
+async def proposal_export_word(request: Request):
+    """Exporte une proposition commerciale au format Word (.docx)"""
+    try:
+        data = await request.json()
+        content_md = data.get("content", "")
+        title = sanitize_text_input(data.get("title", "Proposition Commerciale"))
+        if not content_md:
+            return JSONResponse({"error": "content requis"}, status_code=400)
+
+        from utils.word_exporter import export_to_word
+
+        output_dir = BASE_DIR / "output"
+        output_dir.mkdir(exist_ok=True)
+        from datetime import datetime as _dt
+        ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+        output_path = str(output_dir / ("proposal_" + ts + ".docx"))
+
+        sections = [{"heading": "", "body": content_md, "level": 1}]
+        content_dict = {"title": title, "sections": sections}
+        path = export_to_word(content_dict, output_path, title=title)
+        return FileResponse(path, filename="proposition.docx",
+                            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    except Exception as exc:
+        return JSONResponse({"error": safe_error_message(exc)}, status_code=500)
+
+
 # === MAIN ===
 
 if __name__ == "__main__":
