@@ -382,7 +382,7 @@ stats = library.get_statistics()
 
 ### Ajouter des images externes
 
-1. **Placer vos images** dans `/consulting-tools/data/images/`
+1. **Placer vos images** dans `/Consulting Tools-agents/data/images/`
 2. **Référencer dans la génération** :
 
 ```python

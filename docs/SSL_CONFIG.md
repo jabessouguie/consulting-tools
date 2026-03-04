@@ -64,7 +64,7 @@ Let's Encrypt expire après 90 jours. Configurer le renouvellement auto :
 sudo certbot renew --dry-run
 
 # Ajouter au crontab (renouvelle tous les jours à 2h du matin)
-0 2 * * * certbot renew --quiet && systemctl restart consulting-tools
+0 2 * * * certbot renew --quiet && systemctl restart Consulting Tools-agents
 ```
 
 ---
@@ -78,7 +78,7 @@ sudo certbot renew --dry-run
 sudo apt-get install nginx
 ```
 
-2. Configuration Nginx (`/etc/nginx/sites-available/consulting-tools`) :
+2. Configuration Nginx (`/etc/nginx/sites-available/Consulting Tools`) :
 
 ```nginx
 server {
@@ -126,7 +126,7 @@ server {
 
 3. Activer et redémarrer :
 ```bash
-sudo ln -s /etc/nginx/sites-available/consulting-tools /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/Consulting Tools /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```

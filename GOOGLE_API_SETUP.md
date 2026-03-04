@@ -73,7 +73,7 @@ Si c'est votre première fois:
 La première fois que vous utilisez un agent, vous devrez vous authentifier:
 
 ```bash
-# Depuis le dossier consulting-tools
+# Depuis le dossier Consulting Tools-agents
 python agents/proposal_generator.py data/examples/appel_offre_example.txt
 ```
 

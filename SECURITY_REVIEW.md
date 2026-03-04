@@ -47,12 +47,12 @@ except (ValueError, SyntaxError):
 
 **Problème** :
 ```bash
-AUTH_PASSWORD=consultingtools2026  # ❌ Password public dans le repo Git
+AUTH_PASSWORD=Consulting Tools2026  # ❌ Password public dans le repo Git
 ```
 
 **Impact** :
 - Le password est dans le repo public GitHub
-- N'importe qui peut se connecter avec `admin / consultingtools2026`
+- N'importe qui peut se connecter avec `admin / Consulting Tools2026`
 - Faille d'authentification critique
 
 **FIX** :

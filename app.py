@@ -5351,7 +5351,7 @@ async def api_slide_editor_parse_document(
             # Pour PPTX: sauvegarder temporairement le fichier et retourner le
             # chemin
             import tempfile
-            temp_dir = Path(tempfile.gettempdir()) / "consulting-tools_uploads"
+            temp_dir = Path(tempfile.gettempdir()) / "Consulting Tools_uploads"
             temp_dir.mkdir(exist_ok=True)
 
             temp_path = temp_dir / \
