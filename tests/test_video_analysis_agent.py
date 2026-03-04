@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 os.environ.setdefault("GEMINI_API_KEY", "test-gemini-key")
-os.environ.setdefault("LLM_PROVIDER", "gemini")
 
 from agents.video_analysis_agent import (
     GeminiVideoAnalyzer,
