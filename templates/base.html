@@ -12,6 +12,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/ui-enhancements.css">
+    <link rel="stylesheet" href="/theme.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
@@ -37,6 +38,8 @@
                     class="nav-link {% if active == 'meeting-capture' %}active{% endif %}">Meeting Capture</a>
                 <a href="/tenderscout"
                     class="nav-link {% if active == 'tenderscout' %}active{% endif %}">TenderScout</a>
+                <a href="/settings"
+                    class="nav-link {% if active == 'settings' %}active{% endif %}">Parametres</a>
             </div>
             <div class="nav-actions">
                 <select id="model-selector" class="model-selector" onchange="changeGeminiModel(this.value)"

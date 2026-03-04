@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} - Paramètres{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div class="page-header" style="margin-bottom: 2rem;">
+        <h1 class="font-chakra" style="font-size: 2rem; font-weight: 700; color: var(--noir-profond);">
+            ⚙️ Paramètres
+        </h1>
+        <p style="color: var(--gris-moyen); margin-top: 0.5rem;">
+            Configurez l'identité, la charte graphique, le fournisseur IA et les intégrations.
+        </p>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="save-toast" style="display:none; position:fixed; top:1.5rem; right:1.5rem; z-index:1000;
+         background:#22c55e; color:#fff; padding:0.8rem 1.5rem; border-radius:8px; font-weight:600;
+         box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+        ✓ Paramètres sauvegardés
+    </div>
+
+    <form id="settings-form">
+
+        <!-- Section 1: Identité -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <h2 class="font-chakra" style="font-size: 1.25rem; font-weight: 600;">🏷️ Identité de l'application</h2>
+            </div>
+            <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Nom de l'application</label>
+                    <input type="text" id="app_name" name="app_name" class="form-control"
+                           placeholder="Consulting Tools" value="{{ settings.app_name }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tagline</label>
+                    <input type="text" id="app_tagline" name="app_tagline" class="form-control"
+                           placeholder="Agents IA" value="{{ settings.app_tagline }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Charte graphique -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <h2 class="font-chakra" style="font-size: 1.25rem; font-weight: 600;">🎨 Charte graphique</h2>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">Couleur primaire</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="primary_color" name="primary_color" class="form-control"
+                                   style="width: 3rem; height: 2.5rem; padding: 0.2rem; cursor: pointer;"
+                                   value="{{ settings.theme.primary_color }}">
+                            <input type="text" id="primary_color_hex" class="form-control"
+                                   style="flex: 1;" value="{{ settings.theme.primary_color }}"
+                                   oninput="syncColorPicker('primary_color', this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Couleur secondaire</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="secondary_color" name="secondary_color" class="form-control"
+                                   style="width: 3rem; height: 2.5rem; padding: 0.2rem; cursor: pointer;"
+                                   value="{{ settings.theme.secondary_color }}">
+                            <input type="text" id="secondary_color_hex" class="form-control"
+                                   style="flex: 1;" value="{{ settings.theme.secondary_color }}"
+                                   oninput="syncColorPicker('secondary_color', this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Couleur d'arrière-plan</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="background_color" name="background_color" class="form-control"
+                                   style="width: 3rem; height: 2.5rem; padding: 0.2rem; cursor: pointer;"
+                                   value="{{ settings.theme.background_color }}">
+                            <input type="text" id="background_color_hex" class="form-control"
+                                   style="flex: 1;" value="{{ settings.theme.background_color }}"
+                                   oninput="syncColorPicker('background_color', this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Couleur du texte</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="text_color" name="text_color" class="form-control"
+                                   style="width: 3rem; height: 2.5rem; padding: 0.2rem; cursor: pointer;"
+                                   value="{{ settings.theme.text_color }}">
+                            <input type="text" id="text_color_hex" class="form-control"
+                                   style="flex: 1;" value="{{ settings.theme.text_color }}"
+                                   oninput="syncColorPicker('text_color', this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Couleur d'accentuation</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="accent_color" name="accent_color" class="form-control"
+                                   style="width: 3rem; height: 2.5rem; padding: 0.2rem; cursor: pointer;"
+                                   value="{{ settings.theme.accent_color }}">
+                            <input type="text" id="accent_color_hex" class="form-control"
+                                   style="flex: 1;" value="{{ settings.theme.accent_color }}"
+                                   oninput="syncColorPicker('accent_color', this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">Police des titres</label>
+                        <select id="title_font" name="title_font" class="form-control">
+                            {% for font in ["Chakra Petch", "Inter", "Roboto", "Montserrat", "Poppins", "Raleway", "Lato", "Open Sans"] %}
+                            <option value="{{ font }}" {% if settings.theme.title_font == font %}selected{% endif %}>{{ font }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Police du corps</label>
+                        <select id="body_font" name="body_font" class="form-control">
+                            {% for font in ["Inter", "Chakra Petch", "Roboto", "Montserrat", "Poppins", "Raleway", "Lato", "Open Sans"] %}
+                            <option value="{{ font }}" {% if settings.theme.body_font == font %}selected{% endif %}>{{ font }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Import depuis PPTX/PDF -->
+                <div style="border-top: 1px solid var(--gris-clair, #eee); padding-top: 1rem;">
+                    <h3 class="font-chakra" style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--gris-moyen);">
+                        Import automatique depuis un fichier
+                    </h3>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label class="form-label">Fichier PPTX ou PDF</label>
+                            <input type="file" id="theme-import-file" accept=".pptx,.pdf" class="form-control">
+                        </div>
+                        <button type="button" onclick="importTheme()"
+                                class="btn btn-secondary">
+                            Extraire les couleurs
+                        </button>
+                    </div>
+                    <div id="import-result" style="display:none; margin-top:0.75rem; padding:0.75rem;
+                         background:var(--rose-clair,#FBF0F4); border-radius:8px; font-size:0.85rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Fournisseur IA -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <h2 class="font-chakra" style="font-size: 1.25rem; font-weight: 600;">🤖 Fournisseur IA</h2>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Provider actif</label>
+                        <select id="llm_provider" name="llm_provider" class="form-control"
+                                onchange="updateModelOptions()">
+                            <option value="gemini" {% if settings.llm_provider == 'gemini' %}selected{% endif %}>Gemini (Google)</option>
+                            <option value="openai" {% if settings.llm_provider == 'openai' %}selected{% endif %}>OpenAI (GPT)</option>
+                            <option value="anthropic" {% if settings.llm_provider == 'anthropic' %}selected{% endif %}>Anthropic (Claude)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Modèle Gemini</label>
+                        <input type="text" id="gemini_model" name="gemini_model" class="form-control"
+                               value="{{ settings.gemini_model }}" placeholder="gemini-2.5-flash">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Modèle OpenAI</label>
+                        <input type="text" id="openai_model" name="openai_model" class="form-control"
+                               value="{{ settings.openai_model }}" placeholder="gpt-4o">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Modèle Claude</label>
+                        <input type="text" id="claude_model" name="claude_model" class="form-control"
+                               value="{{ settings.claude_model }}" placeholder="claude-sonnet-4-6">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Microsoft 365 -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <h2 class="font-chakra" style="font-size: 1.25rem; font-weight: 600;">🏢 Microsoft 365</h2>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Tenant ID</label>
+                        <input type="text" id="microsoft_tenant_id" name="microsoft_tenant_id" class="form-control"
+                               value="{{ settings.microsoft_tenant_id }}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Client ID</label>
+                        <input type="text" id="microsoft_client_id" name="microsoft_client_id" class="form-control"
+                               value="{{ settings.microsoft_client_id }}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Client Secret</label>
+                        <input type="password" id="microsoft_client_secret" name="microsoft_client_secret" class="form-control"
+                               value="{{ settings.microsoft_client_secret }}" placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Teams Channel ID</label>
+                        <input type="text" id="teams_channel_id" name="teams_channel_id" class="form-control"
+                               value="{{ settings.teams_channel_id }}" placeholder="19:xxxxx@thread.tacv2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Dossier OneDrive</label>
+                        <input type="text" id="onedrive_folder" name="onedrive_folder" class="form-control"
+                               value="{{ settings.onedrive_folder }}" placeholder="Documents/Consulting">
+                    </div>
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    <button type="button" onclick="testMicrosoftConnection()" class="btn btn-secondary btn-sm">
+                        Tester la connexion Microsoft
+                    </button>
+                    <span id="ms-test-result" style="margin-left: 0.75rem; font-size: 0.85rem;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+            <button type="button" onclick="resetDefaults()" class="btn btn-secondary">
+                Réinitialiser
+            </button>
+            <button type="submit" class="btn btn-primary">
+                💾 Sauvegarder les paramètres
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+// Sync color picker ↔ hex input
+function syncColorPicker(name, value) {
+    const picker = document.getElementById(name);
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        picker.value = value;
+    }
+}
+
+document.querySelectorAll('input[type="color"]').forEach(picker => {
+    picker.addEventListener('input', function() {
+        const hexInput = document.getElementById(this.id + '_hex');
+        if (hexInput) hexInput.value = this.value;
+    });
+});
+
+// Submit form
+document.getElementById('settings-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    await saveSettings();
+});
+
+async function saveSettings() {
+    const form = document.getElementById('settings-form');
+    const data = {
+        app_name: document.getElementById('app_name').value,
+        app_tagline: document.getElementById('app_tagline').value,
+        llm_provider: document.getElementById('llm_provider').value,
+        gemini_model: document.getElementById('gemini_model').value,
+        openai_model: document.getElementById('openai_model').value,
+        claude_model: document.getElementById('claude_model').value,
+        microsoft_tenant_id: document.getElementById('microsoft_tenant_id').value,
+        microsoft_client_id: document.getElementById('microsoft_client_id').value,
+        microsoft_client_secret: document.getElementById('microsoft_client_secret').value,
+        teams_channel_id: document.getElementById('teams_channel_id').value,
+        onedrive_folder: document.getElementById('onedrive_folder').value,
+        theme: {
+            primary_color: document.getElementById('primary_color').value,
+            secondary_color: document.getElementById('secondary_color').value,
+            background_color: document.getElementById('background_color').value,
+            text_color: document.getElementById('text_color').value,
+            accent_color: document.getElementById('accent_color').value,
+            title_font: document.getElementById('title_font').value,
+            body_font: document.getElementById('body_font').value,
+        }
+    };
+
+    try {
+        const resp = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (resp.ok) {
+            showToast();
+            // Reload theme CSS
+            const link = document.querySelector('link[href="/theme.css"]');
+            if (link) {
+                link.href = '/theme.css?t=' + Date.now();
+            }
+        }
+    } catch (err) {
+        alert('Erreur lors de la sauvegarde : ' + err.message);
+    }
+}
+
+function showToast() {
+    const toast = document.getElementById('save-toast');
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+
+async function importTheme() {
+    const fileInput = document.getElementById('theme-import-file');
+    if (!fileInput.files.length) {
+        alert('Veuillez sélectionner un fichier PPTX ou PDF.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const resp = await fetch('/api/settings/theme-import', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await resp.json();
+
+        if (result.success && result.theme) {
+            const theme = result.theme;
+            const resultDiv = document.getElementById('import-result');
+            let html = '<strong>Couleurs extraites :</strong> ';
+
+            if (theme.primary_color) {
+                document.getElementById('primary_color').value = theme.primary_color;
+                document.getElementById('primary_color_hex').value = theme.primary_color;
+                html += '<span style="background:' + theme.primary_color + '; color:#fff; padding:2px 8px; border-radius:4px;">' + theme.primary_color + '</span> ';
+            }
+            if (theme.accent_color) {
+                document.getElementById('accent_color').value = theme.accent_color;
+                document.getElementById('accent_color_hex').value = theme.accent_color;
+                html += '<span style="background:' + theme.accent_color + '; color:#fff; padding:2px 8px; border-radius:4px;">' + theme.accent_color + '</span> ';
+            }
+            if (theme.title_font) {
+                document.getElementById('title_font').value = theme.title_font;
+                html += '| Police titre: <strong>' + theme.title_font + '</strong>';
+            }
+
+            resultDiv.innerHTML = html;
+            resultDiv.style.display = 'block';
+        } else {
+            document.getElementById('import-result').textContent = result.error || 'Aucune couleur extraite.';
+            document.getElementById('import-result').style.display = 'block';
+        }
+    } catch (err) {
+        alert('Erreur import : ' + err.message);
+    }
+}
+
+async function testMicrosoftConnection() {
+    const resultSpan = document.getElementById('ms-test-result');
+    resultSpan.textContent = '⏳ Test en cours...';
+    try {
+        const resp = await fetch('/api/microsoft/test-connection', { method: 'POST' });
+        const data = await resp.json();
+        if (data.ok) {
+            resultSpan.textContent = '✅ Connexion réussie';
+            resultSpan.style.color = '#22c55e';
+        } else {
+            resultSpan.textContent = '❌ ' + (data.error || 'Échec');
+            resultSpan.style.color = '#ef4444';
+        }
+    } catch (err) {
+        resultSpan.textContent = '❌ ' + err.message;
+        resultSpan.style.color = '#ef4444';
+    }
+}
+
+async function resetDefaults() {
+    if (!confirm('Réinitialiser tous les paramètres aux valeurs par défaut ?')) return;
+    try {
+        const resp = await fetch('/api/settings');
+        // Just reload page
+        window.location.reload();
+    } catch (err) {}
+}
+</script>
+{% endblock %}
