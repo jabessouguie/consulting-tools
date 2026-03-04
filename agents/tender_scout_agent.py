@@ -69,7 +69,7 @@ class TenderScoutAgent:
     """Scrape BOAMP et Francemarches, analyse les AOs avec Gemini."""
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.llm = LLMClient(api_key=api_key, model=model, provider="gemini")
+        self.llm = LLMClient(api_key=api_key, model=model)
 
     # ------------------------------------------------------------------
     # Scraping BOAMP
