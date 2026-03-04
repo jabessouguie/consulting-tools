@@ -45,6 +45,7 @@ from agents.meeting_capture_agent import (
     VideoProcessingError,
 )
 from agents.tender_scout_agent import AnalysisError, ScrapingError, TenderScoutAgent
+from agents.video_analysis_agent import UnsupportedFeatureError, get_video_analyzer
 from agents.elearning_agent import ElearningAgent
 from agents.linkedin_commenter import LinkedInCommenterAgent
 from agents.linkedin_monitor import LinkedInMonitorAgent
@@ -8595,6 +8596,15 @@ def _run_meeting_capture(job_id: str):
 
     try:
         api_key = os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
+
+        # Vérifier que le provider supporte l'analyse vidéo
+        analyzer = get_video_analyzer(api_key=api_key)
+        if not analyzer.supports_video():
+            raise UnsupportedFeatureError(
+                "L'analyse vidéo nécessite Gemini. "
+                "Changez le fournisseur IA dans /settings."
+            )
+
         agent = MeetingCaptureAgent(api_key=api_key, model=gemini_model)
 
         # Étape 1 : Upload
@@ -8617,6 +8627,9 @@ def _run_meeting_capture(job_id: str):
         job["result"] = result
         job["status"] = "done"
 
+    except UnsupportedFeatureError as exc:
+        job["status"] = "error"
+        job["error"] = str(exc)
     except (MCAPIKeyError, VideoProcessingError, TimeoutError) as exc:
         job["status"] = "error"
         job["error"] = safe_error_message(exc)

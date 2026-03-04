@@ -21,8 +21,7 @@ class TestHtmlSlideGenerator:
         from agents.html_slide_generator import HtmlSlideGeneratorAgent
 
         agent = HtmlSlideGeneratorAgent()
-        assert agent.llm.provider == "gemini"
-        assert agent.llm.model == "gemini-3.1-pro-preview"
+        assert agent.llm is not None
         assert agent.base_dir.exists()
 
     def test_extract_design_system(self):

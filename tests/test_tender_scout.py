@@ -343,7 +343,7 @@ class TestTenderScoutAgent:
             agent = TenderScoutAgent(api_key="mykey", model="gemini-flash")
 
         MockLLM.assert_called_once_with(
-            api_key="mykey", model="gemini-flash", provider="gemini"
+            api_key="mykey", model="gemini-flash"
         )
         assert agent.llm is MockLLM.return_value
 

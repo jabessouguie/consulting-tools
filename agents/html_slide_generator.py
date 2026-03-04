@@ -26,7 +26,7 @@ class HtmlSlideGeneratorAgent:
 
     _design_cache = None
 
-    def __init__(self, model="gemini-3.1-pro-preview", provider="gemini"):
+    def __init__(self, model=None, provider=None):
         self.llm = LLMClient(model=model, provider=provider, max_tokens=65536)
         self.base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.slides_exemple_path = self.base_dir / "slides_exemple" / "Module 4.pptx"
