@@ -7,6 +7,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import threading
 import uuid
 from datetime import datetime
@@ -21,6 +22,7 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     RedirectResponse,
+    Response,
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
@@ -57,6 +59,7 @@ from utils.auth import authenticate_user, get_current_user, get_session_secret
 from utils.consultant_db import ConsultantDatabase
 from utils.elearning_db import ElearningDatabase
 from utils.tender_db import TenderDatabase
+from utils.theme_manager import ThemeManager
 from utils.validation import (
     sanitize_error_message,
     sanitize_filename,
@@ -515,6 +518,99 @@ async def set_model_settings(request: Request):
     SELECTED_GEMINI_MODEL = model
     save_settings()
     return {"success": True, "model": model}
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """Page de configuration de l'application"""
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "active": "settings",
+        "consultant_name": CONSULTANT_NAME,
+        "settings": ThemeManager.load(),
+    })
+
+
+@app.get("/api/settings")
+async def get_settings():
+    """Retourne les settings complets de l'application"""
+    return ThemeManager.load()
+
+
+@app.post("/api/settings")
+async def save_app_settings(request: Request):
+    """Sauvegarde les settings de l'application"""
+    try:
+        data = await request.json()
+        # Valider les cles autorisees
+        allowed_keys = {
+            "app_name", "app_tagline", "llm_provider",
+            "gemini_model", "openai_model", "claude_model",
+            "microsoft_tenant_id", "microsoft_client_id", "microsoft_client_secret",
+            "teams_channel_id", "onedrive_folder", "theme",
+        }
+        filtered = {k: v for k, v in data.items() if k in allowed_keys}
+        if "theme" in filtered and not isinstance(filtered["theme"], dict):
+            return JSONResponse({"error": "theme doit etre un objet"}, status_code=400)
+        current = ThemeManager.load()
+        current.update(filtered)
+        if "theme" in filtered:
+            current["theme"] = dict(ThemeManager.load().get("theme", {}))
+            current["theme"].update(filtered["theme"])
+        ThemeManager.save(current)
+        return {"success": True}
+    except Exception as e:
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
+
+
+@app.post("/api/settings/theme-import")
+async def import_theme(file: UploadFile = File(...)):
+    """Importe une charte graphique depuis un fichier PPTX ou PDF"""
+    try:
+        content = await file.read()
+        filename = sanitize_filename(file.filename or "upload")
+        ext = Path(filename).suffix.lower()
+        if ext not in (".pptx", ".pdf"):
+            return JSONResponse(
+                {"error": "Seuls les fichiers .pptx et .pdf sont acceptes"},
+                status_code=400,
+            )
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False, mode="wb") as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        try:
+            if ext == ".pptx":
+                theme = ThemeManager.import_from_pptx(tmp_path)
+            else:
+                theme = ThemeManager.import_from_pdf(tmp_path)
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+        if not theme:
+            return JSONResponse(
+                {"error": "Impossible d'extraire les couleurs du fichier"},
+                status_code=422,
+            )
+        return {"success": True, "theme": theme}
+    except Exception as e:
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
+
+
+@app.get("/theme.css")
+async def theme_css():
+    """CSS dynamique generant les variables de couleur depuis les settings"""
+    css_vars = ThemeManager.get_css_vars()
+    css = (
+        ":root {\n"
+        "    --corail: " + css_vars["primary_color"] + ";\n"
+        "    --rose-poudre: " + css_vars["secondary_color"] + ";\n"
+        "    --noir-profond: " + css_vars["background_color"] + ";\n"
+        "    --gris-moyen: " + css_vars["text_color"] + ";\n"
+        "    --anthracite: " + css_vars["accent_color"] + ";\n"
+        "    --body-font: '" + css_vars["body_font"] + "', sans-serif;\n"
+        "    --title-font: '" + css_vars["title_font"] + "', sans-serif;\n"
+        "}\n"
+    )
+    return Response(content=css, media_type="text/css")
 
 
 # === PAGE ROUTES ===
@@ -8907,7 +9003,7 @@ if __name__ == "__main__":
     port = 8443 if use_ssl else 8000
 
     print(f"\n{'=' * 50}")
-    print("  Consulting Tools Agents - Interface Web")
+    print("  " + os.getenv("APP_NAME", "Consulting Tools") + " - Interface Web")
     print(f"  {protocol}://localhost:{port}")
     if use_ssl:
         print("  🔒 HTTPS activé (certificat auto-signé)")
