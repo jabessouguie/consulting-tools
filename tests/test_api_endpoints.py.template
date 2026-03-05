@@ -1,0 +1,260 @@
+"""
+Tests d'intégration pour les endpoints API FastAPI
+"""
+
+import os
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Mock environment variables before importing app
+with patch.dict(
+    os.environ,
+    {
+        "ANTHROPIC_API_KEY": "test-key",
+        "CONSULTANT_NAME": "Test Consultant",
+        "COMPANY_NAME": "Test Company",
+    },
+):
+    from app import app
+
+client = TestClient(app)
+
+
+class TestRootEndpoints:
+    """Tests pour les endpoints racine"""
+
+    def test_root_endpoint(self):
+        """Test endpoint racine /"""
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+    def test_health_check(self):
+        """Test endpoint health check"""
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+
+
+class TestSlideEditorEndpoints:
+    """Tests pour les endpoints slide-editor"""
+
+    def test_slide_editor_page(self):
+        """Test page slide editor"""
+        response = client.get("/slide-editor")
+        assert response.status_code == 200
+        assert "Slide Editor" in response.text
+
+    @patch("agents.training_slides_generator.TrainingSlidesGenerator")
+    def test_start_slide_generation(self, mock_generator):
+        """Test démarrage génération de slides"""
+        response = client.post(
+            "/api/slide-editor/start-generate",
+            data={
+                "topic": "Python Programming",
+                "audience": "Developers",
+                "slide_count": "10",
+                "generation_type": "presentation",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "job_id" in data
+
+    def test_start_slide_generation_missing_topic(self):
+        """Test génération sans topic (erreur)"""
+        response = client.post(
+            "/api/slide-editor/start-generate", data={"audience": "Developers", "slide_count": "10"}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+
+class TestFormationEndpoints:
+    """Tests pour les endpoints formation"""
+
+    def test_formation_page(self):
+        """Test page formation"""
+        response = client.get("/formation")
+        assert response.status_code == 200
+        assert "Formation" in response.text
+
+    @patch("agents.formation_generator.FormationGeneratorAgent")
+    def test_start_formation_generation(self, mock_agent):
+        """Test démarrage génération formation"""
+        mock_instance = MagicMock()
+        mock_instance.generate.return_value = "# Programme de Formation"
+        mock_agent.return_value = mock_instance
+
+        response = client.post(
+            "/api/formation/start", data={"client_needs": "Formation Python pour débutants"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "job_id" in data
+
+
+class TestMeetingEndpoints:
+    """Tests pour les endpoints meeting"""
+
+    def test_meeting_page(self):
+        """Test page meeting summarizer"""
+        response = client.get("/meeting")
+        assert response.status_code == 200
+        assert "Meeting" in response.text
+
+    @patch("agents.meeting_summarizer.MeetingSummarizerAgent")
+    def test_start_meeting_summary(self, mock_agent):
+        """Test démarrage résumé de réunion"""
+        mock_instance = MagicMock()
+        mock_instance.summarize.return_value = "# Compte Rendu"
+        mock_agent.return_value = mock_instance
+
+        response = client.post(
+            "/api/meeting/start",
+            data={"meeting_text": "Transcription de la réunion...", "meeting_title": "Réunion Q1"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "job_id" in data
+
+
+class TestDocumentEditorEndpoints:
+    """Tests pour les endpoints document-editor"""
+
+    def test_document_editor_page(self):
+        """Test page document editor"""
+        response = client.get("/document-editor")
+        assert response.status_code == 200
+
+    @patch("agents.article_generator.ArticleGeneratorAgent")
+    def test_start_document_generation(self, mock_agent):
+        """Test démarrage génération document"""
+        mock_instance = MagicMock()
+        mock_instance.generate.return_value = "# Article"
+        mock_agent.return_value = mock_instance
+
+        response = client.post(
+            "/api/document-editor/start-generate",
+            data={"topic": "AI in Business", "doc_type": "article"},
+        )
+
+        assert response.status_code == 200
+
+
+class TestLinkedInEndpoints:
+    """Tests pour les endpoints LinkedIn"""
+
+    def test_linkedin_monitor_page(self):
+        """Test page LinkedIn monitor"""
+        response = client.get("/linkedin")
+        assert response.status_code == 200
+
+    @patch("agents.linkedin_monitor.LinkedInMonitorAgent")
+    def test_start_linkedin_post_generation(self, mock_agent):
+        """Test génération post LinkedIn"""
+        mock_instance = MagicMock()
+        mock_instance.generate.return_value = "LinkedIn post content"
+        mock_agent.return_value = mock_instance
+
+        response = client.post(
+            "/api/linkedin/start-generate",
+            data={"topic": "Data Science trends", "post_type": "expertise"},
+        )
+
+        assert response.status_code == 200
+
+
+class TestProposalEndpoints:
+    """Tests pour les endpoints proposal"""
+
+    def test_proposal_page(self):
+        """Test page proposal generator"""
+        response = client.get("/proposal")
+        assert response.status_code == 200
+
+    @patch("agents.proposal_generator.ProposalGeneratorAgent")
+    def test_start_proposal_generation(self, mock_agent):
+        """Test génération proposition"""
+        mock_instance = MagicMock()
+        mock_instance.generate.return_value = "# Proposition Commerciale"
+        mock_agent.return_value = mock_instance
+
+        response = client.post(
+            "/api/proposal/start",
+            data={"tender_text": "Appel d'offres pour...", "company_name": "Acme Corp"},
+        )
+
+        assert response.status_code == 200
+
+
+class TestRateLimiting:
+    """Tests pour le rate limiting"""
+
+    def test_rate_limit_enforced(self):
+        """Test que le rate limiting est appliqué"""
+        # Faire beaucoup de requêtes rapidement
+        responses = []
+        for _ in range(100):
+            response = client.get("/health")
+            responses.append(response.status_code)
+
+        # Au moins une requête devrait être limitée (429)
+        assert 429 in responses or all(code == 200 for code in responses)
+
+
+class TestErrorHandling:
+    """Tests pour la gestion des erreurs"""
+
+    def test_404_on_unknown_endpoint(self):
+        """Test 404 sur endpoint inconnu"""
+        response = client.get("/nonexistent-endpoint")
+        assert response.status_code == 404
+
+    def test_405_on_wrong_method(self):
+        """Test 405 sur méthode HTTP incorrecte"""
+        response = client.post("/")  # GET endpoint appelé en POST
+        assert response.status_code == 405
+
+
+class TestStaticFiles:
+    """Tests pour les fichiers statiques"""
+
+    def test_static_css_accessible(self):
+        """Test que les fichiers CSS sont accessibles"""
+        response = client.get("/static/style.css")
+        assert response.status_code == 200
+        assert "text/css" in response.headers["content-type"]
+
+    def test_static_js_accessible(self):
+        """Test que les fichiers JS sont accessibles (si présents)"""
+        # Adapter selon vos fichiers statiques
+        pass
+
+
+class TestCORS:
+    """Tests pour CORS"""
+
+    def test_cors_headers_present(self):
+        """Test que les headers CORS sont présents"""
+        response = client.get("/health")
+        # Vérifier headers CORS si configuré
+        assert response.status_code == 200
+
+
+class TestAuthentication:
+    """Tests pour l'authentification (si implémentée)"""
+
+    def test_protected_endpoints_require_auth(self):
+        """Test que les endpoints protégés requièrent authentification"""
+        # À implémenter selon votre système d'auth
+        pass

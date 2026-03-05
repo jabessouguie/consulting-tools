@@ -1,0 +1,117 @@
+# Pre-commit hooks configuration
+# Voir: https://pre-commit.com pour plus d'informations
+
+repos:
+  # Formatage du code Python avec Black
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3.13
+        args: ['--line-length=100']
+
+  # Tri des imports avec isort
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile=black', '--line-length=100']
+
+  # Linting avec flake8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [
+          '--max-line-length=100',
+          '--extend-ignore=E203,W503',  # Ignorer conflits avec Black
+          '--exclude=.git,__pycache__,.venv,venv,build,dist'
+        ]
+
+  # Analyse de sécurité avec Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7
+    hooks:
+      - id: bandit
+        args: [
+          '-r',
+          'agents',
+          'utils',
+          'app.py',
+          '-ll',  # Low confidence, low severity
+          '--skip=B101,B601'  # Skip assert et shell injection tests
+        ]
+
+  # Type checking avec mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: [
+          '--ignore-missing-imports',
+          '--python-version=3.13',
+          '--no-strict-optional'
+        ]
+        additional_dependencies: ['types-requests', 'types-PyYAML']
+
+  # Vérification syntaxe Python
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=5000']
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+
+  # Détection de secrets avec detect-secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+  # Vérification des vulnérabilités de dépendances
+  - repo: local
+    hooks:
+      - id: safety
+        name: safety
+        entry: safety
+        args: ['check']
+        language: system
+        pass_filenames: false
+
+  # Tests unitaires obligatoires avant commit
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        args: ['tests/', '-v', '--tb=short', '-x']
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+  # Vérification de la couverture de code
+  - repo: local
+    hooks:
+      - id: pytest-cov
+        name: pytest-cov
+        entry: pytest
+        args: [
+          'tests/',
+          '--cov=agents',
+          '--cov=utils',
+          '--cov-report=term-missing',
+          '--cov-fail-under=70'
+        ]
+        language: system
+        pass_filenames: false
+        stages: [push]

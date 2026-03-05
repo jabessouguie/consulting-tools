@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Consulting Tools - Compte Rendu de Réunion{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon proposal"></div>
+        <div>
+            <div class="card-title">Générateur de Compte Rendu de Réunion</div>
+            <div class="card-subtitle">Collez un transcript de réunion pour générer un compte rendu structuré + email</div>
+        </div>
+    </div>
+
+    <form id="meeting-form">
+        <div class="form-group">
+            <label class="form-label">Transcript de réunion (texte)</label>
+            <textarea class="form-textarea" id="transcript-text" placeholder="Collez ici le transcript de votre réunion...
+
+Exemple :
+Réunion du 15/02/2024 - Projet DataHub
+
+Participants :
+- Marie Dubois (Chef de projet)
+- Jean Martin (Tech Lead)
+
+Marie : Bonjour à tous. On se retrouve pour faire le point sur le projet...
+"></textarea>
+        </div>
+
+        <div class="or-divider">OU</div>
+
+        <div class="form-group">
+            <label class="form-label">Uploader un fichier (.txt, .md, .pdf)</label>
+            <div class="file-upload" id="file-upload-zone">
+                <input type="file" id="transcript-file" accept=".txt,.md,.pdf" style="display:none">
+                <p>Cliquez ou glissez un fichier ici</p>
+                <p id="file-name" style="color: var(--corail); font-weight: 500; margin-top: 0.5rem;"></p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+                Générer le compte rendu
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="progress-container" id="progress" style="display:none;">
+    <div class="progress-bar-wrapper">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <ul class="progress-steps">
+        <li class="progress-step pending" data-step="extract">
+            <span class="step-icon">1</span>
+            <span>Extraction des informations</span>
+        </li>
+        <li class="progress-step pending" data-step="minutes">
+            <span class="step-icon">2</span>
+            <span>Génération du compte rendu</span>
+        </li>
+        <li class="progress-step pending" data-step="email">
+            <span class="step-icon">3</span>
+            <span>Génération de l'email</span>
+        </li>
+    </ul>
+</div>
+
+<div id="error-container"></div>
+
+<div class="result-container" id="result">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title">Compte rendu généré</div>
+                <div class="card-subtitle">Compte rendu et email de partage</div>
+            </div>
+        </div>
+
+        <!-- Compte rendu -->
+        <div style="margin: 1.5rem; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--noir-profond);">Compte rendu</h3>
+                <button class="btn btn-secondary" onclick="copyMinutes()" style="padding: 0.4rem 1rem; font-size: 0.9rem;">
+                    Copier
+                </button>
+            </div>
+            <div id="minutes-preview"
+                style="padding: 1rem; background: var(--blanc); border-radius: 8px; max-height: 500px; overflow-y: auto; font-size: 0.95rem;">
+            </div>
+        </div>
+
+        <!-- Email -->
+        <div style="margin: 1.5rem; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--noir-profond);">Email de partage</h3>
+                <button class="btn btn-secondary" onclick="copyEmail()" style="padding: 0.4rem 1rem; font-size: 0.9rem;">
+                    Copier
+                </button>
+            </div>
+            <div id="email-preview"
+                style="padding: 1rem; background: var(--blanc); border-radius: 8px; font-size: 0.95rem;">
+                <div style="margin-bottom: 1rem;">
+                    <strong>Objet :</strong> <span id="email-subject"></span>
+                </div>
+                <div style="border-top: 1px solid var(--gris-clair); padding-top: 1rem;" id="email-body"></div>
+            </div>
+        </div>
+
+        <!-- Email Share -->
+        <div style="margin: 1.5rem; padding: 1.5rem; background: var(--gris-clair); border-radius: 12px;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--noir-profond);">📧 Partager par email</h3>
+            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <input
+                        type="email"
+                        id="recipient-email"
+                        placeholder="email@exemple.com"
+                        class="form-input"
+                        oninput="validateEmailInput(this)"
+                        style="width: 100%; padding: 0.75rem; background: var(--blanc); border: 1px solid var(--gris-clair); border-radius: 8px; font-size: 0.95rem;"
+                    />
+                </div>
+                <button
+                    onclick="confirmAndShareEmail()"
+                    class="btn btn-email"
+                    style="padding: 0.75rem 1.5rem; font-size: 0.95rem; white-space: nowrap;"
+                >
+                    📧 Envoyer
+                </button>
+            </div>
+            <p id="email-status" style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--noir-profond);"></p>
+        </div>
+
+        <div class="result-actions">
+            <a class="btn btn-primary" id="download-md" href="#" download style="font-size: 1.1rem;">
+                Télécharger .md
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    initMeetingPage();
+</script>
+{% endblock %}

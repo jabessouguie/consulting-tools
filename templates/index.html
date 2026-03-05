@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Consulting Tools Agents - Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-hero">
+    <h1>Bienvenue, <span class="highlight">{{ consultant_name }}</span></h1>
+    <p>Vos agents IA sont prets. Generez des propositions commerciales ou lancez une veille LinkedIn.</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.proposals }}</div>
+        <div class="stat-label">Propositions generees</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.posts }}</div>
+        <div class="stat-label">Posts LinkedIn generes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.articles }}</div>
+        <div class="stat-label">Articles collectes</div>
+    </div>
+</div>
+
+<div class="agents-grid">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon proposal"></div>
+            <div>
+                <div class="card-title">Propositions Commerciales</div>
+                <div class="card-subtitle">Generez une proposition a partir d'un appel d'offre</div>
+            </div>
+        </div>
+        <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">
+            Collez ou uploadez un appel d'offre. L'agent analyse le contenu, selectionne les references Consulting Tools pertinentes, et genere une proposition complete au format du template 2026.
+        </p>
+        <a href="/proposal" class="btn btn-primary">Generer une proposition &rarr;</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon linkedin"></div>
+            <div>
+                <div class="card-title">Veille LinkedIn</div>
+                <div class="card-subtitle">Veille technologique et generation de posts</div>
+            </div>
+        </div>
+        <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">
+            L'agent collecte les dernieres actualites IA/Data depuis des flux RSS et le web, analyse les tendances, et genere des posts LinkedIn engageants prets a publier.
+        </p>
+        <a href="/linkedin" class="btn btn-primary">Lancer la veille &rarr;</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9);"></div>
+            <div>
+                <div class="card-title">Market of Skills</div>
+                <div class="card-subtitle">Cartographie et recherche de competences</div>
+            </div>
+        </div>
+        <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">
+            Importez les CVs de vos consultants (PPTX, PDF, HTML) et recherchez des competences en langage naturel. Certifications, expertises et disponibilites en un clic.
+        </p>
+        <a href="/skills-market" class="btn btn-primary">Explorer les competences &rarr;</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #3B82F6, #1D4ED8);"></div>
+            <div>
+                <div class="card-title">E-learning Adaptatif</div>
+                <div class="card-subtitle">Cours, quiz et parcours personnalises par IA</div>
+            </div>
+        </div>
+        <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">
+            Generez des cours complets, des quiz adaptatifs et des parcours d'apprentissage personnalises grace a l'IA. Importez vos supports existants ou creez a partir de zero.
+        </p>
+        <a href="/elearning" class="btn btn-primary">Acceder a l'e-learning &rarr;</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);"></div>
+            <div>
+                <div class="card-title">Agent Builder</div>
+                <div class="card-subtitle">Creez vos agents IA sur mesure</div>
+            </div>
+        </div>
+        <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">
+            Concevez un agent IA en 3 etapes : interview, previsualisation avec diagramme de workflow et exemples, puis publication avec code exportable.
+        </p>
+        <a href="http://localhost:5173" target="_blank" class="btn btn-primary">Ouvrir Agent Builder &rarr;</a>
+    </div>
+</div>
+
+{% if recent_files %}
+<div class="card" style="margin-top: 2rem;">
+    <div class="card-header">
+        <div class="card-icon stats"></div>
+        <div>
+            <div class="card-title">Fichiers recents</div>
+            <div class="card-subtitle">Dernieres generations</div>
+        </div>
+    </div>
+    {% for file in recent_files %}
+    <div class="history-item">
+        <span class="history-name">{{ file.name }}</span>
+        <span class="history-date">{{ file.date }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
