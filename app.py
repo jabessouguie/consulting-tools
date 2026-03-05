@@ -246,15 +246,13 @@ def safe_traceback() -> str:
 
 # Global model settings (in-memory, persists per session)
 AVAILABLE_GEMINI_MODELS = {
-    "gemini-3.1-flash": "Gemini 3.1 Flash",
-    "gemini-3.0-flash": "Gemini 3.0 Flash",
-    "gemini-2.5-flash": "Gemini 2.5 Flash",
-    "gemini-2.1-flash": "Gemini 2.1 Flash",
-    "gemini-2.5-pro": "Gemini 2.5 Pro (Stable)",
     "gemini-2.0-flash": "Gemini 2.0 Flash",
+    "gemini-1.5-pro": "Gemini 1.5 Pro",
+    "gemini-1.5-flash": "Gemini 1.5 Flash",
+    "gemini-1.5-flash-8b": "Gemini 1.5 Flash-8B",
 }
-SELECTED_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash")
-IMAGE_MODEL = "gemini-3-pro-image-preview"  # Nano Banana Pro for images
+SELECTED_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+IMAGE_MODEL = "gemini-1.5-pro"  # Fallback for image analysis
 
 # Settings persistence
 SETTINGS_FILE = BASE_DIR / "data" / "settings.json"
