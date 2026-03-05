@@ -65,7 +65,7 @@ class LLMClient:
             self.model = (
                 model
                 or _get_gemini_model_from_settings()
-                or os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+                or os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
             )
             genai.configure(api_key=self.api_key)
             self.client = None
