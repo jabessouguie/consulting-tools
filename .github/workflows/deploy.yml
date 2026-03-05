@@ -1,0 +1,45 @@
+name: Deploy to Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:  # Manual deployment trigger
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: 🧪 Run tests before deploy
+        run: |
+          pytest tests/test_gmail_client.py tests/test_linkedin_client.py -v
+
+      - name: 📤 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /var/www/consulting-tools
+            git pull origin main
+            source .venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart consulting-tools
+
+      - name: ✅ Deployment complete
+        run: echo "🚀 Deployment successful!"

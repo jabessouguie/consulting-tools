@@ -1,0 +1,506 @@
+"""
+Agent Market of Skills - Parse les CV consultants depuis PPTX,
+analyse les forces/faiblesses, et recherche en langage naturel
+"""
+
+import json
+import re
+from typing import Any, Dict, List, Optional
+
+from utils.llm_client import LLMClient
+from utils.pptx_reader import read_pptx_template
+
+
+class SkillsMarketAgent:
+    """Agent pour le Market of Skills des consultants Consulting Tools"""
+
+    def __init__(self):
+        self.llm = LLMClient()
+
+    def parse_consultant_slide(self, slide_text: str) -> Optional[Dict]:
+        """
+        Parse le texte brut d'un slide PPTX en profil structure
+
+        Args:
+            slide_text: Texte extrait du slide
+
+        Returns:
+            Dict structure ou None si le slide n'est pas un CV
+        """
+        if not slide_text or len(slide_text.strip()) < 30:
+            return None
+
+        prompt = f"""Analyse ce texte extrait d'un slide de CV/biographie
+d'un consultant Consulting Tools et retourne un JSON structure.
+
+TEXTE DU SLIDE:
+{slide_text}
+
+Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
+{{
+    "name": "Prenom Nom du consultant",
+    "title": "Titre/poste du consultant",
+    "bio": "Resume court du profil (2-3 phrases)",
+    "skills_technical": [
+        {{"name": "Nom competence technique", "level": "expert|senior|confirmed|junior"}}
+    ],
+    "skills_sector": [
+        {{"name": "Nom expertise sectorielle", "level": "expert|senior|confirmed|junior"}}
+    ],
+    "missions": [
+        {{
+            "client_name": "Nom client",
+            "context_and_challenges": "Contexte et enjeux",
+            "deliverables": "Livrables",
+            "tasks": "Taches effectuees"
+        }}
+    ],
+    "interests": ["centre d'interet 1", "centre d'interet 2"],
+    "strengths": ["point fort 1", "point fort 2"],
+    "improvement_areas": ["axe d'amelioration 1"],
+    "management_suggestions": "Suggestions pour le management"
+}}
+
+REGLES:
+- Si le texte n'est PAS un CV/biographie de consultant, retourne
+  {{"skip": true}}
+- Deduis les competences techniques et sectorielles du contenu
+- Deduis les points forts a partir des missions et competences
+- Propose des axes d'amelioration constructifs
+- Les suggestions manageriales doivent etre concretes et bienveillantes
+- Retourne UNIQUEMENT le JSON, rien d'autre"""
+
+        system_prompt = (
+            "Tu es un expert RH specialise dans le consulting."
+            " Tu analyses des CV de consultants pour en extraire"
+            " les informations structurees. Reponds uniquement en JSON."
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+            )
+            return self._parse_json_response(response)
+        except Exception as e:
+            print(f"Erreur parsing consultant: {e}")
+            return None
+
+    def import_from_pptx(
+        self,
+        pptx_path: str,
+        progress_callback=None,
+    ) -> List[Dict]:
+        """
+        Importe tous les consultants depuis un fichier PPTX
+
+        Args:
+            pptx_path: Chemin vers le PPTX
+            progress_callback: Fonction appelee avec (index, total, name)
+
+        Returns:
+            Liste de profils consultants structures
+        """
+        template = read_pptx_template(pptx_path)
+        slides = template["slides"]
+        total = len(slides)
+        consultants = []
+
+        for i, slide in enumerate(slides):
+            slide_text = "\n".join(slide.get("content", []))
+
+            if progress_callback:
+                progress_callback(i + 1, total, f"Slide {i + 1}")
+
+            parsed = self.parse_consultant_slide(slide_text)
+
+            if parsed and not parsed.get("skip"):
+                parsed["raw_pptx_text"] = slide_text
+                consultants.append(parsed)
+
+                if progress_callback:
+                    name = parsed.get("name", f"Consultant {i + 1}")
+                    progress_callback(i + 1, total, name)
+
+        return consultants
+
+    def import_from_text(
+        self,
+        text: str,
+        source_filename: str = "",
+        progress_callback=None,
+    ) -> List[Dict]:
+        """
+        Importe des consultants depuis du texte brut (PDF, HTML, etc.)
+        Le texte peut contenir un ou plusieurs CV.
+
+        Args:
+            text: Texte brut extrait du document
+            source_filename: Nom du fichier source
+            progress_callback: Fonction appelee avec (index, total, name)
+
+        Returns:
+            Liste de profils consultants structures
+        """
+        if not text or len(text.strip()) < 50:
+            return []
+
+        if progress_callback:
+            progress_callback(1, 2, "Analyse du document...")
+
+        # Use LLM to split and parse multiple CVs from text
+        prompt = f"""Analyse ce document qui contient un ou plusieurs
+CV/biographies de consultants.
+
+DOCUMENT ({source_filename}):
+{text[:15000]}
+
+Pour CHAQUE consultant identifie dans le document, retourne un JSON.
+Retourne UNIQUEMENT un JSON valide:
+{{
+    "consultants": [
+        {{
+            "name": "Prenom Nom",
+            "title": "Titre/poste",
+            "bio": "Resume court (2-3 phrases)",
+            "skills_technical": [
+                {{"name": "competence", "level": "expert|senior|confirmed|junior"}}
+            ],
+            "skills_sector": [
+                {{"name": "secteur", "level": "expert|senior|confirmed|junior"}}
+            ],
+            "missions": [
+                {{
+                    "client_name": "Client",
+                    "context_and_challenges": "Contexte",
+                    "deliverables": "Livrables",
+                    "tasks": "Taches"
+                }}
+            ],
+            "interests": ["interet1"],
+            "strengths": ["point fort 1"],
+            "improvement_areas": ["axe amelioration 1"],
+            "management_suggestions": "Suggestions manageriales"
+        }}
+    ]
+}}
+
+REGLES:
+- Identifie tous les consultants distincts dans le document
+- Si le document ne contient qu'un seul CV, retourne un seul element
+- Deduis competences, forces et axes d'amelioration
+- Retourne UNIQUEMENT le JSON"""
+
+        system_prompt = (
+            "Tu es un expert RH specialise dans le consulting."
+            " Tu analyses des CV pour en extraire les informations"
+            " structurees. Reponds uniquement en JSON."
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+                max_tokens=8192,
+            )
+            result = self._parse_json_response(response)
+
+            if result and "consultants" in result:
+                consultants = result["consultants"]
+                for c in consultants:
+                    c["raw_pptx_text"] = text[:2000]
+                if progress_callback:
+                    progress_callback(2, 2, f"{len(consultants)} consultant(s) trouves")
+                return consultants
+
+            # Fallback: try parsing as single consultant
+            if result and "name" in result:
+                result["raw_pptx_text"] = text[:2000]
+                if progress_callback:
+                    progress_callback(2, 2, "1 consultant trouve")
+                return [result]
+
+        except Exception as e:
+            print(f"Erreur import texte: {e}")
+
+        return []
+
+    def analyze_strengths(self, consultant_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Analyse les forces et axes d'amelioration d'un consultant
+
+        Args:
+            consultant_data: Profil complet du consultant
+
+        Returns:
+            Dict avec strengths, improvement_areas,
+            management_suggestions
+        """
+        skills_tech = [
+            s.get("name", s) if isinstance(s, dict) else s
+            for s in consultant_data.get("skills_technical", [])
+        ]
+        skills_sector = [
+            s.get("name", s) if isinstance(s, dict) else s
+            for s in consultant_data.get("skills_sector", [])
+        ]
+        missions = consultant_data.get("missions", [])
+        missions_desc = []
+        for m in missions[:5]:
+            if isinstance(m, dict):
+                missions_desc.append(
+                    f"- {m.get('client_name', 'N/A')}: " f"{m.get('context_and_challenges', '')}"
+                )
+
+        prompt = f"""Analyse le profil de ce consultant et fournis une
+evaluation constructive.
+
+NOM: {consultant_data.get('name', 'N/A')}
+TITRE: {consultant_data.get('title', 'N/A')}
+BIO: {consultant_data.get('bio', 'N/A')}
+
+COMPETENCES TECHNIQUES: {', '.join(skills_tech)}
+EXPERTISE SECTORIELLE: {', '.join(skills_sector)}
+
+MISSIONS:
+{chr(10).join(missions_desc)}
+
+Retourne UNIQUEMENT un JSON:
+{{
+    "strengths": ["point fort 1", "point fort 2", "point fort 3"],
+    "improvement_areas": [
+        "axe d'amelioration 1",
+        "axe d'amelioration 2"
+    ],
+    "management_suggestions": "Paragraphe avec suggestions concretes
+pour le management afin d'aider ce consultant a progresser"
+}}
+
+REGLES:
+- 3 a 5 points forts, bases sur les missions et competences
+- 2 a 3 axes d'amelioration constructifs
+- Les suggestions manageriales doivent etre concretes,
+  bienveillantes et actionables
+- Retourne UNIQUEMENT le JSON"""
+
+        system_prompt = (
+            "Tu es un manager bienveillant en cabinet de conseil."
+            " Tu evalues les consultants pour les aider a progresser."
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0.5,
+            )
+            result = self._parse_json_response(response)
+            if result:
+                return result
+        except Exception as e:
+            print(f"Erreur analyse consultant: {e}")
+
+        return {
+            "strengths": consultant_data.get("strengths", []),
+            "improvement_areas": consultant_data.get("improvement_areas", []),
+            "management_suggestions": consultant_data.get("management_suggestions", ""),
+        }
+
+    def natural_language_search(
+        self,
+        query: str,
+        consultants: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Recherche de consultants en langage naturel via LLM
+
+        Args:
+            query: Requete en langage naturel
+            consultants: Liste des profils consultants
+
+        Returns:
+            Liste ordonnee par pertinence avec score et explication
+        """
+        if not consultants:
+            return []
+
+        summaries = []
+        for c in consultants:
+            skills = []
+            for s in c.get("top_skills", []):
+                if isinstance(s, dict):
+                    skills.append(s.get("name", ""))
+                else:
+                    skills.append(str(s))
+            for s in c.get("skills_technical", []):
+                if isinstance(s, dict):
+                    skills.append(s.get("name", ""))
+            for s in c.get("skills_sector", []):
+                if isinstance(s, dict):
+                    skills.append(s.get("name", ""))
+
+            missions_info = []
+            for m in c.get("missions", [])[:3]:
+                if isinstance(m, dict):
+                    missions_info.append(m.get("client_name", ""))
+
+            summary = (
+                f"ID:{c['id']} | {c.get('name', 'N/A')}"
+                f" | {c.get('title', 'N/A')}"
+                f" | Skills: {', '.join(set(skills))}"
+                f" | Clients: {', '.join(missions_info)}"
+            )
+            summaries.append(summary)
+
+        prompt = f"""Recherche parmi ces consultants celui/ceux qui
+correspondent le mieux a cette requete :
+
+REQUETE: "{query}"
+
+CONSULTANTS DISPONIBLES:
+{chr(10).join(summaries)}
+
+Retourne UNIQUEMENT un JSON:
+{{
+    "results": [
+        {{
+            "id": <id du consultant>,
+            "score": <score de 0 a 100>,
+            "explanation": "Explication courte de la pertinence"
+        }}
+    ]
+}}
+
+REGLES:
+- Classe par score decroissant
+- Ne retourne que les consultants pertinents (score > 30)
+- L'explication doit etre en 1-2 phrases
+- Retourne UNIQUEMENT le JSON"""
+
+        system_prompt = (
+            "Tu es un expert en staffing de cabinet de conseil."
+            " Tu trouves le meilleur consultant pour chaque besoin."
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+            )
+            result = self._parse_json_response(response)
+            if result and "results" in result:
+                return result["results"]
+        except Exception as e:
+            print(f"Erreur recherche NL: {e}")
+
+        return []
+
+    def _parse_json_response(self, response: str) -> Optional[Dict]:
+        """
+        Parse une reponse LLM contenant du JSON
+
+        Args:
+            response: Reponse brute du LLM
+
+        Returns:
+            Dict parse ou None
+        """
+        if not response:
+            return None
+
+        # Try direct parse
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            pass
+
+        # Extract JSON from markdown code block
+        patterns = [
+            r"```json\s*(.*?)\s*```",
+            r"```\s*(.*?)\s*```",
+            r"\{.*\}",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, response, re.DOTALL)
+            if match:
+                try:
+                    text = match.group(1) if "```" in pattern else match.group(0)
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+
+        return None
+
+    def generate_cv(self, consultant: Dict, client_need: str = "") -> str:
+        """
+        Génère un CV HTML professionnel à partir du profil d'un consultant.
+
+        Args:
+            consultant: Dictionnaire contenant les données du consultant
+            client_need: Description du besoin client pour adapter le CV (optionnel)
+
+        Returns:
+            CV au format HTML prêt à l'affichage ou à l'export PDF
+        """
+        skills = ", ".join(consultant.get("skills", []) or [])
+        certifications = "\n".join(
+            f"- {c}" for c in (consultant.get("certifications") or [])
+        )
+        experiences = consultant.get("experience_years", "N/A")
+        adaptation_block = ""
+        if client_need:
+            adaptation_block = f"""
+ADAPTATION DEMANDÉE :
+Le CV doit mettre en avant les compétences et expériences les plus pertinentes
+pour le besoin client suivant : {client_need}
+Réorganise les sections si nécessaire pour maximiser la pertinence."""
+
+        prompt = f"""Génère un CV professionnel en HTML pour ce consultant :
+
+NOM : {consultant.get("name", "N/A")}
+TITRE : {consultant.get("title", "N/A")}
+ENTREPRISE : {consultant.get("company", "N/A")}
+EXPÉRIENCE : {experiences} ans
+LOCALISATION : {consultant.get("location", "N/A")}
+COMPÉTENCES : {skills}
+CERTIFICATIONS :
+{certifications or "Aucune"}
+BIO / PRÉSENTATION :
+{consultant.get("bio", "")}
+{adaptation_block}
+
+Génère uniquement le HTML (sans balise <html>/<head>/<body> wrapper) avec :
+- Un en-tête avec nom, titre, coordonnées fictives (email pro, LinkedIn)
+- Une section "Profil" avec la bio adaptée
+- Une section "Compétences clés" avec les skills en badges colorés
+- Une section "Expérience" (utilise le nombre d'années, invente des postes plausibles si besoin)
+- Une section "Certifications" si non vide
+- Un style CSS inline élégant et professionnel (palette sobre : bleu foncé #1a3a5c + blanc + gris clair)
+- Mise en page A4 (max-width 800px, police sans-serif)
+
+RÈGLES :
+- Retourne UNIQUEMENT le HTML, sans markdown, sans explication
+- Pas de ```html ni de préambule
+- Le HTML doit être complet et directement intégrable dans une page web"""
+
+        system_prompt = (
+            "Tu es un designer RH expert en création de CVs consultants haute valeur."
+            " Tu génères des CVs HTML visuellement professionnels et impactants."
+        )
+
+        response = self.llm.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.4,
+        )
+
+        # Nettoyer les balises de code markdown si présentes
+        cv_html = response.strip()
+        if cv_html.startswith("```"):
+            cv_html = re.sub(r"^```(?:html)?\s*", "", cv_html)
+            cv_html = re.sub(r"\s*```$", "", cv_html)
+
+        return cv_html.strip()

@@ -1,0 +1,457 @@
+/**
+ * UI Enhancements for Consulting Tools Consulting Tools
+ * Toast notifications, modals, animations, improved states
+ */
+
+/* === DESIGN TOKENS === */
+:root {
+    /* Success/Error states */
+    --success: #22c55e;
+    --success-light: #86efac;
+    --error: #ef4444;
+    --error-light: #fca5a5;
+    --warning: #f59e0b;
+    --warning-light: #fbbf24;
+    --info: #3b82f6;
+    --info-light: #93c5fd;
+
+    /* LinkedIn branding */
+    --linkedin-blue: #0a66c2;
+    --linkedin-hover: #004182;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* === TOAST NOTIFICATIONS === */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-xl);
+    min-width: 300px;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideInRight 0.3s ease-out;
+    pointer-events: all;
+    position: relative;
+}
+
+.toast-success {
+    background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+    color: white;
+}
+
+.toast-error {
+    background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+    color: white;
+}
+
+.toast-warning {
+    background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+    color: white;
+}
+
+.toast-info {
+    background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%);
+    color: white;
+}
+
+.toast-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.toast-message {
+    font-size: 0.9rem;
+    opacity: 0.95;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 4px;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.toast.removing {
+    animation: slideOutRight 0.3s ease-in forwards;
+}
+
+/* === MODALS === */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: var(--shadow-xl);
+    animation: scaleIn 0.3s ease-out;
+}
+
+.modal-card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    color: var(--noir-profond);
+}
+
+.modal-card p {
+    margin: 0 0 1.5rem 0;
+    color: var(--gris-moyen);
+    line-height: 1.6;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* === INPUT VALIDATION STATES === */
+.form-input {
+    transition: all 0.2s ease;
+}
+
+.form-input.valid {
+    border-color: var(--success);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.form-input.invalid {
+    border-color: var(--error);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.input-feedback {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    min-height: 1.25rem;
+}
+
+.text-green {
+    color: var(--success);
+    font-weight: 500;
+}
+
+.text-red {
+    color: var(--error);
+    font-weight: 500;
+}
+
+/* === LINKEDIN STATUS BADGE === */
+.linkedin-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-indicator {
+    background: linear-gradient(135deg, var(--success-light) 0%, var(--success) 100%);
+    color: #065f46;
+}
+
+.status-indicator svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.status-warning {
+    background: linear-gradient(135deg, var(--warning-light) 0%, var(--warning) 100%);
+    color: #78350f;
+}
+
+.status-warning svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.status-warning a {
+    color: inherit;
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+.status-warning a:hover {
+    text-decoration: none;
+}
+
+/* === ENHANCED BUTTONS === */
+.btn-linkedin {
+    background: linear-gradient(135deg, var(--linkedin-blue) 0%, var(--linkedin-hover) 100%);
+    color: white;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(10, 102, 194, 0.3);
+}
+
+.btn-linkedin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(10, 102, 194, 0.4);
+}
+
+.btn-linkedin:active {
+    transform: translateY(0);
+}
+
+.btn-email {
+    background: linear-gradient(135deg, var(--corail) 0%, #e86f51 100%);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(232, 111, 81, 0.3);
+}
+
+.btn-email:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(232, 111, 81, 0.4);
+}
+
+.badge-public {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 8px;
+}
+
+/* === LOADING STATES === */
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    z-index: 100;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--gris-clair);
+    border-top-color: var(--corail);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-message {
+    margin-top: 16px;
+    font-weight: 600;
+    color: var(--noir-profond);
+}
+
+.loading-sub {
+    margin-top: 4px;
+    font-size: 0.875rem;
+    color: var(--gris-moyen);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* === SUCCESS ANIMATIONS === */
+@keyframes successPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.success-animation {
+    animation: successPulse 0.4s ease-in-out;
+}
+
+@keyframes checkmarkDraw {
+    0% {
+        stroke-dashoffset: 100;
+    }
+
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.checkmark-svg {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: checkmarkDraw 0.5s ease-out forwards;
+}
+
+/* === UTILITY CLASSES === */
+.hidden {
+    display: none !important;
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 640px) {
+    .toast-container {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+    }
+
+    .toast {
+        min-width: auto;
+        max-width: none;
+    }
+
+    .modal-card {
+        margin: 20px;
+        padding: 1.5rem;
+    }
+}
+
+/* === BUG REPORT BUTTON === */
+.btn-bug-report {
+    background: none;
+    border: 1px solid var(--gris-clair, #ccc);
+    color: var(--gris-moyen, #888);
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-bug-report:hover {
+    border-color: var(--corail, #FF6B6B);
+    color: var(--corail, #FF6B6B);
+}

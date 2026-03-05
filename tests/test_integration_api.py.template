@@ -1,0 +1,264 @@
+"""
+Tests d'intégration pour les routes API Gmail et LinkedIn
+"""
+
+import os
+
+# Add parent dir to path
+import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+@pytest.fixture
+def client():
+    """Fixture pour créer le client de test FastAPI"""
+    # Import app ici pour éviter les effets de bord
+    from app import app
+
+    return TestClient(app)
+
+
+class TestMeetingEmailAPI:
+    """Tests d'intégration pour l'API de partage email"""
+
+    @patch("app.GmailClient")
+    @patch("app.get_consultant_info")
+    def test_share_email_success(self, mock_get_info, mock_gmail, client):
+        """Test partage email avec succès"""
+        # Mock consultant info
+        mock_get_info.return_value = {
+            "name": "Test Consultant",
+            "title": "Consultant Test",
+            "company": "Test Company",
+        }
+
+        # Mock Gmail client
+        mock_instance = Mock()
+        mock_instance.send_email.return_value = {"id": "msg123"}
+        mock_gmail.return_value = mock_instance
+
+        response = client.post(
+            "/api/meeting/share-email",
+            json={
+                "to_email": "recipient@example.com",
+                "meeting_summary": "# Compte Rendu\n\nTest meeting summary",
+                "meeting_title": "Test Meeting",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["message"] == "Email envoye avec succes"
+        assert data["id"] == "msg123"
+
+    def test_share_email_missing_email(self, client):
+        """Test partage email sans adresse"""
+        response = client.post(
+            "/api/meeting/share-email",
+            json={"to_email": "", "meeting_summary": "Test summary", "meeting_title": "Test"},
+        )
+
+        assert response.status_code == 400
+        assert "Email destinataire manquant" in response.json()["error"]
+
+    def test_share_email_invalid_email(self, client):
+        """Test partage email avec adresse invalide"""
+        response = client.post(
+            "/api/meeting/share-email",
+            json={
+                "to_email": "invalid-email",
+                "meeting_summary": "Test summary",
+                "meeting_title": "Test",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "invalide" in response.json()["error"]
+
+    def test_share_email_missing_summary(self, client):
+        """Test partage email sans compte rendu"""
+        response = client.post(
+            "/api/meeting/share-email",
+            json={"to_email": "test@example.com", "meeting_summary": "", "meeting_title": "Test"},
+        )
+
+        assert response.status_code == 400
+        assert "manquant" in response.json()["error"]
+
+    @patch("app.GmailClient")
+    @patch("app.get_consultant_info")
+    def test_share_email_api_error(self, mock_get_info, mock_gmail, client):
+        """Test partage email avec erreur API"""
+        mock_get_info.return_value = {"name": "Test", "title": "Test", "company": "Test"}
+
+        # Mock Gmail qui lève une exception
+        mock_instance = Mock()
+        mock_instance.send_email.side_effect = Exception("Gmail API Error")
+        mock_gmail.return_value = mock_instance
+
+        response = client.post(
+            "/api/meeting/share-email",
+            json={
+                "to_email": "test@example.com",
+                "meeting_summary": "Summary",
+                "meeting_title": "Meeting",
+            },
+        )
+
+        assert response.status_code == 500
+        assert "Erreur lors de l envoi" in response.json()["error"]
+
+
+class TestLinkedInPublishAPI:
+    """Tests d'intégration pour l'API de publication LinkedIn"""
+
+    @patch("app.has_linkedin_access_token")
+    def test_publish_no_token(self, mock_has_token, client):
+        """Test publication sans token"""
+        mock_has_token.return_value = False
+
+        response = client.post("/api/linkedin/publish", json={"text": "Test post"})
+
+        assert response.status_code == 400
+        assert "non configure" in response.json()["error"]
+
+    @patch("app.has_linkedin_access_token")
+    def test_publish_missing_text(self, mock_has_token, client):
+        """Test publication sans texte"""
+        mock_has_token.return_value = True
+
+        response = client.post("/api/linkedin/publish", json={"text": ""})
+
+        assert response.status_code == 400
+        assert "manquant" in response.json()["error"]
+
+    @patch("app.has_linkedin_access_token")
+    @patch("app.LinkedInClient")
+    def test_publish_success(self, mock_linkedin, mock_has_token, client):
+        """Test publication avec succès"""
+        mock_has_token.return_value = True
+
+        # Mock LinkedIn client
+        mock_instance = Mock()
+        mock_instance.publish_post.return_value = {
+            "id": "post123",
+            "url": "https://linkedin.com/feed/update/post123",
+            "status": "published",
+        }
+        mock_linkedin.return_value = mock_instance
+
+        response = client.post(
+            "/api/linkedin/publish",
+            json={"text": "Test LinkedIn post content", "visibility": "PUBLIC"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "post123"
+        assert "linkedin.com" in data["url"]
+
+    @patch("app.has_linkedin_access_token")
+    @patch("app.LinkedInClient")
+    def test_publish_text_too_long(self, mock_linkedin, mock_has_token, client):
+        """Test publication texte trop long"""
+        mock_has_token.return_value = True
+
+        # Mock qui lève ValueError pour texte trop long
+        mock_instance = Mock()
+        mock_instance.publish_post.side_effect = ValueError("Post text too long")
+        mock_linkedin.return_value = mock_instance
+
+        long_text = "x" * 3001
+        response = client.post("/api/linkedin/publish", json={"text": long_text})
+
+        # La validation côté serveur devrait tronquer avant d'atteindre le client
+        # Mais si ça passe, on devrait avoir une erreur 400
+        assert response.status_code in [400, 500]
+
+    @patch("app.has_linkedin_access_token")
+    @patch("app.LinkedInClient")
+    def test_publish_api_error(self, mock_linkedin, mock_has_token, client):
+        """Test publication avec erreur API"""
+        mock_has_token.return_value = True
+
+        mock_instance = Mock()
+        mock_instance.publish_post.side_effect = Exception("LinkedIn API Error")
+        mock_linkedin.return_value = mock_instance
+
+        response = client.post("/api/linkedin/publish", json={"text": "Test post"})
+
+        assert response.status_code == 500
+        assert "Erreur lors de la publication" in response.json()["error"]
+
+
+class TestLinkedInOAuth:
+    """Tests pour les routes OAuth LinkedIn"""
+
+    @patch("app.is_linkedin_configured")
+    def test_auth_start_not_configured(self, mock_configured, client):
+        """Test démarrage OAuth sans configuration"""
+        mock_configured.return_value = False
+
+        response = client.get("/auth/linkedin", follow_redirects=False)
+
+        assert response.status_code == 400
+        assert "non configure" in response.text
+
+    @patch("app.is_linkedin_configured")
+    @patch("app.LinkedInClient")
+    def test_auth_start_success(self, mock_linkedin, mock_configured, client):
+        """Test démarrage OAuth avec succès"""
+        mock_configured.return_value = True
+
+        mock_instance = Mock()
+        mock_instance.get_auth_url.return_value = "https://linkedin.com/oauth/authorize?..."
+        mock_linkedin.return_value = mock_instance
+
+        response = client.get("/auth/linkedin", follow_redirects=False)
+
+        # Should redirect to LinkedIn
+        assert response.status_code == 307  # Temporary redirect
+        assert "linkedin.com" in response.headers.get("location", "")
+
+    def test_auth_callback_with_error(self, client):
+        """Test callback OAuth avec erreur"""
+        response = client.get(
+            "/auth/linkedin/callback?error=access_denied&error_description=User+denied"
+        )
+
+        assert response.status_code == 400
+        assert "Erreur OAuth" in response.text
+        assert "access_denied" in response.text
+
+    def test_auth_callback_no_code(self, client):
+        """Test callback OAuth sans code"""
+        response = client.get("/auth/linkedin/callback")
+
+        assert response.status_code == 400
+        assert "Code d autorisation manquant" in response.text
+
+    @patch("app.LinkedInClient")
+    def test_auth_callback_success(self, mock_linkedin, client):
+        """Test callback OAuth avec succès"""
+        mock_instance = Mock()
+        mock_instance.exchange_code_for_token.return_value = {
+            "access_token": "token123",
+            "expires_in": 5184000,
+        }
+        mock_linkedin.return_value = mock_instance
+
+        response = client.get("/auth/linkedin/callback?code=auth_code_123")
+
+        assert response.status_code == 200
+        assert "LinkedIn connecte" in response.text
+        assert "token123" in response.text
+        assert "LINKEDIN_ACCESS_TOKEN" in response.text
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -1,0 +1,40 @@
+# Dépendances de développement et testing
+
+# Testing
+pytest==8.0.0
+pytest-cov==4.1.0
+pytest-asyncio==0.23.5
+pytest-mock==3.12.0
+httpx==0.26.0  # Pour TestClient FastAPI
+
+# Code Quality
+black==24.2.0
+isort==5.13.2
+flake8==7.0.0
+flake8-gl-codeclimate==0.2.0
+flake8-bugbear==24.2.6
+flake8-docstrings==1.7.0
+mypy==1.8.0
+
+# Security
+bandit==1.7.7
+safety==3.0.1
+detect-secrets==1.4.0
+
+# Pre-commit
+pre-commit==3.6.2
+
+# Type stubs
+types-requests==2.31.0.20240125
+types-PyYAML==6.0.12.12
+
+# Development tools
+ipython==8.21.0
+ipdb==0.13.13
+
+# Documentation
+mkdocs==1.5.3
+mkdocs-material==9.5.11
+
+# Performance testing
+locust==2.23.1

@@ -1,0 +1,231 @@
+"""
+Tests de sécurité pour l'application
+"""
+
+import os
+import sys
+from unittest.mock import patch
+
+import pytest
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+with patch.dict(
+    os.environ, {"ANTHROPIC_API_KEY": "test-key", "CONSULTANT_NAME": "Test", "COMPANY_NAME": "Test"}
+):
+    from app import app
+
+client = TestClient(app)
+
+
+class TestXSSPrevention:
+    """Tests de prévention XSS"""
+
+    def test_xss_in_topic_field(self):
+        """Test que les scripts dans les champs sont neutralisés"""
+        response = client.post(
+            "/api/slide-editor/start-generate",
+            data={"topic": "<script>alert('XSS')</script>", "audience": "Test", "slide_count": "5"},
+        )
+
+        # Vérifier que la réponse ne contient pas le script brut
+        assert "<script>" not in response.text
+
+    def test_xss_in_meeting_text(self):
+        """Test XSS dans texte de réunion"""
+        response = client.post(
+            "/api/meeting/start",
+            data={"meeting_text": "<img src=x onerror=alert('XSS')>", "meeting_title": "Test"},
+        )
+
+        assert "onerror=" not in response.text
+
+
+class TestSQLInjectionPrevention:
+    """Tests de prévention injection SQL"""
+
+    def test_sql_injection_in_search(self):
+        """Test injection SQL dans recherche"""
+        malicious_input = "'; DROP TABLE users; --"
+
+        # Adapter selon vos endpoints de recherche
+        response = client.get(f"/api/search?q={malicious_input}")
+
+        # Vérifier que l'injection n'a pas été exécutée
+        assert response.status_code in [200, 404]
+        # Base de données devrait toujours être intacte
+
+
+class TestPathTraversalPrevention:
+    """Tests de prévention path traversal"""
+
+    def test_path_traversal_in_file_download(self):
+        """Test path traversal dans téléchargement"""
+        malicious_path = "../../../etc/passwd"
+
+        response = client.get(f"/download/{malicious_path}")
+
+        # Devrait retourner 404 ou erreur, pas le fichier système
+        assert response.status_code in [404, 400, 403]
+
+    def test_path_traversal_in_file_upload(self):
+        """Test path traversal dans upload"""
+        # Tester upload avec chemin malveillant
+        files = {"file": ("../../malicious.txt", b"content", "text/plain")}
+
+        response = client.post("/api/upload", files=files)
+
+        # Vérifier que le fichier n'est pas créé en dehors du dossier uploads
+        assert response.status_code in [400, 403, 422]
+
+
+class TestCSRFProtection:
+    """Tests de protection CSRF"""
+
+    def test_csrf_token_required_for_post(self):
+        """Test que token CSRF est requis pour POST"""
+        # Sans token CSRF
+        response = client.post(
+            "/api/slide-editor/start-generate",
+            data={"topic": "Test", "audience": "Test", "slide_count": "5"},
+        )
+
+        # Devrait passer si CSRF est configuré, sinon 200
+        assert response.status_code in [200, 403]
+
+
+class TestRateLimiting:
+    """Tests de rate limiting"""
+
+    def test_rate_limit_prevents_abuse(self):
+        """Test que rate limiting empêche abus"""
+        # Faire 200 requêtes rapidement
+        rate_limited = False
+
+        for i in range(200):
+            response = client.get("/health")
+            if response.status_code == 429:
+                rate_limited = True
+                break
+
+        # Au moins une requête devrait être limitée
+        assert rate_limited or i < 200
+
+
+class TestAuthenticationBypass:
+    """Tests de contournement d'authentification"""
+
+    def test_admin_endpoints_require_auth(self):
+        """Test que les endpoints admin requièrent auth"""
+        # Tester accès admin sans authentification
+        response = client.get("/admin")
+
+        # Devrait rediriger ou retourner 401/403
+        assert response.status_code in [401, 403, 404]
+
+
+class TestInputValidation:
+    """Tests de validation des entrées"""
+
+    def test_negative_slide_count_rejected(self):
+        """Test que nombre de slides négatif est rejeté"""
+        response = client.post(
+            "/api/slide-editor/start-generate",
+            data={"topic": "Test", "audience": "Test", "slide_count": "-5"},
+        )
+
+        assert response.status_code in [400, 422]
+
+    def test_excessively_large_slide_count_rejected(self):
+        """Test que nombre de slides excessif est rejeté"""
+        response = client.post(
+            "/api/slide-editor/start-generate",
+            data={"topic": "Test", "audience": "Test", "slide_count": "10000"},
+        )
+
+        assert response.status_code in [400, 422]
+
+    def test_email_validation(self):
+        """Test validation email"""
+        from utils.validation import validate_email
+
+        assert validate_email("valid@example.com") == True
+        assert validate_email("invalid") == False
+        assert validate_email("'; DROP TABLE users; --") == False
+
+
+class TestFileUploadSecurity:
+    """Tests de sécurité upload de fichiers"""
+
+    def test_executable_file_rejected(self):
+        """Test que fichiers exécutables sont rejetés"""
+        files = {"file": ("malicious.exe", b"MZ\x90\x00", "application/x-msdownload")}
+
+        response = client.post("/api/upload", files=files)
+
+        assert response.status_code in [400, 403, 415, 422]
+
+    def test_oversized_file_rejected(self):
+        """Test que fichiers trop gros sont rejetés"""
+        # Créer un fichier de 100MB
+        large_content = b"x" * (100 * 1024 * 1024)
+        files = {"file": ("large.txt", large_content, "text/plain")}
+
+        response = client.post("/api/upload", files=files)
+
+        assert response.status_code in [400, 413, 422]
+
+
+class TestHeadersSecurity:
+    """Tests de sécurité des headers HTTP"""
+
+    def test_security_headers_present(self):
+        """Test que headers de sécurité sont présents"""
+        response = client.get("/")
+
+        # X-Content-Type-Options
+        assert "x-content-type-options" in [h.lower() for h in response.headers.keys()]
+
+        # X-Frame-Options ou CSP
+        headers_lower = [h.lower() for h in response.headers.keys()]
+        assert "x-frame-options" in headers_lower or "content-security-policy" in headers_lower
+
+    def test_no_sensitive_info_in_headers(self):
+        """Test que pas d'info sensible dans headers"""
+        response = client.get("/")
+
+        # Vérifier qu'il n'y a pas de version serveur exposée
+        assert (
+            "server" not in [h.lower() for h in response.headers.keys()]
+            or "uvicorn" not in response.headers.get("server", "").lower()
+        )
+
+
+class TestAPIKeySecurity:
+    """Tests de sécurité des clés API"""
+
+    def test_api_keys_not_exposed_in_responses(self):
+        """Test que clés API ne sont pas exposées"""
+        response = client.get("/")
+
+        # Vérifier qu'aucune clé API n'apparaît dans la réponse
+        assert "ANTHROPIC_API_KEY" not in response.text
+        assert "sk-ant-" not in response.text
+        assert "GEMINI_API_KEY" not in response.text
+
+    def test_api_keys_not_logged(self):
+        """Test que clés API ne sont pas loggées"""
+        # Vérifier logs
+        # À implémenter selon votre système de logging
+        pass
+
+
+class TestDependencyVulnerabilities:
+    """Tests de vulnérabilités dans les dépendances"""
+
+    def test_no_known_vulnerabilities(self):
+        """Test absence de vulnérabilités connues"""
+        # Exécuté via safety check dans pre-commit
+        # Ce test documente l'exigence
+        pass

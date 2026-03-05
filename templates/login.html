@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Consulting Tools Agents</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--anthracite) 0%, #2a2a2a 100%);
+        }
+
+        .login-card {
+            background: var(--blanc);
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 420px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            color: var(--anthracite);
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+
+        .login-header .brand {
+            color: var(--corail);
+            font-weight: 700;
+        }
+
+        .login-header p {
+            color: var(--gris-moyen);
+            font-size: 0.95rem;
+        }
+
+        .login-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .login-form label {
+            display: block;
+            font-weight: 600;
+            color: var(--anthracite);
+            margin-bottom: 0.5rem;
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--gris-clair);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .login-form input:focus {
+            outline: none;
+            border-color: var(--corail);
+            box-shadow: 0 0 0 3px rgba(255, 107, 88, 0.1);
+        }
+
+        .login-form .btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .error-message {
+            background-color: #fee;
+            color: #c33;
+            padding: 0.875rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--gris-moyen);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1><span class="brand">W</span>Envision Agents</h1>
+                <p>Connectez-vous pour accéder à vos agents IA</p>
+            </div>
+
+            <div id="error-message" class="error-message"></div>
+
+            <form class="login-form" id="login-form">
+                <div class="form-group">
+                    <label for="username">Nom d'utilisateur</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        autocomplete="username"
+                        autofocus
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                    />
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="login-btn">
+                    Se connecter
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>&copy; 2026 Consulting Tools - Agents IA pour consultants</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const loginBtn = document.getElementById('login-btn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Connexion...';
+            errorMessage.classList.remove('active');
+
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Redirect to dashboard
+                    window.location.href = '/';
+                } else {
+                    errorMessage.textContent = data.detail || 'Identifiants incorrects';
+                    errorMessage.classList.add('active');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Se connecter';
+                }
+            } catch (err) {
+                errorMessage.textContent = 'Erreur de connexion au serveur';
+                errorMessage.classList.add('active');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Se connecter';
+            }
+        });
+    </script>
+</body>
+</html>

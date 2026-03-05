@@ -1,0 +1,111 @@
+"""
+Tests unitaires pour MeetingSummarizerAgent
+"""
+
+import os
+import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from agents.meeting_summarizer import MeetingSummarizerAgent
+
+
+class TestMeetingSummarizerAgent:
+    """Tests pour MeetingSummarizerAgent"""
+
+    @patch("agents.meeting_summarizer.LLMClient")
+    def test_init(self, mock_llm):
+        """Test initialisation de l'agent"""
+        agent = MeetingSummarizerAgent()
+        assert agent is not None
+        assert hasattr(agent, "llm_client")
+
+    @patch("agents.meeting_summarizer.LLMClient")
+    def test_summarize_meeting(self, mock_llm):
+        """Test résumé de réunion"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = """
+        # Compte Rendu de Réunion
+
+        ## Participants
+        - John Doe
+        - Jane Smith
+
+        ## Points Discutés
+        1. Budget Q1
+        2. Roadmap produit
+
+        ## Actions
+        - [ ] Finaliser budget (John)
+        - [ ] Préparer roadmap (Jane)
+        """
+        mock_llm.return_value = mock_client
+
+        agent = MeetingSummarizerAgent()
+        result = agent.summarize(
+            transcript="Meeting transcript here...", meeting_title="Réunion Q1"
+        )
+
+        assert result is not None
+        assert "Compte Rendu" in result
+        assert "Actions" in result
+        mock_client.generate.assert_called_once()
+
+    @patch("agents.meeting_summarizer.LLMClient")
+    def test_summarize_with_participants(self, mock_llm):
+        """Test résumé avec liste de participants"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = "Summary with participants"
+        mock_llm.return_value = mock_client
+
+        agent = MeetingSummarizerAgent()
+        result = agent.summarize(
+            transcript="Transcript",
+            meeting_title="Meeting",
+            participants=["Alice", "Bob", "Charlie"],
+        )
+
+        call_args = mock_client.generate.call_args
+        assert "Alice" in str(call_args)
+        assert "Bob" in str(call_args)
+
+    @patch("agents.meeting_summarizer.LLMClient")
+    def test_summarize_empty_transcript_raises_error(self, mock_llm):
+        """Test que transcript vide lève une erreur"""
+        agent = MeetingSummarizerAgent()
+
+        with pytest.raises(ValueError, match="Transcript cannot be empty"):
+            agent.summarize(transcript="", meeting_title="Test")
+
+    @patch("agents.meeting_summarizer.LLMClient")
+    def test_extract_action_items(self, mock_llm):
+        """Test extraction des action items"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = """
+        ## Actions à Mener
+        - [ ] Tâche 1 (John, 2024-03-15)
+        - [ ] Tâche 2 (Jane, 2024-03-20)
+        """
+        mock_llm.return_value = mock_client
+
+        agent = MeetingSummarizerAgent()
+        result = agent.summarize(transcript="Transcript", meeting_title="Test")
+
+        assert "Actions à Mener" in result
+        assert "Tâche 1" in result
+        assert "Tâche 2" in result
+
+    @patch("agents.meeting_summarizer.LLMClient")
+    def test_format_includes_date(self, mock_llm):
+        """Test que le format inclut la date"""
+        mock_client = MagicMock()
+        mock_client.generate.return_value = "# Compte Rendu\n\n**Date**: 2024-01-15"
+        mock_llm.return_value = mock_client
+
+        agent = MeetingSummarizerAgent()
+        result = agent.summarize(transcript="Transcript", meeting_title="Test")
+
+        assert "Date" in result
