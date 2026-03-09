@@ -167,6 +167,117 @@ class ElearningAgent:
         },
     }
 
+    # Types d'entretien disponibles en mode "interview"
+    INTERVIEW_TYPES = {
+        "rh": {
+            "label": "Entretien RH",
+            "context": (
+                "Il s'agit d'un entretien RH (ressources humaines). "
+                "L'accent est mis sur les motivations, la trajectoire de carriere, "
+                "les soft skills, la culture d'entreprise, les attentes salariales "
+                "et l'adequation au poste."
+            ),
+            "outline_rules": (
+                "- Module sur la presentation du parcours (pitch 2 minutes)\n"
+                "- Module sur la gestion des questions de motivation et projet pro\n"
+                "- Module sur les questions salaire / conditions\n"
+                "- Module sur la mise en valeur des soft skills\n"
+                "- Exercices de simulation d'entretien RH realistes"
+            ),
+            "lesson_rules": (
+                "- Fournir des scripts de reponse aux questions RH classiques\n"
+                "- Exemples de bonnes et mauvaises reponses a 'Pourquoi nous ?'\n"
+                "- Conseils sur la negociation salariale et les attentes\n"
+                "- Exercices de mise en situation avec feedback"
+            ),
+            "chat_instructions": (
+                "Tu menes un entretien RH. Pose des questions sur les motivations, "
+                "la trajectoire, les soft skills, les attentes et la culture d'entreprise. "
+                "Evite les questions purement techniques."
+            ),
+        },
+        "technique": {
+            "label": "Entretien technique",
+            "context": (
+                "Il s'agit d'un entretien technique approfondi. "
+                "L'accent est mis sur les competences techniques, la resolution de problemes, "
+                "la conception de systemes, et la maitrise des technologies du domaine."
+            ),
+            "outline_rules": (
+                "- Module sur les questions techniques fondamentales du domaine\n"
+                "- Module sur la resolution de problemes algorithmiques / live coding\n"
+                "- Module sur la conception de systemes (system design)\n"
+                "- Module sur les bonnes pratiques et le code review\n"
+                "- Exercices de simulation technique avec corrections detaillees"
+            ),
+            "lesson_rules": (
+                "- Inclure des exercices de code avec solution commentee\n"
+                "- Questions de conception systeme avec diagrammes explicatifs\n"
+                "- Pieges classiques des entretiens techniques et comment les eviter\n"
+                "- Approche structuree pour repondre a une question technique"
+            ),
+            "chat_instructions": (
+                "Tu menes un entretien technique. Pose des questions sur les competences "
+                "techniques, la resolution de problemes, la conception de systemes et les "
+                "bonnes pratiques. Creuse les reponses techniques avec des sous-questions."
+            ),
+        },
+        "cas": {
+            "label": "Etude de cas",
+            "context": (
+                "Il s'agit d'un entretien sous forme d'etude de cas business. "
+                "L'accent est mis sur la resolution structuree de problemes, "
+                "la pensee analytique, les frameworks (MECE, SWOT, etc.) et "
+                "la communication des resultats."
+            ),
+            "outline_rules": (
+                "- Module sur les frameworks de resolution (MECE, pyramide de Minto)\n"
+                "- Module sur la structuration d'une analyse business\n"
+                "- Module sur la presentation des conclusions (storytelling)\n"
+                "- Exemples de cas types (entree sur un marche, optimisation, M&A)\n"
+                "- Exercices de simulation avec cas reels commentes"
+            ),
+            "lesson_rules": (
+                "- Etapes detaillees pour decoder et structurer un cas\n"
+                "- Calculs types et ordres de grandeur a connaitre\n"
+                "- Erreurs classiques dans les etudes de cas et comment les eviter\n"
+                "- Technique de communication: hypotheses, donnees, conclusion"
+            ),
+            "chat_instructions": (
+                "Tu menes un entretien sous forme d'etude de cas business. "
+                "Presente un probleme business et guide le candidat avec des indices. "
+                "Evalue la structuration, la logique et la communication."
+            ),
+        },
+        "fit": {
+            "label": "Entretien de fit",
+            "context": (
+                "Il s'agit d'un entretien de fit culturel. "
+                "L'accent est mis sur l'alignement avec les valeurs de l'entreprise, "
+                "le travail en equipe, le leadership, la gestion des conflits et "
+                "la culture d'entreprise."
+            ),
+            "outline_rules": (
+                "- Module sur la methode STAR pour les questions comportementales\n"
+                "- Module sur la mise en valeur du leadership et de l'initiative\n"
+                "- Module sur la gestion des conflits et du travail en equipe\n"
+                "- Module sur l'alignement aux valeurs et la culture d'entreprise\n"
+                "- Exercices de simulation avec questions comportementales reelles"
+            ),
+            "lesson_rules": (
+                "- Banque de questions comportementales avec exemples de reponses STAR\n"
+                "- Comment identifier et raconter des experiences marquantes\n"
+                "- Conseils pour montrer son alignement aux valeurs sans paraitre faux\n"
+                "- Erreurs frequentes dans les questions de fit"
+            ),
+            "chat_instructions": (
+                "Tu menes un entretien de fit culturel. Pose des questions comportementales "
+                "sur le leadership, le travail en equipe, les valeurs et la gestion "
+                "des situations difficiles. Utilise la methode STAR."
+            ),
+        },
+    }
+
     def __init__(self):
         self.llm = LLMClient(max_tokens=8192)
 
@@ -186,6 +297,8 @@ class ElearningAgent:
         duration_hours: int,
         progress_callback=None,
         mode: str = "free",
+        interview_type: str = "",
+        consultant_profile: Optional[Dict] = None,
     ) -> Dict[str, Any]:
         """
         Genere un cours complet avec modules et lecons.
@@ -194,13 +307,32 @@ class ElearningAgent:
             topic: Sujet du cours
             target_audience: Public cible
             difficulty: beginner, intermediate, advanced
-            duration_hours: Duree en heures
+            duration_hours: Duree en heures (0 = laisser l'IA decider)
             progress_callback: fn(step, detail) pour SSE
             mode: free, interview, certification, training
+            interview_type: rh, technique, cas, fit (mode interview uniquement)
+            consultant_profile: Profil consultant pour personnaliser le cours
 
         Returns:
             Dict structure du cours complet
         """
+        auto_duration = duration_hours == 0
+
+        # Enrichir le public cible avec le profil consultant si fourni
+        if consultant_profile and mode != "certification":
+            name = consultant_profile.get("name", "")
+            title = consultant_profile.get("title", "")
+            bio = (consultant_profile.get("bio") or "")[:200]
+            skills = [
+                s.get("name", str(s)) if isinstance(s, dict) else str(s)
+                for s in (consultant_profile.get("skills_technical") or [])
+            ][:8]
+            target_audience = (
+                f"Consultant {name} – {title}. "
+                + (f"Profil : {bio}. " if bio else "")
+                + (f"Competences cles : {', '.join(skills)}." if skills else "")
+            )
+
         mode_cfg = self._get_mode_config(mode)
         if progress_callback:
             label = mode_cfg.get("label", "Cours")
@@ -216,9 +348,16 @@ class ElearningAgent:
             difficulty,
             duration_hours,
             mode=mode,
+            interview_type=interview_type,
+            consultant_profile=consultant_profile,
+            auto_duration=auto_duration,
         )
         if not outline:
             return {"error": "Echec de generation du plan"}
+
+        # Si duree auto, extraire la duree depuis l'outline
+        if auto_duration:
+            duration_hours = outline.get("duration_hours", 3) or 3
 
         if progress_callback:
             progress_callback(
@@ -241,6 +380,8 @@ class ElearningAgent:
                 difficulty,
                 mod_outline,
                 mode=mode,
+                interview_type=interview_type,
+                consultant_profile=consultant_profile,
             )
 
             modules.append(
@@ -264,6 +405,7 @@ class ElearningAgent:
             "difficulty_level": difficulty,
             "duration_hours": duration_hours,
             "mode": mode,
+            "interview_type": interview_type,
             "learning_objectives": outline.get("learning_objectives", []),
             "modules": modules,
         }
@@ -418,10 +560,18 @@ REGLES:
         difficulty: str,
         duration_hours: int,
         mode: str = "free",
+        interview_type: str = "",
+        consultant_profile: Optional[Dict] = None,
+        auto_duration: bool = False,
     ) -> Optional[Dict]:
         """Genere le plan du cours (titre, objectifs, modules)"""
         mode_cfg = self._get_mode_config(mode)
         mode_ctx = mode_cfg.get("system_context", "")
+
+        # Enrichir le contexte avec le type d'entretien
+        interview_type_cfg = self.INTERVIEW_TYPES.get(interview_type, {}) if interview_type else {}
+        if interview_type_cfg:
+            mode_ctx = interview_type_cfg.get("context", mode_ctx)
 
         system_prompt = (
             "Tu es un expert en ingenierie pedagogique et en "
@@ -432,11 +582,45 @@ REGLES:
         if mode_ctx:
             system_prompt += f" CONTEXTE: {mode_ctx}"
 
+        # Regles de mode + regles specifiques au type d'entretien
         mode_rules = mode_cfg.get("outline_rules", "")
+        if interview_type_cfg.get("outline_rules"):
+            mode_rules = interview_type_cfg["outline_rules"]
         extra_rules = (
-            f"\n\nREGLES SPECIFIQUES AU MODE " f"'{mode_cfg['label']}':\n{mode_rules}"
+            f"\n\nREGLES SPECIFIQUES AU MODE "
+            f"'{interview_type_cfg.get('label', mode_cfg['label'])}':\n{mode_rules}"
             if mode_rules
             else ""
+        )
+
+        # Bloc profil consultant
+        consultant_block = ""
+        if consultant_profile and mode != "certification":
+            missions = []
+            for m in (consultant_profile.get("missions") or [])[:3]:
+                if isinstance(m, dict) and m.get("client_name"):
+                    missions.append(
+                        f"- {m['client_name']}: {(m.get('context_and_challenges') or '')[:120]}"
+                    )
+            certs = [
+                c.get("name", str(c)) if isinstance(c, dict) else str(c)
+                for c in (consultant_profile.get("certifications") or [])[:4]
+            ]
+            consultant_block = (
+                "\n\nPROFIL DU CONSULTANT (adapter le cours a son niveau et son parcours) :\n"
+                + (f"Titre : {consultant_profile.get('title', '')}\n" if consultant_profile.get("title") else "")
+                + (f"Missions recentes :\n" + "\n".join(missions) + "\n" if missions else "")
+                + (f"Certifications : {', '.join(certs)}\n" if certs else "")
+                + "=> Adapte les exemples, la profondeur et les exercices a ce parcours reel."
+            )
+
+        duration_block = (
+            f"DUREE TOTALE: {duration_hours} heures"
+            if not auto_duration
+            else (
+                "DUREE: Determine toi-meme la duree optimale selon le sujet et le mode. "
+                "Ajoute un champ \"duration_hours\" (entier) dans ta reponse JSON."
+            )
         )
 
         prompt = f"""Cree le plan d'un cours e-learning sur le sujet suivant :
@@ -444,12 +628,13 @@ REGLES:
 SUJET: {topic}
 PUBLIC CIBLE: {target_audience}
 NIVEAU: {difficulty}
-DUREE TOTALE: {duration_hours} heures
+{duration_block}
 
 Retourne UNIQUEMENT un JSON valide avec cette structure:
 {{
     "title": "Titre du cours",
     "description": "Description engageante du cours (3-4 phrases)",
+    "duration_hours": 3,
     "learning_objectives": [
         "A la fin, l'apprenant sera capable de [verbe Bloom] ...",
         "..."
@@ -471,7 +656,7 @@ REGLES:
   (~1-2 modules par heure)
 - Chaque module a 2-4 lecons
 - La progression doit etre logique (du simple au complexe)
-- Adapte le vocabulaire au public cible{extra_rules}"""
+- Adapte le vocabulaire au public cible{extra_rules}{consultant_block}"""
 
         try:
             response = self.llm.generate(
@@ -491,10 +676,16 @@ REGLES:
         difficulty: str,
         module_outline: Dict,
         mode: str = "free",
+        interview_type: str = "",
+        consultant_profile: Optional[Dict] = None,
     ) -> List[Dict]:
         """Genere les lecons detaillees d'un module"""
         mode_cfg = self._get_mode_config(mode)
         mode_ctx = mode_cfg.get("system_context", "")
+
+        interview_type_cfg = self.INTERVIEW_TYPES.get(interview_type, {}) if interview_type else {}
+        if interview_type_cfg:
+            mode_ctx = interview_type_cfg.get("context", mode_ctx)
 
         system_prompt = (
             "Tu es un expert en creation de contenu pedagogique. "
@@ -509,11 +700,36 @@ REGLES:
         lessons_list = json.dumps(lesson_titles, ensure_ascii=False)
 
         mode_lesson_rules = mode_cfg.get("lesson_rules", "")
+        if interview_type_cfg.get("lesson_rules"):
+            mode_lesson_rules = interview_type_cfg["lesson_rules"]
+        label = interview_type_cfg.get("label", mode_cfg["label"])
         extra_rules = (
-            f"\n\nREGLES SPECIFIQUES AU MODE " f"'{mode_cfg['label']}':\n{mode_lesson_rules}"
+            f"\n\nREGLES SPECIFIQUES AU MODE '{label}':\n{mode_lesson_rules}"
             if mode_lesson_rules
             else ""
         )
+
+        consultant_block = ""
+        if consultant_profile:
+            missions = []
+            for m in (consultant_profile.get("missions") or [])[:3]:
+                if isinstance(m, dict) and m.get("client_name"):
+                    missions.append(
+                        f"- {m['client_name']}: {(m.get('context_and_challenges') or '')[:120]}"
+                    )
+            skills = [
+                s.get("name", str(s)) if isinstance(s, dict) else str(s)
+                for s in (consultant_profile.get("skills") or [])[:8]
+            ]
+            consultant_block = (
+                "\n\nPROFIL DU CONSULTANT (adapter les solutions des exercices a son parcours) :\n"
+                + (f"Nom : {consultant_profile.get('name', '')}\n" if consultant_profile.get("name") else "")
+                + (f"Titre : {consultant_profile.get('title', '')}\n" if consultant_profile.get("title") else "")
+                + (f"Competences : {', '.join(skills)}\n" if skills else "")
+                + (f"Missions recentes :\n" + "\n".join(missions) + "\n" if missions else "")
+                + "=> Pour chaque exercice, la solution doit s'appuyer sur des exemples concrets "
+                + "tires de son secteur, ses competences et ses missions reelles."
+            )
 
         prompt = f"""Genere le contenu detaille des lecons pour ce module:
 
@@ -539,7 +755,8 @@ Retourne UNIQUEMENT un JSON valide:
                 {{
                     "title": "Exercice pratique",
                     "description": "Description de l'exercice",
-                    "hints": ["Indice 1"]
+                    "hints": ["Indice 1"],
+                    "solution": "Reponse complete et detaillee a l'exercice, avec exemples concrets"
                 }}
             ],
             "estimated_duration_minutes": 15
@@ -552,7 +769,9 @@ REGLES:
 - Inclure des exemples concrets et du code si pertinent
 - 2-4 points cles par lecon
 - Au moins 1 exercice pratique par lecon
-- Adapter le niveau de detail au public cible{extra_rules}"""
+- Adapter le niveau de detail au public cible
+- Le champ "solution" est OBLIGATOIRE pour chaque exercice : fournir une reponse complete,
+  structuree et illustree (pas juste un mot-cle){extra_rules}{consultant_block}"""
 
         try:
             response = self.llm.generate(
@@ -567,6 +786,94 @@ REGLES:
         except Exception as e:
             print(f"Erreur generation lecons: {e}")
             return []
+
+    def generate_exercise_solutions(
+        self,
+        exercises: List[Dict],
+        topic: str,
+        lesson_title: str,
+        consultant_profile: Optional[Dict] = None,
+    ) -> List[Dict]:
+        """Génère les solutions pour une liste d'exercices existants.
+
+        Args:
+            exercises: Liste des exercices (title, description, hints, …)
+            topic: Sujet général du cours
+            lesson_title: Titre de la leçon concernée
+            consultant_profile: Profil consultant optionnel pour personnaliser les réponses
+
+        Returns:
+            Même liste d'exercices avec le champ "solution" renseigné.
+        """
+        if not exercises:
+            return exercises
+
+        consultant_block = ""
+        if consultant_profile:
+            missions = []
+            for m in (consultant_profile.get("missions") or [])[:3]:
+                if isinstance(m, dict) and m.get("client_name"):
+                    missions.append(
+                        "- " + m["client_name"] + ": "
+                        + (m.get("context_and_challenges") or "")[:120]
+                    )
+            skills = [
+                s.get("name", str(s)) if isinstance(s, dict) else str(s)
+                for s in (consultant_profile.get("skills") or [])[:8]
+            ]
+            consultant_block = (
+                "\n\nPROFIL DU CONSULTANT (illustrer les réponses avec son parcours) :\n"
+                + (consultant_profile.get("name", "") + " – " if consultant_profile.get("name") else "")
+                + (consultant_profile.get("title", "") + "\n" if consultant_profile.get("title") else "")
+                + ("Compétences : " + ", ".join(skills) + "\n" if skills else "")
+                + ("Missions : \n" + "\n".join(missions) + "\n" if missions else "")
+            )
+
+        exercises_json = json.dumps(
+            [{"index": i, "title": e.get("title", ""), "description": e.get("description", "")}
+             for i, e in enumerate(exercises)],
+            ensure_ascii=False,
+        )
+
+        prompt = (
+            "Cours : " + topic + "\n"
+            "Leçon : " + lesson_title + "\n"
+            + consultant_block
+            + "\nExercices :\n" + exercises_json
+            + "\n\nRetourne UNIQUEMENT un JSON valide :\n"
+            + '{"solutions": [{"index": 0, "solution": "Réponse complète et détaillée..."}]}\n\n'
+            + "RÈGLES :\n"
+            + "- Une solution par exercice (même index que l'entrée)\n"
+            + "- Réponses complètes, structurées, avec exemples concrets\n"
+            + "- Si un profil consultant est fourni, illustrer avec ses missions/compétences réelles"
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=(
+                    "Tu es un expert pédagogique. "
+                    "Tu fournis des corrigés détaillés pour des exercices de formation. "
+                    "Réponds uniquement en JSON."
+                ),
+                temperature=0.6,
+            )
+            result = self._parse_json_response(response)
+            solutions_map = {
+                item["index"]: item["solution"]
+                for item in (result.get("solutions") or [])
+                if "index" in item and "solution" in item
+            }
+            updated = []
+            for i, ex in enumerate(exercises):
+                ex_copy = dict(ex)
+                if i in solutions_map:
+                    ex_copy["solution"] = solutions_map[i]
+                updated.append(ex_copy)
+            return updated
+        except Exception as e:
+            print("Erreur generate_exercise_solutions: " + str(e))
+            return exercises
 
     def regenerate_with_feedback(
         self,
@@ -629,7 +936,7 @@ initiale:
                     "content_markdown": "...",
                     "key_takeaways": [...],
                     "practical_exercises": [
-                        {{"title": "...", "description": "...", "hints": [...]}}
+                        {{"title": "...", "description": "...", "hints": [...], "solution": "..."}}
                     ],
                     "estimated_duration_minutes": 15
                 }}
@@ -1290,20 +1597,18 @@ REGLES:
         role: str = "",
         interviewer_name: str = "",
         interviewer_linkedin: str = "",
+        interview_type: str = "",
     ) -> str:
         """
         Répond dans un mode chat d'entretien interactif.
 
-        L'IA joue le rôle d'un recruteur / interviewer technique et
-        pose des questions de suivi basées sur les réponses de l'apprenant.
-
         Args:
             messages: Historique de la conversation
-                [{"role": "user"|"assistant", "content": "..."}]
             topic: Sujet de l'entretien (ex: "Data Engineering", "Python")
             role: Poste visé (ex: "Data Engineer Senior")
             interviewer_name: Nom/Poste de l'interviewer réel ou simulé
             interviewer_linkedin: Lien LinkedIn de l'interviewer pour contexte
+            interview_type: rh, technique, cas, fit
 
         Returns:
             Réponse de l'interviewer (texte)
@@ -1314,15 +1619,18 @@ REGLES:
         if interviewer_linkedin:
             interviewer_info += f"Voici ton profil pour inspiration : {interviewer_linkedin}. "
 
+        interview_type_cfg = self.INTERVIEW_TYPES.get(interview_type, {}) if interview_type else {}
+        type_instructions = interview_type_cfg.get("chat_instructions", "")
+
         topic_line = f"Poste : {role}\nDomaine : {topic}" if topic or role else ""
-        system_prompt = f"""Tu es un recruteur technique expérimenté dans un entretien simulé.
+        system_prompt = f"""Tu es un recruteur expérimenté dans un entretien simulé.
 {topic_line}
 {interviewer_info}
+{type_instructions}
 
 Ton rôle :
 - Jouer le rôle d'un interviewer professionnel, bienveillant mais exigeant
-- Poser des questions techniques et comportementales pertinentes
-- Approfondir les réponses du candidat avec des questions de suivi
+- Poser des questions pertinentes et approfondir les réponses avec des sous-questions
 - Ne pas donner les réponses : faire réfléchir le candidat
 - Adapter la difficulté selon la qualité des réponses
 - Terminer par "FIN_ENTRETIEN" uniquement si l'utilisateur demande explicitement à arrêter
@@ -1343,6 +1651,7 @@ Style : conversationnel, professionnel, concis (2-4 phrases max par tour)."""
         role: str = "",
         interviewer_name: str = "",
         interviewer_linkedin: str = "",
+        interview_type: str = "",
     ) -> Dict[str, Any]:
         """
         Analyse les performances d'un entretien simulé.

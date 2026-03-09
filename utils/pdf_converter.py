@@ -405,6 +405,31 @@ class PDFConverter:
 
         return None
 
+    def html_to_pdf(self, html_content: str, output_path: str) -> Optional[str]:
+        """
+        Convertit un HTML string en PDF via WeasyPrint (page A4 portrait).
+
+        Args:
+            html_content: Document HTML complet (avec <html>/<head>/<style>)
+            output_path: Chemin de sortie du PDF
+
+        Returns:
+            Chemin vers le PDF généré ou None si échec
+        """
+        try:
+            from weasyprint import HTML
+
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+            HTML(string=html_content).write_pdf(str(output_path))
+            print(f"✅ PDF créé : {output_path}")
+            return str(output_path)
+        except ImportError:
+            print("⚠️  weasyprint non installé - pip install weasyprint")
+            return None
+        except Exception as e:
+            print(f"❌ Erreur html_to_pdf : {e}")
+            return None
+
     def is_pdf_conversion_available(self) -> dict:
         """
         Vérifie quels types de conversion sont disponibles
@@ -415,6 +440,7 @@ class PDFConverter:
         return {
             "pptx_to_pdf": self.libreoffice_path is not None,
             "markdown_to_pdf": shutil.which("pandoc") is not None or self._has_weasyprint(),
+            "html_to_pdf": self._has_weasyprint(),
         }
 
     @staticmethod
