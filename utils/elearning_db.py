@@ -458,6 +458,17 @@ class ElearningDatabase:
             conn.commit()
             return cursor.rowcount > 0
 
+    def update_lesson_exercises(self, lesson_id: int, exercises: List[Dict]) -> bool:
+        """Met à jour le champ practical_exercises d'une leçon (avec solutions)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE lessons SET practical_exercises = ? WHERE id = ?",
+                (json.dumps(exercises, ensure_ascii=False), lesson_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     # ==================
     # QUIZZES
     # ==================

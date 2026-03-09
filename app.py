@@ -7585,6 +7585,46 @@ async def api_elearning_delete_course(course_id: int):
     return {"ok": True}
 
 
+@app.post("/api/elearning/lesson/{lesson_id}/solutions")
+@limiter.limit("10/minute")
+async def api_elearning_lesson_solutions(request: Request, lesson_id: int):
+    """Génère les solutions pour les exercices d'une leçon existante."""
+    body = await request.json()
+    consultant_id = int(body.get("consultant_id", 0))
+
+    # Trouver la leçon dans la DB via le cours
+    course_id = int(body.get("course_id", 0))
+    topic = sanitize_text_input(body.get("topic", ""), max_length=500)
+    lesson_title = sanitize_text_input(body.get("lesson_title", ""), max_length=500)
+    exercises = body.get("exercises", [])
+
+    if not exercises:
+        return JSONResponse({"error": "Aucun exercice fourni"}, status_code=400)
+
+    consultant_profile = None
+    if consultant_id > 0:
+        try:
+            consultant_db = ConsultantDatabase()
+            consultant_profile = consultant_db.get_consultant(consultant_id)
+        except Exception:
+            pass
+
+    try:
+        agent = ElearningAgent()
+        updated_exercises = agent.generate_exercise_solutions(
+            exercises=exercises,
+            topic=topic,
+            lesson_title=lesson_title,
+            consultant_profile=consultant_profile,
+        )
+        # Persister en DB si lesson_id fourni
+        if lesson_id > 0:
+            elearning_db.update_lesson_exercises(lesson_id, updated_exercises)
+        return {"exercises": updated_exercises}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # --- Entretien: Chat & Simulation ---
 
 

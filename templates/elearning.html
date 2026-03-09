@@ -1373,7 +1373,7 @@
             objHtml += '</ul>';
             document.getElementById('gen-result-objectives').innerHTML = objHtml;
 
-            document.getElementById('gen-result-modules').innerHTML = renderModules(c.modules);
+            document.getElementById('gen-result-modules').innerHTML = renderModules(c.modules, c);
         } else if (target === 'modal') {
             document.getElementById('modal-title').textContent = c.title;
             document.getElementById('modal-desc').textContent = c.description;
@@ -1383,7 +1383,7 @@
             objHtml += '</ul>';
             document.getElementById('modal-objectives').innerHTML = objHtml;
 
-            document.getElementById('modal-modules').innerHTML = renderModules(c.modules);
+            document.getElementById('modal-modules').innerHTML = renderModules(c.modules, c);
 
             // Toggle interview button
             const interviewBtn = document.getElementById('btn-modal-interview');
@@ -1408,14 +1408,12 @@
             html += '<div id="' + sid + '" style="display:none; margin-top: 0.4rem; padding: 0.5rem; background: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 4px; font-size: 0.85rem; white-space: pre-wrap;">';
             html += e.solution.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             html += '</div></div>';
-        } else {
-            html += '<p style="margin: 0.3rem 0 0; font-size: 0.78rem; color: #9ca3af; font-style: italic;">Regenerez le cours pour obtenir la reponse.</p>';
         }
         html += '</div>';
         return html;
     }
 
-    function renderModules(modules) {
+    function renderModules(modules, course) {
         return (modules || []).map((m, i) => {
             const mNum = m.module_number || (i + 1);
             let lessonsHtml = (m.lessons || []).map(l => {
@@ -1425,13 +1423,18 @@
                     takeaways = '<div style="margin-top: 0.5rem;"><strong>Points cles:</strong><ul>' +
                         l.key_takeaways.map(k => '<li>' + k + '</li>').join('') + '</ul></div>';
                 }
+                const exList = l.practical_exercises || [];
+                const hasMissingSolution = exList.some(e => !e.solution);
                 let exercises = '';
-                if ((l.practical_exercises || []).length) {
-                    exercises = '<div style="margin-top: 0.5rem;"><strong>Exercices:</strong>' +
-                        l.practical_exercises.map((e, ei) => {
-                            const sid = 'sol-' + mNum + '-' + l.lesson_number + '-' + ei;
-                            return renderExercise(e, sid);
-                        }).join('') + '</div>';
+                if (exList.length) {
+                    const exHtml = exList.map((e, ei) => {
+                        const sid = 'sol-' + mNum + '-' + l.lesson_number + '-' + ei;
+                        return renderExercise(e, sid);
+                    }).join('');
+                    const genBtn = hasMissingSolution && l.id && course
+                        ? '<button id="gen-sol-btn-' + l.id + '" onclick="generateLessonSolutions(' + l.id + ', ' + (course.id || 0) + ', \'' + (course.topic || '').replace(/'/g, "\\'") + '\')" style="font-size: 0.78rem; padding: 0.2rem 0.6rem; background: #fff7ed; border: 1px solid #fb923c; border-radius: 4px; cursor: pointer; color: #c2410c; margin-top: 0.4rem;">Generer les reponses</button>'
+                        : '';
+                    exercises = '<div id="exercises-' + l.id + '" style="margin-top: 0.5rem;"><strong>Exercices :</strong>' + exHtml + genBtn + '</div>';
                 }
                 return '<div class="lesson-item">' +
                     '<h5>Lecon ' + l.lesson_number + ': ' + l.title + '</h5>' +
@@ -1450,6 +1453,53 @@
                 lessonsHtml +
                 '</div></div>';
         }).join('');
+    }
+
+    async function generateLessonSolutions(lessonId, courseId, topic) {
+        const btn = document.getElementById('gen-sol-btn-' + lessonId);
+        if (btn) { btn.textContent = 'Generation...'; btn.disabled = true; }
+
+        // Collect current exercises from the rendered DOM is not reliable;
+        // re-fetch the course to get the lesson data
+        try {
+            const courseResp = await fetch('/api/elearning/course/' + courseId);
+            const courseData = await courseResp.json();
+            let lesson = null;
+            for (const mod of (courseData.course?.modules || [])) {
+                for (const les of (mod.lessons || [])) {
+                    if (les.id === lessonId) { lesson = les; break; }
+                }
+                if (lesson) break;
+            }
+            if (!lesson) throw new Error('Lecon introuvable');
+
+            const resp = await fetch('/api/elearning/lesson/' + lessonId + '/solutions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    course_id: courseId,
+                    topic: topic,
+                    lesson_title: lesson.title,
+                    exercises: lesson.practical_exercises || [],
+                    consultant_id: 0,
+                }),
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+
+            // Re-render only the exercises section for this lesson
+            const container = document.getElementById('exercises-' + lessonId);
+            if (container) {
+                const updatedExHtml = (data.exercises || []).map((e, ei) => {
+                    const sid = 'sol-gen-' + lessonId + '-' + ei;
+                    return renderExercise(e, sid);
+                }).join('');
+                container.innerHTML = '<strong>Exercices :</strong>' + updatedExHtml;
+            }
+        } catch (err) {
+            if (btn) { btn.textContent = 'Erreur – Reessayer'; btn.disabled = false; }
+            console.error('generateLessonSolutions error:', err);
+        }
     }
 
     function toggleSolution(id) {
