@@ -2,6 +2,7 @@
 Consulting Tools Agents - Application Web
 FastAPI server exposant les agents de propositions commerciales et veille LinkedIn
 """
+
 import asyncio
 import io
 import json
@@ -34,23 +35,23 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from agents.article_to_post import ArticleToPostAgent
 from agents.dataset_analyzer import DatasetAnalyzerAgent
-from agents.meeting_capture_agent import (
-    GEMINI_MODELS as MC_GEMINI_MODELS,
-    MeetingCaptureAgent,
-    MeetingGmailClient,
-    APIKeyError as MCAPIKeyError,
-    DraftCreationError,
-    VideoProcessingError,
-)
-from agents.tender_scout_agent import AnalysisError, ScrapingError, TenderScoutAgent
 from agents.elearning_agent import ElearningAgent
 from agents.linkedin_commenter import LinkedInCommenterAgent
 from agents.linkedin_monitor import LinkedInMonitorAgent
+from agents.meeting_capture_agent import GEMINI_MODELS as MC_GEMINI_MODELS
+from agents.meeting_capture_agent import APIKeyError as MCAPIKeyError
+from agents.meeting_capture_agent import (
+    DraftCreationError,
+    MeetingCaptureAgent,
+    MeetingGmailClient,
+    VideoProcessingError,
+)
 from agents.meeting_summarizer import MeetingSummarizerAgent
 from agents.proposal_generator import ProposalGeneratorAgent
 from agents.rfp_responder import RFPResponderAgent
 from agents.skills_market import SkillsMarketAgent
 from agents.tech_monitor import TechMonitorAgent
+from agents.tender_scout_agent import AnalysisError, ScrapingError, TenderScoutAgent
 from agents.workshop_planner import WorkshopPlannerAgent
 from config import get_consultant_info
 from utils.auth import authenticate_user, get_current_user, get_session_secret
@@ -80,24 +81,17 @@ sys.path.insert(0, str(BASE_DIR))
 app = FastAPI(title="Consulting Tools Agents", version="1.0.0")
 
 # Rate limiter configuration
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["100 per minute"])
+limiter = Limiter(key_func=get_remote_address, default_limits=["100 per minute"])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Templates and static files
-app.mount(
-    "/static",
-    StaticFiles(
-        directory=str(
-            BASE_DIR /
-            "static")),
-    name="static")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 # === CSRF PROTECTION MIDDLEWARE ===
+
 
 class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     """
@@ -149,17 +143,16 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 origin_valid = False
 
         if not origin_valid:
-            print(
-                f"⚠️  CSRF blocked: {request.method} {request.url.path} from {origin or referer}")
+            print(f"⚠️  CSRF blocked: {request.method} {request.url.path} from {origin or referer}")
             return JSONResponse(
-                {"detail": "CSRF validation failed. Request origin not allowed."},
-                status_code=403
+                {"detail": "CSRF validation failed. Request origin not allowed."}, status_code=403
             )
 
         return await call_next(request)
 
 
 # === AUTHENTICATION MIDDLEWARE ===
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """Middleware pour vérifier l'authentification"""
@@ -176,10 +169,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not get_current_user(request):
             # Si c'est une requête API, renvoyer 401
             if request.url.path.startswith("/api/"):
-                return JSONResponse(
-                    {"detail": "Non authentifié"},
-                    status_code=401
-                )
+                return JSONResponse({"detail": "Non authentifié"}, status_code=401)
             # Sinon, rediriger vers /login
             return RedirectResponse(url="/login", status_code=302)
 
@@ -191,15 +181,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # Protection CSRF (origin checking)
 app.add_middleware(CSRFProtectionMiddleware)
 # app.add_middleware(AuthMiddleware)  # DESACTIVE - Pas de login requis
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=get_session_secret())  # S'exécute en premier
+app.add_middleware(SessionMiddleware, secret_key=get_session_secret())  # S'exécute en premier
 
 # Consultant info (depuis config centralisee)
 try:
     _consultant_config = get_consultant_info()
-    CONSULTANT_NAME = _consultant_config['name']
-    COMPANY_NAME = _consultant_config['company']
+    CONSULTANT_NAME = _consultant_config["name"]
+    COMPANY_NAME = _consultant_config["company"]
 except ValueError as e:
     # Si config non chargee, on laisse l'app demarrer mais avec avertissement
     print(f"\n⚠️  {e}")
@@ -211,6 +199,7 @@ jobs = {}
 
 
 # === SECURITY: Safe Error Handling (Phase 3) ===
+
 
 def safe_error_message(error: Exception, context: str = "") -> str:
     """
@@ -240,19 +229,37 @@ def safe_traceback() -> str:
         Traceback sanitize
     """
     import traceback
+
     tb = traceback.format_exc()
     return sanitize_error_message(tb)
 
 
 # Global model settings (in-memory, persists per session)
 AVAILABLE_GEMINI_MODELS = {
+    # Gemini 3.x (Preview)
+    "gemini-3.1-pro-preview": "Gemini 3.1 Pro Preview 🔥",
+    "gemini-3-flash-preview": "Gemini 3 Flash Preview ⚡",
+    "gemini-3-pro-preview": "Gemini 3 Pro Preview",
+    "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+    "deep-research-pro-preview-12-2025": "Deep Research Pro 🔬",
+    # Gemini 2.5
+    "gemini-2.5-pro": "Gemini 2.5 Pro",
+    "gemini-2.5-flash": "Gemini 2.5 Flash",
+    "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite",
+    # Gemini 2.0
     "gemini-2.0-flash": "Gemini 2.0 Flash",
+    "gemini-2.0-flash-001": "Gemini 2.0 Flash 001",
+    "gemini-2.0-flash-lite": "Gemini 2.0 Flash Lite",
+    "gemini-2.0-flash-lite-001": "Gemini 2.0 Flash Lite 001",
+    # Latest aliases
+    "gemini-flash-latest": "Gemini Flash (Latest)",
+    "gemini-pro-latest": "Gemini Pro (Latest)",
+    # Gemini 1.5
     "gemini-1.5-pro": "Gemini 1.5 Pro",
     "gemini-1.5-flash": "Gemini 1.5 Flash",
-    "gemini-1.5-flash-8b": "Gemini 1.5 Flash-8B",
 }
 SELECTED_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-IMAGE_MODEL = "gemini-1.5-pro"  # Fallback for image analysis
+IMAGE_MODEL = "gemini-3-pro-image-preview"  # Nano Banana Pro for images
 
 # Settings persistence
 SETTINGS_FILE = BASE_DIR / "data" / "settings.json"
@@ -263,10 +270,9 @@ def load_settings():
     global SELECTED_GEMINI_MODEL
     if SETTINGS_FILE.exists():
         try:
-            with open(SETTINGS_FILE, 'r') as f:
+            with open(SETTINGS_FILE, "r") as f:
                 settings = json.load(f)
-            SELECTED_GEMINI_MODEL = settings.get(
-                "gemini_model", SELECTED_GEMINI_MODEL)
+            SELECTED_GEMINI_MODEL = settings.get("gemini_model", SELECTED_GEMINI_MODEL)
         except Exception:
             pass
 
@@ -275,7 +281,7 @@ def save_settings():
     """Sauvegarde les settings dans le fichier JSON"""
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     settings = {"gemini_model": SELECTED_GEMINI_MODEL}
-    with open(SETTINGS_FILE, 'w') as f:
+    with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f, indent=2)
 
 
@@ -284,15 +290,14 @@ load_settings()
 
 # === HELPERS ===
 
+
 def get_stats():
     """Calcule les statistiques du dashboard"""
     output_dir = BASE_DIR / "output"
     monitoring_dir = BASE_DIR / "data" / "monitoring"
 
-    proposals = len(list(output_dir.glob("proposal_*.md"))
-                    ) if output_dir.exists() else 0
-    posts = len(list(output_dir.glob("linkedin_post_*.md"))
-                ) if output_dir.exists() else 0
+    proposals = len(list(output_dir.glob("proposal_*.md"))) if output_dir.exists() else 0
+    posts = len(list(output_dir.glob("linkedin_post_*.md"))) if output_dir.exists() else 0
 
     articles = 0
     if monitoring_dir.exists():
@@ -313,13 +318,14 @@ def get_recent_files(limit=8):
         return []
 
     files = []
-    for f in sorted(output_dir.glob("*.md"),
-                    key=lambda x: x.stat().st_mtime, reverse=True)[:limit]:
-        files.append({
-            "name": f.name,
-            "date": datetime.fromtimestamp(f.stat().st_mtime).strftime("%d/%m/%Y %H:%M"),
-            "path": str(f)
-        })
+    for f in sorted(output_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)[:limit]:
+        files.append(
+            {
+                "name": f.name,
+                "date": datetime.fromtimestamp(f.stat().st_mtime).strftime("%d/%m/%Y %H:%M"),
+                "path": str(f),
+            }
+        )
     return files
 
 
@@ -329,6 +335,7 @@ def send_sse(event: str, data: dict) -> str:
 
 
 # === AUTHENTICATION ROUTES ===
+
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -342,16 +349,14 @@ async def login_page(request: Request):
 
 @app.post("/login")
 @limiter.limit("10/minute")
-async def login(request: Request, username: str = Form(...),
-                password: str = Form(...)):
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Authentification"""
     if authenticate_user(username, password):
         request.session["user"] = username
         return {"success": True, "redirect": "/"}
     else:
         return JSONResponse(
-            {"detail": "Nom d'utilisateur ou mot de passe incorrect"},
-            status_code=401
+            {"detail": "Nom d'utilisateur ou mot de passe incorrect"}, status_code=401
         )
 
 
@@ -364,13 +369,15 @@ async def logout(request: Request):
 
 # === LINKEDIN OAUTH ===
 
+
 @app.get("/auth/linkedin")
 async def linkedin_auth_start():
     """Demarre le flux OAuth LinkedIn"""
     from utils.linkedin_client import LinkedInClient, is_linkedin_configured
 
     if not is_linkedin_configured():
-        return HTMLResponse("""
+        return HTMLResponse(
+            """
             <h1>LinkedIn OAuth non configure</h1>
             <p>Veuillez configurer les variables suivantes dans votre .env :</p>
             <ul>
@@ -379,46 +386,55 @@ async def linkedin_auth_start():
                 <li>LINKEDIN_REDIRECT_URI</li>
             </ul>
             <p>Consultez <a href="https://www.linkedin.com/developers/apps">LinkedIn Developers</a> pour créer une app.</p>
-        """, status_code=400)
+        """,
+            status_code=400,
+        )
 
     try:
         client = LinkedInClient()
         auth_url = client.get_auth_url()
         return RedirectResponse(auth_url)
     except Exception as e:
-        return HTMLResponse(
-            f"<h1>Erreur</h1><p>{safe_error_message(e)}</p>", status_code=500)
+        return HTMLResponse(f"<h1>Erreur</h1><p>{safe_error_message(e)}</p>", status_code=500)
 
 
 @app.get("/auth/linkedin/callback")
 async def linkedin_auth_callback(
-        code: str = None, error: str = None, error_description: str = None):
+    code: str = None, error: str = None, error_description: str = None
+):
     """Gere le callback OAuth LinkedIn"""
     from utils.linkedin_client import LinkedInClient
 
     # Check for errors
     if error:
-        return HTMLResponse("""
+        return HTMLResponse(
+            """
             <h1>Erreur OAuth LinkedIn</h1>
             <p><strong>Erreur :</strong> {error}</p>
             <p><strong>Description :</strong> {error_description or 'N/A'}</p>
             <p><a href="/">Retour au dashboard</a></p>
-        """, status_code=400)
+        """,
+            status_code=400,
+        )
 
     if not code:
-        return HTMLResponse("""
+        return HTMLResponse(
+            """
             <h1>Erreur OAuth LinkedIn</h1>
             <p>Code d autorisation manquant</p>
             <p><a href="/">Retour au dashboard</a></p>
-        """, status_code=400)
+        """,
+            status_code=400,
+        )
 
     try:
         client = LinkedInClient()
         token_data = client.exchange_code_for_token(code)
-        token_data.get('access_token')
-        token_data.get('expires_in', 'N/A')
+        token_data.get("access_token")
+        token_data.get("expires_in", "N/A")
 
-        return HTMLResponse("""
+        return HTMLResponse(
+            """
             <!DOCTYPE html>
             <html>
             <head>
@@ -474,17 +490,22 @@ async def linkedin_auth_callback(
                 </div>
             </body>
             </html>
-        """)
+        """
+        )
 
     except Exception:
-        return HTMLResponse("""
+        return HTMLResponse(
+            """
             <h1>Erreur lors de l echange du code</h1>
             <p>{safe_error_message(e)}</p>
             <p><a href="/">Retour au dashboard</a></p>
-        """, status_code=500)
+        """,
+            status_code=500,
+        )
 
 
 # === SETTINGS API ===
+
 
 @app.get("/api/settings/model")
 async def get_model_settings():
@@ -511,45 +532,59 @@ async def set_model_settings(request: Request):
 
 # === PAGE ROUTES ===
 
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "active": "dashboard",
-        "consultant_name": CONSULTANT_NAME,
-        "stats": get_stats(),
-        "recent_files": get_recent_files(),
-    })
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "active": "dashboard",
+            "consultant_name": CONSULTANT_NAME,
+            "stats": get_stats(),
+            "recent_files": get_recent_files(),
+        },
+    )
 
 
 @app.get("/proposal", response_class=HTMLResponse)
 async def proposal_page(request: Request):
-    return templates.TemplateResponse("proposal.html", {
-        "request": request,
-        "active": "proposal",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "proposal.html",
+        {
+            "request": request,
+            "active": "proposal",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.get("/proposal-modular", response_class=HTMLResponse)
 async def proposal_modular_page(request: Request):
-    return templates.TemplateResponse("proposal-modular.html", {
-        "request": request,
-        "active": "proposal",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "proposal-modular.html",
+        {
+            "request": request,
+            "active": "proposal",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.get("/linkedin", response_class=HTMLResponse)
 async def linkedin_page(request: Request):
-    return templates.TemplateResponse("linkedin.html", {
-        "request": request,
-        "active": "linkedin",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "linkedin.html",
+        {
+            "request": request,
+            "active": "linkedin",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 # === API: PROPOSAL ===
+
 
 @app.post("/api/proposal/generate")
 @limiter.limit("5/minute")
@@ -567,20 +602,18 @@ async def api_proposal_generate(
         if filename.lower().endswith(".pdf"):
             # Extraire le texte du PDF
             pdf_reader = PdfReader(io.BytesIO(content))
-            text = "\n\n".join(
-                page.extract_text() or "" for page in pdf_reader.pages
-            )
+            text = "\n\n".join(page.extract_text() or "" for page in pdf_reader.pages)
         else:
             text = content.decode("utf-8")
     elif tender_text:
         text = tender_text
     else:
-        return JSONResponse(
-            {"error": "Aucun appel d'offre fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun appel d'offre fourni."}, status_code=400)
 
     if len(text.strip()) < 50:
         return JSONResponse(
-            {"error": "L'appel d'offre semble trop court (min 50 caracteres)."}, status_code=400)
+            {"error": "L'appel d'offre semble trop court (min 50 caracteres)."}, status_code=400
+        )
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -593,9 +626,7 @@ async def api_proposal_generate(
     }
 
     # Lancer en background
-    thread = threading.Thread(
-        target=_run_proposal, args=(
-            job_id, text), daemon=True)
+    thread = threading.Thread(target=_run_proposal, args=(job_id, text), daemon=True)
     thread.start()
 
     return {"job_id": job_id}
@@ -609,46 +640,33 @@ def _run_proposal(job_id: str, tender_text: str):
         agent = ProposalGeneratorAgent()
 
         # Step 1: Analyse
-        job["steps"].append(
-            {"step": "analyze", "status": "active", "progress": 5})
+        job["steps"].append({"step": "analyze", "status": "active", "progress": 5})
         tender_analysis = agent.analyze_tender(tender_text)
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 15})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 15})
 
         # Step 2: Template
-        job["steps"].append(
-            {"step": "template", "status": "active", "progress": 18})
+        job["steps"].append({"step": "template", "status": "active", "progress": 18})
         template = agent.load_template()
-        job["steps"].append(
-            {"step": "template", "status": "done", "progress": 25})
+        job["steps"].append({"step": "template", "status": "done", "progress": 25})
 
         # Step 3: References
-        job["steps"].append(
-            {"step": "references", "status": "active", "progress": 28})
+        job["steps"].append({"step": "references", "status": "active", "progress": 28})
         references = agent.match_references(tender_analysis)
-        job["steps"].append(
-            {"step": "references", "status": "done", "progress": 45})
+        job["steps"].append({"step": "references", "status": "done", "progress": 45})
 
         # Step 4: CVs
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 48})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 48})
         cvs = agent.load_cvs()
         adapted_cvs = agent.adapt_cvs(cvs, tender_analysis) if cvs else []
 
         # Step 5: Generate slides structure + markdown content
-        slides = agent.generate_slides_structure(
-            tender_analysis, references, template, adapted_cvs
-        )
-        proposal = agent.generate_proposal_content(
-            tender_analysis, references, template)
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 85})
+        slides = agent.generate_slides_structure(tender_analysis, references, template, adapted_cvs)
+        proposal = agent.generate_proposal_content(tender_analysis, references, template)
+        job["steps"].append({"step": "generate", "status": "done", "progress": 85})
 
         # Sauvegarder les fichiers
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        client_name = tender_analysis.get(
-            "client_name", "client").replace(
-            " ", "_")
+        client_name = tender_analysis.get("client_name", "client").replace(" ", "_")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
@@ -661,19 +679,18 @@ def _run_proposal(job_id: str, tender_text: str):
 
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(
-                f"# Proposition Commerciale - {tender_analysis.get('project_title', 'Projet')}\n\n")
-            f.write(
-                f"**Client:** {tender_analysis.get('client_name', 'N/A')}\n")
-            f.write(
-                f"**Date:** {datetime.now().strftime('%d/%m/%Y')}\n\n---\n\n")
+                f"# Proposition Commerciale - {tender_analysis.get('project_title', 'Projet')}\n\n"
+            )
+            f.write(f"**Client:** {tender_analysis.get('client_name', 'N/A')}\n")
+            f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y')}\n\n---\n\n")
             f.write(proposal["content"])
 
         # Generer le PPTX
         try:
             from utils.pptx_generator import build_proposal_pptx
+
             build_proposal_pptx(
-                template_path=str(
-                    BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
+                template_path=str(BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
                 slides_data=slides,
                 output_path=str(pptx_path),
                 consultant_info={
@@ -736,6 +753,7 @@ async def api_proposal_stream(job_id: str):
 
 # === API: PROPOSAL FEEDBACK ===
 
+
 @app.post("/api/proposal/regenerate")
 async def api_proposal_regenerate(request: Request):
     """Regenere la proposition avec le feedback utilisateur"""
@@ -745,8 +763,7 @@ async def api_proposal_regenerate(request: Request):
     job_id_ref = body.get("job_id", "")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     # Recuperer le tender_text du job original si possible
     tender_text = ""
@@ -775,6 +792,7 @@ async def api_proposal_regenerate(request: Request):
 
 # === API: PROPOSAL MODULAR GENERATION ===
 
+
 @app.post("/api/proposal/generate-section")
 @limiter.limit("10/minute")
 async def api_proposal_generate_section(
@@ -791,19 +809,16 @@ async def api_proposal_generate_section(
         filename = file.filename or ""
         if filename.lower().endswith(".pdf"):
             pdf_reader = PdfReader(io.BytesIO(content))
-            text = "\n\n".join(
-                page.extract_text() or "" for page in pdf_reader.pages)
+            text = "\n\n".join(page.extract_text() or "" for page in pdf_reader.pages)
         else:
             text = content.decode("utf-8")
     elif tender_text:
         text = tender_text
     else:
-        return JSONResponse(
-            {"error": "Aucun appel d'offre fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun appel d'offre fourni."}, status_code=400)
 
     if len(text.strip()) < 50:
-        return JSONResponse(
-            {"error": "L'appel d'offre semble trop court."}, status_code=400)
+        return JSONResponse({"error": "L'appel d'offre semble trop court."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -833,15 +848,12 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
         agent = ProposalGeneratorAgent()
 
         # Analyser l'appel d'offre
-        job["steps"].append(
-            {"step": "analyze", "status": "active", "progress": 10})
+        job["steps"].append({"step": "analyze", "status": "active", "progress": 10})
         tender_analysis = agent.analyze_tender(tender_text)
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 30})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 30})
 
         # Générer la section demandée
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 40})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 40})
 
         slides = []
         section_name = ""
@@ -854,8 +866,7 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
             section_name = "Contexte"
         elif section == "approach":
             references = agent.match_references(tender_analysis)
-            slides = agent.generate_approach_slides(
-                tender_analysis, references)
+            slides = agent.generate_approach_slides(tender_analysis, references)
             section_name = "Approche"
         elif section == "planning":
             slides = agent.generate_planning_slide(tender_analysis)
@@ -866,7 +877,8 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
         elif section == "references":
             references = agent.load_references()
             slides = agent.generate_references_slides(
-                tender_analysis, {"all_references": references})
+                tender_analysis, {"all_references": references}
+            )
             section_name = "Références"
         elif section == "cvs":
             slides = agent.generate_cv_slides(tender_analysis)
@@ -874,31 +886,26 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
         else:
             raise ValueError(f"Section inconnue: {section}")
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
 
         # Générer le PPTX SANS cover ni closing (mode modulaire)
-        job["steps"].append(
-            {"step": "pptx", "status": "active", "progress": 85})
+        job["steps"].append({"step": "pptx", "status": "active", "progress": 85})
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        client_name = tender_analysis.get(
-            "client_name", "client").replace(
-            " ", "_")
+        client_name = tender_analysis.get("client_name", "client").replace(" ", "_")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
-        pptx_path = output_dir / \
-            f"proposal_{section}_{client_name}_{timestamp}.pptx"
+        pptx_path = output_dir / f"proposal_{section}_{client_name}_{timestamp}.pptx"
 
         # Mode modulaire : UNIQUEMENT les slides de la section (sans cover ni closing)
         # L'utilisateur assemble ensuite les sections manuellement
         full_slides = slides
 
         from utils.pptx_generator import build_proposal_pptx
+
         build_proposal_pptx(
-            template_path=str(
-                BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
+            template_path=str(BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
             slides_data=full_slides,
             output_path=str(pptx_path),
             consultant_info={
@@ -907,8 +914,7 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
             },
         )
 
-        job["steps"].append(
-            {"step": "pptx", "status": "done", "progress": 100})
+        job["steps"].append({"step": "pptx", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -917,7 +923,7 @@ def _run_proposal_section(job_id: str, tender_text: str, section: str):
             "slides_count": len(slides),
             "pptx_path": str(pptx_path.relative_to(BASE_DIR)),
             "tender_text": tender_text,  # Inclure le texte pour la régénération
-            "slides_data": slides  # Inclure les données des slides
+            "slides_data": slides,  # Inclure les données des slides
         }
 
     except Exception as e:
@@ -942,8 +948,7 @@ async def api_proposal_preview(
         file_path = BASE_DIR / pptx_path
 
         if not file_path.exists():
-            return JSONResponse(
-                {"error": "Fichier PPTX introuvable"}, status_code=404)
+            return JSONResponse({"error": "Fichier PPTX introuvable"}, status_code=404)
 
         # Créer un répertoire temporaire pour les images
         temp_dir = Path(tempfile.mkdtemp(dir=BASE_DIR / "output"))
@@ -951,13 +956,20 @@ async def api_proposal_preview(
         try:
             # Convertir PPTX en PNG avec LibreOffice (méthode la plus fiable)
             # Note: LibreOffice doit être installé sur le système
-            subprocess.run([
-                "soffice",
-                "--headless",
-                "--convert-to", "png",
-                "--outdir", str(temp_dir),
-                str(file_path)
-            ], check=True, timeout=30, capture_output=True)
+            subprocess.run(
+                [
+                    "soffice",
+                    "--headless",
+                    "--convert-to",
+                    "png",
+                    "--outdir",
+                    str(temp_dir),
+                    str(file_path),
+                ],
+                check=True,
+                timeout=30,
+                capture_output=True,
+            )
 
             # Récupérer toutes les images générées
             preview_images = sorted(temp_dir.glob("*.png"))
@@ -977,10 +989,13 @@ async def api_proposal_preview(
                     pass
 
                 if not preview_images:
-                    return JSONResponse({
-                        "error": "Impossible de générer la prévisualisation. LibreOffice n'est pas installé.",
-                        "preview_images": []
-                    }, status_code=500)
+                    return JSONResponse(
+                        {
+                            "error": "Impossible de générer la prévisualisation. LibreOffice n'est pas installé.",
+                            "preview_images": [],
+                        },
+                        status_code=500,
+                    )
 
             # Créer des versions miniatures pour la galerie
             thumbnails = []
@@ -1002,22 +1017,25 @@ async def api_proposal_preview(
             # Nettoyer le répertoire temporaire
             temp_dir.rmdir()
 
-            return JSONResponse({
-                "preview_images": thumbnails,
-                "slide_count": len(thumbnails)
-            })
+            return JSONResponse({"preview_images": thumbnails, "slide_count": len(thumbnails)})
 
         except subprocess.CalledProcessError:
             # LibreOffice n'est pas disponible ou a échoué
-            return JSONResponse({
-                "error": "La génération de prévisualisation nécessite LibreOffice. Installez-le avec: brew install libreoffice (Mac) ou apt-get install libreoffice (Linux)",
-                "preview_images": []
-            }, status_code=500)
+            return JSONResponse(
+                {
+                    "error": "La génération de prévisualisation nécessite LibreOffice. Installez-le avec: brew install libreoffice (Mac) ou apt-get install libreoffice (Linux)",
+                    "preview_images": [],
+                },
+                status_code=500,
+            )
         except Exception as e:
-            return JSONResponse({
-                "error": f"Erreur lors de la génération de prévisualisation: {str(e)}",
-                "preview_images": []
-            }, status_code=500)
+            return JSONResponse(
+                {
+                    "error": f"Erreur lors de la génération de prévisualisation: {str(e)}",
+                    "preview_images": [],
+                },
+                status_code=500,
+            )
 
     except Exception as e:
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
@@ -1036,12 +1054,13 @@ async def api_proposal_regenerate_section(
     """Régénère une section avec feedback en langage naturel"""
 
     if not feedback.strip():
-        return JSONResponse(
-            {"error": "Le feedback ne peut pas être vide."}, status_code=400)
+        return JSONResponse({"error": "Le feedback ne peut pas être vide."}, status_code=400)
 
     if not tender_text or len(tender_text.strip()) < 50:
         return JSONResponse(
-            {"error": "Le texte de l'appel d'offre est requis pour la régénération."}, status_code=400)
+            {"error": "Le texte de l'appel d'offre est requis pour la régénération."},
+            status_code=400,
+        )
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -1072,11 +1091,7 @@ async def api_proposal_regenerate_section(
 
 
 def _run_proposal_section_with_feedback(
-    job_id: str,
-    tender_text: str,
-    section: str,
-    feedback: str,
-    previous_slides: List[dict]
+    job_id: str, tender_text: str, section: str, feedback: str, previous_slides: List[dict]
 ):
     """Régénère une section en tenant compte du feedback"""
     job = jobs[job_id]
@@ -1085,15 +1100,12 @@ def _run_proposal_section_with_feedback(
         agent = ProposalGeneratorAgent()
 
         # Analyser l'appel d'offre
-        job["steps"].append(
-            {"step": "analyze", "status": "active", "progress": 10})
+        job["steps"].append({"step": "analyze", "status": "active", "progress": 10})
         tender_analysis = agent.analyze_tender(tender_text)
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 30})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 30})
 
         # Interpréter le feedback avec le LLM
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 40})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 40})
 
         # Construire le contexte des slides précédentes
         previous_context = ""
@@ -1137,10 +1149,7 @@ Exemples:
         try:
             feedback_data = json.loads(interpretation.strip())
         except BaseException:
-            feedback_data = {
-                "specific_instructions": feedback,
-                "changes_requested": [feedback]
-            }
+            feedback_data = {"specific_instructions": feedback, "changes_requested": [feedback]}
 
         # Générer la section avec les instructions du feedback
         slides = []
@@ -1149,7 +1158,8 @@ Exemples:
 
         # Enrichir tender_analysis avec les instructions du feedback
         tender_analysis["feedback_instructions"] = feedback_data.get(
-            "specific_instructions", feedback)
+            "specific_instructions", feedback
+        )
         tender_analysis["feedback_data"] = feedback_data
 
         if section == "agenda":
@@ -1160,8 +1170,7 @@ Exemples:
             section_name = "Contexte"
         elif section == "approach":
             references = agent.match_references(tender_analysis)
-            slides = agent.generate_approach_slides(
-                tender_analysis, references)
+            slides = agent.generate_approach_slides(tender_analysis, references)
             section_name = "Approche"
         elif section == "planning":
             slides = agent.generate_planning_slide(tender_analysis)
@@ -1172,7 +1181,8 @@ Exemples:
         elif section == "references":
             references = agent.load_references()
             slides = agent.generate_references_slides(
-                tender_analysis, {"all_references": references})
+                tender_analysis, {"all_references": references}
+            )
             section_name = "Références"
         elif section == "cvs":
             slides = agent.generate_cv_slides(tender_analysis)
@@ -1180,29 +1190,24 @@ Exemples:
         else:
             raise ValueError(f"Section inconnue: {section}")
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
 
         # Générer le PPTX
-        job["steps"].append(
-            {"step": "pptx", "status": "active", "progress": 85})
+        job["steps"].append({"step": "pptx", "status": "active", "progress": 85})
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        client_name = tender_analysis.get(
-            "client_name", "client").replace(
-            " ", "_")
+        client_name = tender_analysis.get("client_name", "client").replace(" ", "_")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
-        pptx_path = output_dir / \
-            f"proposal_{section}_{client_name}_{timestamp}_v2.pptx"
+        pptx_path = output_dir / f"proposal_{section}_{client_name}_{timestamp}_v2.pptx"
 
         full_slides = slides
 
         from utils.pptx_generator import build_proposal_pptx
+
         build_proposal_pptx(
-            template_path=str(
-                BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
+            template_path=str(BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
             slides_data=full_slides,
             output_path=str(pptx_path),
             consultant_info={
@@ -1211,8 +1216,7 @@ Exemples:
             },
         )
 
-        job["steps"].append(
-            {"step": "pptx", "status": "done", "progress": 100})
+        job["steps"].append({"step": "pptx", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -1221,7 +1225,7 @@ Exemples:
             "slides_count": len(slides),
             "pptx_path": str(pptx_path.relative_to(BASE_DIR)),
             "feedback_applied": feedback_data.get("changes_requested", [feedback]),
-            "slides_data": slides  # Inclure les données des slides pour la prochaine itération
+            "slides_data": slides,  # Inclure les données des slides pour la prochaine itération
         }
 
     except Exception as e:
@@ -1244,8 +1248,7 @@ async def api_proposal_regenerate_slide(
     """Régénère une seule slide avec le nouveau contenu"""
 
     if not tender_text or len(tender_text.strip()) < 50:
-        return JSONResponse(
-            {"error": "Le texte de l'appel d'offre est requis."}, status_code=400)
+        return JSONResponse({"error": "Le texte de l'appel d'offre est requis."}, status_code=400)
 
     try:
         # Parse bullets
@@ -1257,24 +1260,27 @@ async def api_proposal_regenerate_slide(
         matching_files = sorted(
             output_dir.glob(f"proposal_{section}_*.pptx"),
             key=lambda p: p.stat().st_mtime,
-            reverse=True
+            reverse=True,
         )
 
         if not matching_files:
             return JSONResponse(
-                {"error": "Aucun PPTX existant trouvé pour cette section"}, status_code=404)
+                {"error": "Aucun PPTX existant trouvé pour cette section"}, status_code=404
+            )
 
         latest_pptx = matching_files[0]
 
         # Charger les slides depuis le PPTX existant
         from pptx import Presentation
+
         prs = Presentation(str(latest_pptx))
 
         # Vérifier que l'index est valide (en tenant compte de la slide de
         # couverture)
         if slide_index + 1 >= len(prs.slides):
             return JSONResponse(
-                {"error": f"Index de slide invalide: {slide_index}"}, status_code=400)
+                {"error": f"Index de slide invalide: {slide_index}"}, status_code=400
+            )
 
         # Modifier la slide ciblée
         # +1 car slide 0 = couverture
@@ -1285,27 +1291,27 @@ async def api_proposal_regenerate_slide(
             if shape.has_text_frame:
                 text_frame = shape.text_frame
                 # Le premier textframe est généralement le titre
-                if shape.name.startswith(
-                        "Title") or "titre" in shape.name.lower():
+                if shape.name.startswith("Title") or "titre" in shape.name.lower():
                     text_frame.text = slide_title
                     break
 
         # Mettre à jour le contenu (bullets)
         for shape in target_slide.shapes:
-            if shape.has_text_frame and not (shape.name.startswith(
-                    "Title") or "titre" in shape.name.lower()):
+            if shape.has_text_frame and not (
+                shape.name.startswith("Title") or "titre" in shape.name.lower()
+            ):
                 text_frame = shape.text_frame
                 text_frame.clear()
 
                 # Ajouter les nouveaux bullets
                 for i, bullet in enumerate(bullets):
-                    p = text_frame.paragraphs[0] if i == 0 else text_frame.add_paragraph(
-                    )
+                    p = text_frame.paragraphs[0] if i == 0 else text_frame.add_paragraph()
                     p.text = bullet
                     p.level = 0
 
                     # Styling (utiliser les styles existants si possible)
                     from pptx.util import Pt
+
                     if p.runs:
                         p.runs[0].font.size = Pt(11)
 
@@ -1315,12 +1321,9 @@ async def api_proposal_regenerate_slide(
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         agent = ProposalGeneratorAgent()
         tender_analysis = agent.analyze_tender(tender_text)
-        client_name = tender_analysis.get(
-            "client_name", "client").replace(
-            " ", "_")
+        client_name = tender_analysis.get("client_name", "client").replace(" ", "_")
 
-        new_pptx_path = output_dir / \
-            f"proposal_{section}_{client_name}_{timestamp}_edited.pptx"
+        new_pptx_path = output_dir / f"proposal_{section}_{client_name}_{timestamp}_edited.pptx"
         prs.save(str(new_pptx_path))
 
         # Extraire les données des slides pour le frontend
@@ -1333,22 +1336,22 @@ async def api_proposal_regenerate_slide(
 
             for shape in slide.shapes:
                 if shape.has_text_frame:
-                    if shape.name.startswith(
-                            "Title") or "titre" in shape.name.lower():
+                    if shape.name.startswith("Title") or "titre" in shape.name.lower():
                         slide_data["title"] = shape.text_frame.text
                     else:
                         for paragraph in shape.text_frame.paragraphs:
                             if paragraph.text.strip():
-                                slide_data["bullets"].append(
-                                    paragraph.text.strip())
+                                slide_data["bullets"].append(paragraph.text.strip())
 
             slides_data.append(slide_data)
 
-        return JSONResponse({
-            "pptx_path": str(new_pptx_path.relative_to(BASE_DIR)),
-            "slides_data": slides_data,
-            "message": "Slide régénérée avec succès"
-        })
+        return JSONResponse(
+            {
+                "pptx_path": str(new_pptx_path.relative_to(BASE_DIR)),
+                "slides_data": slides_data,
+                "message": "Slide régénérée avec succès",
+            }
+        )
 
     except Exception as e:
         print(f"Error in regenerate slide: {safe_traceback()}")
@@ -1370,27 +1373,28 @@ async def api_export_to_slides(
         # Fix: le JSON envoyé depuis le frontend peut contenir des caractères de contrôle
         # ou des chaînes mal échappées, causant "Unterminated string"
         import re
+
         sanitized = slides_data.strip()
         # Supprimer les caractères de contrôle (sauf \n, \t, \r qui sont gérés
         # par JSON)
-        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', sanitized)
+        sanitized = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", sanitized)
         # Remplacer les vrais retours à la ligne dans les valeurs string par \\n
         # (ceux qui ne sont pas déjà échappés)
-        sanitized = sanitized.replace('\r\n', '\\n').replace('\r', '\\n')
+        sanitized = sanitized.replace("\r\n", "\\n").replace("\r", "\\n")
 
         try:
             slides = json.loads(sanitized)
         except json.JSONDecodeError:
             # Fallback: essayer de nettoyer plus agressivement
             # Parfois les guillemets internes ne sont pas échappés
-            sanitized = sanitized.replace('\t', '\\t')
+            sanitized = sanitized.replace("\t", "\\t")
             # Tenter un nettoyage ligne par ligne
-            lines = sanitized.split('\n')
+            lines = sanitized.split("\n")
             cleaned_lines = []
             for line in lines:
                 # Ne pas modifier les lignes structurelles JSON
                 cleaned_lines.append(line)
-            sanitized = '\n'.join(cleaned_lines)
+            sanitized = "\n".join(cleaned_lines)
             slides = json.loads(sanitized)
 
         # Analyser le tender pour obtenir le titre
@@ -1411,7 +1415,7 @@ async def api_export_to_slides(
             "planning": "Planning",
             "budget": "Chiffrage",
             "references": "Références",
-            "cvs": "CVs"
+            "cvs": "CVs",
         }
 
         section_name = section_names.get(section, section.capitalize())
@@ -1423,31 +1427,35 @@ async def api_export_to_slides(
         try:
             google_client = GoogleAPIClient()
             presentation_id = google_client.export_pptx_to_slides(
-                slides_data=slides,
-                title=presentation_title
+                slides_data=slides, title=presentation_title
             )
 
             if presentation_id:
                 presentation_url = f"https://docs.google.com/presentation/d/{presentation_id}/edit"
 
-                return JSONResponse({
-                    "presentation_id": presentation_id,
-                    "presentation_url": presentation_url,
-                    "message": "Présentation Google Slides créée avec succès"
-                })
+                return JSONResponse(
+                    {
+                        "presentation_id": presentation_id,
+                        "presentation_url": presentation_url,
+                        "message": "Présentation Google Slides créée avec succès",
+                    }
+                )
             else:
                 return JSONResponse(
                     {"error": "Échec de la création de la présentation Google Slides"},
-                    status_code=500
+                    status_code=500,
                 )
 
         except Exception as e:
             # Si l'authentification Google échoue ou n'est pas configurée
             if "credentials" in str(e).lower() or "token" in str(e).lower():
-                return JSONResponse({
-                    "error": "Google API non configurée. Veuillez configurer vos credentials Google dans config/google_credentials.json",
-                    "setup_required": True
-                }, status_code=400)
+                return JSONResponse(
+                    {
+                        "error": "Google API non configurée. Veuillez configurer vos credentials Google dans config/google_credentials.json",
+                        "setup_required": True,
+                    },
+                    status_code=400,
+                )
             else:
                 raise
 
@@ -1456,22 +1464,17 @@ async def api_export_to_slides(
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
-def _run_proposal_feedback(
-        job_id: str, previous_content: str, feedback: str, tender_text: str):
+def _run_proposal_feedback(job_id: str, previous_content: str, feedback: str, tender_text: str):
     """Regenere la proposition en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         agent = ProposalGeneratorAgent()
 
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 10})
-        job["steps"].append(
-            {"step": "template", "status": "done", "progress": 20})
-        job["steps"].append(
-            {"step": "references", "status": "done", "progress": 30})
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 40})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 10})
+        job["steps"].append({"step": "template", "status": "done", "progress": 20})
+        job["steps"].append({"step": "references", "status": "done", "progress": 30})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 40})
 
         # Analyser le tender_text si disponible pour avoir plus de contexte
         tender_context = ""
@@ -1509,10 +1512,8 @@ Reponds en francais de maniere professionnelle.""",
             max_tokens=8000,
         )
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 60})
-        job["steps"].append(
-            {"step": "slides", "status": "active", "progress": 65})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 60})
+        job["steps"].append({"step": "slides", "status": "active", "progress": 65})
 
         # Regenerer les slides avec feedback - avec meilleur prompt
         revised_slides = None
@@ -1556,30 +1557,29 @@ IMPORTANT:
                 max_tokens=8000,
             )
 
-            json_start = slides_response.find('[')
-            json_end = slides_response.rfind(']') + 1
+            json_start = slides_response.find("[")
+            json_end = slides_response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
-                revised_slides = json.loads(
-                    slides_response[json_start:json_end])
+                revised_slides = json.loads(slides_response[json_start:json_end])
 
                 # Valider que les slides ont du contenu
                 for slide in revised_slides:
-                    if slide.get(
-                            'type') == 'content' and 'bullets' not in slide:
-                        slide['bullets'] = [
-                            "Point a developper", "Deuxieme point", "Troisieme point"]
-                    elif slide.get('type') == 'table' and 'rows' not in slide:
-                        slide['headers'] = slide.get(
-                            'headers', ['Colonne 1', 'Colonne 2'])
-                        slide['rows'] = [['Donnee 1', 'Donnee 2']]
+                    if slide.get("type") == "content" and "bullets" not in slide:
+                        slide["bullets"] = [
+                            "Point a developper",
+                            "Deuxieme point",
+                            "Troisieme point",
+                        ]
+                    elif slide.get("type") == "table" and "rows" not in slide:
+                        slide["headers"] = slide.get("headers", ["Colonne 1", "Colonne 2"])
+                        slide["rows"] = [["Donnee 1", "Donnee 2"]]
 
                 print(f"   Slides revisees generees: {len(revised_slides)}")
         except Exception as e:
             print(f"   Erreur generation slides: {e}")
             revised_slides = None
 
-        job["steps"].append(
-            {"step": "slides", "status": "done", "progress": 85})
+        job["steps"].append({"step": "slides", "status": "done", "progress": 85})
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1591,14 +1591,14 @@ IMPORTANT:
 
         with open(md_path, "w", encoding="utf-8") as f:
             f.write("# Proposition commerciale (revisee)\n\n")
-            f.write(
-                f"**Date:** {datetime.now().strftime('%d/%m/%Y')}\n\n---\n\n")
+            f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y')}\n\n---\n\n")
             f.write(revised_content)
 
         proposal_data = {
             "content": revised_content,
             "feedback_applied": feedback,
-            "slides": revised_slides}
+            "slides": revised_slides,
+        }
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(proposal_data, f, indent=2, ensure_ascii=False)
 
@@ -1607,10 +1607,10 @@ IMPORTANT:
         if revised_slides:
             try:
                 from utils.pptx_generator import build_proposal_pptx
+
                 pptx_path = output_dir / f"proposal_revised_{timestamp}.pptx"
                 build_proposal_pptx(
-                    template_path=str(
-                        BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
+                    template_path=str(BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
                     slides_data=revised_slides,
                     output_path=str(pptx_path),
                     consultant_info={
@@ -1637,6 +1637,7 @@ IMPORTANT:
 
 
 # === API: LINKEDIN ===
+
 
 @app.post("/api/linkedin/generate")
 @limiter.limit("5/minute")
@@ -1677,28 +1678,19 @@ def _run_linkedin(job_id: str, post_type: str, num_posts: int):
         job["steps"].append({"step": "web", "status": "done", "progress": 40})
 
         # Step 2: Trends
-        job["steps"].append(
-            {"step": "trends", "status": "active", "progress": 45})
+        job["steps"].append({"step": "trends", "status": "active", "progress": 45})
         trends = agent.analyze_trends(monitoring_data["articles"])
-        job["steps"].append(
-            {"step": "trends", "status": "done", "progress": 60})
+        job["steps"].append({"step": "trends", "status": "done", "progress": 60})
 
         # Step 3: Posts
-        job["steps"].append(
-            {"step": "posts", "status": "active", "progress": 65})
+        job["steps"].append({"step": "posts", "status": "active", "progress": 65})
 
         if num_posts == 1:
-            posts = [
-                agent.generate_linkedin_post(
-                    trends,
-                    monitoring_data["articles"],
-                    post_type)]
+            posts = [agent.generate_linkedin_post(trends, monitoring_data["articles"], post_type)]
         else:
-            posts = agent.generate_multiple_posts(
-                trends, monitoring_data["articles"], num_posts)
+            posts = agent.generate_multiple_posts(trends, monitoring_data["articles"], num_posts)
 
-        job["steps"].append(
-            {"step": "posts", "status": "done", "progress": 100})
+        job["steps"].append({"step": "posts", "status": "done", "progress": 100})
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1709,8 +1701,7 @@ def _run_linkedin(job_id: str, post_type: str, num_posts: int):
             md_path = output_dir / f"linkedin_post_{timestamp}_{i}.md"
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(f"# Post LinkedIn - {post['post_type'].title()}\n\n")
-                f.write(
-                    f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
+                f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
                 f.write("## Post Principal\n\n")
                 f.write(post["main_post"])
 
@@ -1775,6 +1766,7 @@ async def api_linkedin_stream(job_id: str):
 
 # === API: LINKEDIN FEEDBACK ===
 
+
 @app.post("/api/linkedin/regenerate")
 async def api_linkedin_regenerate(request: Request):
     """Regenere les posts LinkedIn avec feedback"""
@@ -1783,8 +1775,7 @@ async def api_linkedin_regenerate(request: Request):
     previous_posts = body.get("previous_posts", [])
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -1814,10 +1805,8 @@ def _run_linkedin_feedback(job_id: str, previous_posts: list, feedback: str):
 
         job["steps"].append({"step": "rss", "status": "done", "progress": 10})
         job["steps"].append({"step": "web", "status": "done", "progress": 20})
-        job["steps"].append(
-            {"step": "trends", "status": "done", "progress": 30})
-        job["steps"].append(
-            {"step": "posts", "status": "active", "progress": 40})
+        job["steps"].append({"step": "trends", "status": "done", "progress": 30})
+        job["steps"].append({"step": "posts", "status": "active", "progress": 40})
 
         revised_posts = []
         for i, post in enumerate(previous_posts):
@@ -1847,14 +1836,15 @@ REGLES IMPERATIVES:
                 temperature=0.6,
                 max_tokens=1500,
             )
-            revised_posts.append({
-                "main_post": revised,
-                "post_type": post.get("post_type", "insight"),
-                "source_articles": post.get("source_articles", []),
-            })
+            revised_posts.append(
+                {
+                    "main_post": revised,
+                    "post_type": post.get("post_type", "insight"),
+                    "source_articles": post.get("source_articles", []),
+                }
+            )
 
-        job["steps"].append(
-            {"step": "posts", "status": "done", "progress": 100})
+        job["steps"].append({"step": "posts", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -1876,18 +1866,18 @@ async def api_linkedin_publish(request: Request):
 
     # Check if LinkedIn is configured
     if not has_linkedin_access_token():
-        return JSONResponse({
-            "error": "LinkedIn non configure. Completez le flux OAuth via /auth/linkedin"
-        }, status_code=400)
+        return JSONResponse(
+            {"error": "LinkedIn non configure. Completez le flux OAuth via /auth/linkedin"},
+            status_code=400,
+        )
 
     body = await request.json()
-    text = body.get('text', '').strip()
-    visibility = body.get('visibility', 'PUBLIC')
+    text = body.get("text", "").strip()
+    visibility = body.get("visibility", "PUBLIC")
 
     # Validate
     if not text:
-        return JSONResponse(
-            {"error": "Texte du post manquant"}, status_code=400)
+        return JSONResponse({"error": "Texte du post manquant"}, status_code=400)
 
     # Sanitize and validate length
     try:
@@ -1895,32 +1885,31 @@ async def api_linkedin_publish(request: Request):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
 
-    if visibility not in ['PUBLIC', 'CONNECTIONS']:
-        visibility = 'PUBLIC'
+    if visibility not in ["PUBLIC", "CONNECTIONS"]:
+        visibility = "PUBLIC"
 
     try:
         client = LinkedInClient()
         result = client.publish_post(text=text, visibility=visibility)
 
-        return JSONResponse({
-            "message": "Post publie avec succes sur LinkedIn",
-            "id": result.get('id'),
-            "url": result.get('url'),
-            "status": result.get('status')
-        })
+        return JSONResponse(
+            {
+                "message": "Post publie avec succes sur LinkedIn",
+                "id": result.get("id"),
+                "url": result.get("url"),
+                "status": result.get("status"),
+            }
+        )
 
     except ValueError as e:
         # Configuration or validation errors
         return JSONResponse(
-            {"error": f"Erreur de configuration: {safe_error_message(e)}"},
-            status_code=400
+            {"error": f"Erreur de configuration: {safe_error_message(e)}"}, status_code=400
         )
     except Exception as e:
         # API errors
         return JSONResponse(
-            {
-                "error": f"Erreur lors de la publication: {safe_error_message(e)}"},
-            status_code=500
+            {"error": f"Erreur lors de la publication: {safe_error_message(e)}"}, status_code=500
         )
 
 
@@ -1929,20 +1918,22 @@ async def api_linkedin_status():
     """Verifie le status de connexion LinkedIn"""
     from utils.linkedin_client import has_linkedin_access_token
 
-    return JSONResponse({
-        "connected": has_linkedin_access_token()
-    })
+    return JSONResponse({"connected": has_linkedin_access_token()})
 
 
 # === PAGE & API: ARTICLE TO POST ===
 
+
 @app.get("/article", response_class=HTMLResponse)
 async def article_page(request: Request):
-    return templates.TemplateResponse("article.html", {
-        "request": request,
-        "active": "article",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "article.html",
+        {
+            "request": request,
+            "active": "article",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/article/generate")
@@ -1964,9 +1955,7 @@ async def api_article_generate(request: Request):
         "error": None,
     }
 
-    thread = threading.Thread(
-        target=_run_article_to_post, args=(job_id, url, tone), daemon=True
-    )
+    thread = threading.Thread(target=_run_article_to_post, args=(job_id, url, tone), daemon=True)
     thread.start()
 
     return {"job_id": job_id}
@@ -1980,22 +1969,17 @@ def _run_article_to_post(job_id: str, url: str, tone: str):
         agent = ArticleToPostAgent()
 
         # Step 1: Fetch
-        job["steps"].append(
-            {"step": "fetch", "status": "active", "progress": 10})
+        job["steps"].append({"step": "fetch", "status": "active", "progress": 10})
         article = agent.fetch_article(url)
-        job["steps"].append(
-            {"step": "fetch", "status": "done", "progress": 30})
+        job["steps"].append({"step": "fetch", "status": "done", "progress": 30})
 
         # Step 2: Generate main post
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 40})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 40})
         result = agent.generate_post(article, tone=tone)
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
 
         # Step 3: Done (variant already generated inside generate_post)
-        job["steps"].append(
-            {"step": "variant", "status": "done", "progress": 100})
+        job["steps"].append({"step": "variant", "status": "done", "progress": 100})
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2060,6 +2044,7 @@ async def api_article_stream(job_id: str):
 
 # === API: ARTICLE FEEDBACK ===
 
+
 @app.post("/api/article/regenerate")
 async def api_article_regenerate(request: Request):
     """Regenere le post article avec feedback"""
@@ -2071,8 +2056,7 @@ async def api_article_regenerate(request: Request):
     tone = body.get("tone", "expert")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -2085,13 +2069,7 @@ async def api_article_regenerate(request: Request):
 
     thread = threading.Thread(
         target=_run_article_feedback,
-        args=(
-            job_id,
-            previous_main,
-            previous_short,
-            feedback,
-            article_url,
-            tone),
+        args=(job_id, previous_main, previous_short, feedback, article_url, tone),
         daemon=True,
     )
     thread.start()
@@ -2099,18 +2077,17 @@ async def api_article_regenerate(request: Request):
     return {"job_id": job_id}
 
 
-def _run_article_feedback(job_id: str, previous_main: str,
-                          previous_short: str, feedback: str, article_url: str, tone: str):
+def _run_article_feedback(
+    job_id: str, previous_main: str, previous_short: str, feedback: str, article_url: str, tone: str
+):
     """Regenere le post article en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         agent = ArticleToPostAgent()
 
-        job["steps"].append(
-            {"step": "fetch", "status": "done", "progress": 10})
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 30})
+        job["steps"].append({"step": "fetch", "status": "done", "progress": 10})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 30})
 
         # Regenerer le post principal
         revised_main = agent.llm_client.generate(
@@ -2137,10 +2114,8 @@ REGLES IMPERATIVES:
             max_tokens=1500,
         )
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 70})
-        job["steps"].append(
-            {"step": "variant", "status": "active", "progress": 75})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 70})
+        job["steps"].append({"step": "variant", "status": "active", "progress": 75})
 
         # Regenerer la version courte
         revised_short = agent.llm_client.generate(
@@ -2159,8 +2134,7 @@ NE PAS inventer d'anecdotes ou d'exemples.""",
             max_tokens=600,
         )
 
-        job["steps"].append(
-            {"step": "variant", "status": "done", "progress": 100})
+        job["steps"].append({"step": "variant", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -2177,13 +2151,17 @@ NE PAS inventer d'anecdotes ou d'exemples.""",
 
 # === PAGE & API: MEETING SUMMARIZER ===
 
+
 @app.get("/meeting", response_class=HTMLResponse)
 async def meeting_page(request: Request):
-    return templates.TemplateResponse("meeting.html", {
-        "request": request,
-        "active": "meeting",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "meeting.html",
+        {
+            "request": request,
+            "active": "meeting",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/meeting/generate")
@@ -2199,20 +2177,16 @@ async def api_meeting_generate(
         filename = file.filename or ""
         if filename.lower().endswith(".pdf"):
             pdf_reader = PdfReader(io.BytesIO(content))
-            text = "\n\n".join(
-                page.extract_text() or "" for page in pdf_reader.pages
-            )
+            text = "\n\n".join(page.extract_text() or "" for page in pdf_reader.pages)
         else:
             text = content.decode("utf-8")
     elif transcript_text:
         text = transcript_text
     else:
-        return JSONResponse(
-            {"error": "Aucun transcript fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun transcript fourni."}, status_code=400)
 
     if len(text.strip()) < 30:
-        return JSONResponse(
-            {"error": "Le transcript semble trop court."}, status_code=400)
+        return JSONResponse({"error": "Le transcript semble trop court."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -2223,9 +2197,7 @@ async def api_meeting_generate(
         "error": None,
     }
 
-    thread = threading.Thread(
-        target=_run_meeting_summarizer, args=(job_id, text), daemon=True
-    )
+    thread = threading.Thread(target=_run_meeting_summarizer, args=(job_id, text), daemon=True)
     thread.start()
 
     return {"job_id": job_id}
@@ -2237,29 +2209,24 @@ def _run_meeting_summarizer(job_id: str, transcript: str):
 
     try:
         from agents.meeting_summarizer import MeetingSummarizerAgent
+
         agent = MeetingSummarizerAgent()
 
         # Step 1: Extraction
-        job["steps"].append(
-            {"step": "extract", "status": "active", "progress": 10})
+        job["steps"].append({"step": "extract", "status": "active", "progress": 10})
         extracted_result = agent.extract_key_info(transcript)
         extracted_info = extracted_result["extracted_info"]
-        job["steps"].append(
-            {"step": "extract", "status": "done", "progress": 35})
+        job["steps"].append({"step": "extract", "status": "done", "progress": 35})
 
         # Step 2: Compte rendu
-        job["steps"].append(
-            {"step": "minutes", "status": "active", "progress": 40})
+        job["steps"].append({"step": "minutes", "status": "active", "progress": 40})
         minutes = agent.generate_minutes(transcript, extracted_info)
-        job["steps"].append(
-            {"step": "minutes", "status": "done", "progress": 70})
+        job["steps"].append({"step": "minutes", "status": "done", "progress": 70})
 
         # Step 3: Email
-        job["steps"].append(
-            {"step": "email", "status": "active", "progress": 75})
+        job["steps"].append({"step": "email", "status": "active", "progress": 75})
         email_result = agent.generate_email(extracted_info, minutes)
-        job["steps"].append(
-            {"step": "email", "status": "done", "progress": 100})
+        job["steps"].append({"step": "email", "status": "done", "progress": 100})
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2269,12 +2236,11 @@ def _run_meeting_summarizer(job_id: str, transcript: str):
         md_path = output_dir / f"meeting_summary_{timestamp}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write("# Compte Rendu de Reunion\n\n")
-            f.write(
-                f"**Genere le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n---\n\n")
+            f.write(f"**Genere le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n---\n\n")
             f.write(minutes)
             f.write("\n\n---\n\n# Mail de Partage\n\n")
             f.write(f"**Objet:** {email_result['subject']}\n\n")
-            f.write(email_result['body'])
+            f.write(email_result["body"])
 
         job["status"] = "done"
         job["result"] = {
@@ -2324,6 +2290,7 @@ async def api_meeting_stream(job_id: str):
 
 # === API: MEETING FEEDBACK ===
 
+
 @app.post("/api/meeting/regenerate")
 async def api_meeting_regenerate(request: Request):
     """Regenere le compte rendu avec feedback"""
@@ -2333,8 +2300,7 @@ async def api_meeting_regenerate(request: Request):
     previous_email = body.get("previous_email", "")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -2355,18 +2321,15 @@ async def api_meeting_regenerate(request: Request):
     return {"job_id": job_id}
 
 
-def _run_meeting_feedback(
-        job_id: str, previous_minutes: str, previous_email: str, feedback: str):
+def _run_meeting_feedback(job_id: str, previous_minutes: str, previous_email: str, feedback: str):
     """Regenere le compte rendu en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         agent = MeetingSummarizerAgent()
 
-        job["steps"].append(
-            {"step": "extract", "status": "done", "progress": 10})
-        job["steps"].append(
-            {"step": "minutes", "status": "active", "progress": 30})
+        job["steps"].append({"step": "extract", "status": "done", "progress": 10})
+        job["steps"].append({"step": "minutes", "status": "active", "progress": 30})
 
         # Regenerer le compte rendu
         revised_minutes = agent.llm_client.generate(
@@ -2389,10 +2352,8 @@ Tu corriges un compte rendu de reunion selon le retour du consultant.""",
             max_tokens=3000,
         )
 
-        job["steps"].append(
-            {"step": "minutes", "status": "done", "progress": 70})
-        job["steps"].append(
-            {"step": "email", "status": "active", "progress": 75})
+        job["steps"].append({"step": "minutes", "status": "done", "progress": 70})
+        job["steps"].append({"step": "email", "status": "active", "progress": 75})
 
         # Regenerer le mail
         revised_email = agent.llm_client.generate(
@@ -2415,8 +2376,7 @@ Tu corriges un mail professionnel selon le retour du consultant.""",
             max_tokens=1500,
         )
 
-        job["steps"].append(
-            {"step": "email", "status": "done", "progress": 100})
+        job["steps"].append({"step": "email", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -2443,16 +2403,13 @@ async def api_meeting_share_email(request: Request):
 
     # Valider email
     if not to_email:
-        return JSONResponse(
-            {"error": "Email destinataire manquant"}, status_code=400)
+        return JSONResponse({"error": "Email destinataire manquant"}, status_code=400)
 
     if not validate_email(to_email):
-        return JSONResponse(
-            {"error": "Email destinataire invalide"}, status_code=400)
+        return JSONResponse({"error": "Email destinataire invalide"}, status_code=400)
 
     if not meeting_summary:
-        return JSONResponse(
-            {"error": "Compte rendu manquant"}, status_code=400)
+        return JSONResponse({"error": "Compte rendu manquant"}, status_code=400)
 
     try:
         # Get consultant info
@@ -2464,11 +2421,11 @@ async def api_meeting_share_email(request: Request):
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         temp_file = tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.md',
-            prefix=f'compte_rendu_{timestamp}_',
+            mode="w",
+            suffix=".md",
+            prefix=f"compte_rendu_{timestamp}_",
             delete=False,
-            encoding='utf-8'
+            encoding="utf-8",
         )
 
         temp_file.write(meeting_summary)
@@ -2489,42 +2446,39 @@ Cordialement,
         # Envoyer email
         gmail = GmailClient()
         result = gmail.send_email(
-            to=to_email,
-            subject=subject,
-            body=body,
-            attachments=[temp_file.name]
+            to=to_email, subject=subject, body=body, attachments=[temp_file.name]
         )
 
         # Supprimer fichier temporaire
         import os
+
         os.unlink(temp_file.name)
 
-        return JSONResponse({
-            "message": "Email envoye avec succes",
-            "id": result['id']
-        })
+        return JSONResponse({"message": "Email envoye avec succes", "id": result["id"]})
 
     except FileNotFoundError as e:
         return JSONResponse(
-            {"error": f"Fichier non trouve: {safe_error_message(e)}"},
-            status_code=404
+            {"error": f"Fichier non trouve: {safe_error_message(e)}"}, status_code=404
         )
     except Exception as e:
         return JSONResponse(
-            {"error": f"Erreur lors de l envoi: {safe_error_message(e)}"},
-            status_code=500
+            {"error": f"Erreur lors de l envoi: {safe_error_message(e)}"}, status_code=500
         )
 
 
 # === PAGE & API: LINKEDIN COMMENT ===
 
+
 @app.get("/comment", response_class=HTMLResponse)
 async def comment_page(request: Request):
-    return templates.TemplateResponse("comment.html", {
-        "request": request,
-        "active": "comment",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "comment.html",
+        {
+            "request": request,
+            "active": "comment",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/comment/generate")
@@ -2536,8 +2490,7 @@ async def api_comment_generate(request: Request):
     style = body.get("style", "insightful")
 
     if not post_input:
-        return JSONResponse(
-            {"error": "Post LinkedIn manquant."}, status_code=400)
+        return JSONResponse({"error": "Post LinkedIn manquant."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -2549,8 +2502,7 @@ async def api_comment_generate(request: Request):
     }
 
     thread = threading.Thread(
-        target=_run_comment_generator, args=(
-            job_id, post_input, style), daemon=True
+        target=_run_comment_generator, args=(job_id, post_input, style), daemon=True
     )
     thread.start()
 
@@ -2565,45 +2517,38 @@ def _run_comment_generator(job_id: str, post_input: str, style: str):
         agent = LinkedInCommenterAgent()
 
         # Step 1: Extraction
-        job["steps"].append(
-            {"step": "extract", "status": "active", "progress": 10})
+        job["steps"].append({"step": "extract", "status": "active", "progress": 10})
         post_content = agent.extract_post_content(post_input)
-        job["steps"].append(
-            {"step": "extract", "status": "done", "progress": 35})
+        job["steps"].append({"step": "extract", "status": "done", "progress": 35})
 
         # Step 2: Generation
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 40})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 40})
         result = agent.generate_comments(post_content, style=style)
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 90})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 90})
 
         # Step 3: Sauvegarde
-        job["steps"].append(
-            {"step": "save", "status": "active", "progress": 95})
+        job["steps"].append({"step": "save", "status": "active", "progress": 95})
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"linkedin_comment_{timestamp}.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write("# Commentaires LinkedIn\n\n")
             f.write(f"**Style:** {style}\n")
-            f.write(
-                f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
+            f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("## Post original (extrait)\n\n")
             f.write(f"> {result['post_preview']}\n\n")
             f.write("---\n\n")
             f.write("## Commentaire Court\n\n")
-            f.write(result['short'])
+            f.write(result["short"])
             f.write("\n\n---\n\n## Commentaire Moyen\n\n")
-            f.write(result['medium'])
+            f.write(result["medium"])
             f.write("\n\n---\n\n## Commentaire Long\n\n")
-            f.write(result['long'])
+            f.write(result["long"])
             f.write("\n")
 
-        job["steps"].append(
-            {"step": "save", "status": "done", "progress": 100})
+        job["steps"].append({"step": "save", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -2623,6 +2568,7 @@ def _run_comment_generator(job_id: str, post_input: str, style: str):
 @app.get("/api/comment/stream/{job_id}")
 async def api_comment_stream(job_id: str):
     """Streame le progres de la generation de commentaires"""
+
     async def event_generator():
         while True:
             if job_id not in jobs:
@@ -2646,6 +2592,7 @@ async def api_comment_stream(job_id: str):
 
 # === API: COMMENT FEEDBACK ===
 
+
 @app.post("/api/comment/regenerate")
 async def api_comment_regenerate(request: Request):
     """Regenere les commentaires avec feedback"""
@@ -2658,8 +2605,7 @@ async def api_comment_regenerate(request: Request):
     style = body.get("style", "insightful")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -2679,7 +2625,8 @@ async def api_comment_regenerate(request: Request):
             previous_long,
             feedback,
             post_preview,
-            style),
+            style,
+        ),
         daemon=True,
     )
     thread.start()
@@ -2687,29 +2634,35 @@ async def api_comment_regenerate(request: Request):
     return {"job_id": job_id}
 
 
-def _run_comment_feedback(job_id: str, previous_short: str, previous_medium: str,
-                          previous_long: str, feedback: str, post_preview: str, style: str):
+def _run_comment_feedback(
+    job_id: str,
+    previous_short: str,
+    previous_medium: str,
+    previous_long: str,
+    feedback: str,
+    post_preview: str,
+    style: str,
+):
     """Regenere les commentaires en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         agent = LinkedInCommenterAgent()
 
-        job["steps"].append(
-            {"step": "extract", "status": "done", "progress": 10})
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 30})
+        job["steps"].append({"step": "extract", "status": "done", "progress": 10})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 30})
 
         # Charger le persona
         persona_path = BASE_DIR / "data" / "linkedin_persona.md"
         persona_style = ""
         if persona_path.exists():
-            persona_content = persona_path.read_text(encoding='utf-8')
+            persona_content = persona_path.read_text(encoding="utf-8")
             start_idx = persona_content.find("### ✨ Ton & Style")
             end_idx = persona_content.find("### 📝 Structure de posts")
             if start_idx != -1 and end_idx != -1:
-                persona_style = "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n" + \
-                    persona_content[start_idx:end_idx]
+                persona_style = (
+                    "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n" + persona_content[start_idx:end_idx]
+                )
 
         system_prompt = """Tu es {
             agent.consultant_info['name']}, {
@@ -2780,22 +2733,19 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
             max_tokens=600,
         )
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 90})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 90})
 
         # Sauvegarde
-        job["steps"].append(
-            {"step": "save", "status": "active", "progress": 95})
+        job["steps"].append({"step": "save", "status": "active", "progress": 95})
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"linkedin_comment_{timestamp}_revised.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write("# Commentaires LinkedIn (Révisés)\n\n")
             f.write(f"**Style:** {style}\n")
-            f.write(
-                f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
+            f.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("## Post original (extrait)\n\n")
             f.write(f"> {post_preview}\n\n")
             f.write("---\n\n")
@@ -2807,8 +2757,7 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
             f.write(revised_long)
             f.write("\n")
 
-        job["steps"].append(
-            {"step": "save", "status": "done", "progress": 100})
+        job["steps"].append({"step": "save", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -2827,10 +2776,12 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
 
 # === PAGE & API: TECH WATCH ===
 
+
 @app.get("/techwatch")
 async def techwatch_page():
     """Redirection vers la nouvelle page veille"""
     from starlette.responses import RedirectResponse
+
     return RedirectResponse(url="/veille", status_code=301)
 
 
@@ -2840,8 +2791,7 @@ async def api_techwatch_generate(request: Request):
     """Lance la génération d'un digest de veille tech"""
     body = await request.json()
     keywords_str = body.get("keywords", "").strip()
-    keywords = [k.strip() for k in keywords_str.split(',')
-                ] if keywords_str else None
+    keywords = [k.strip() for k in keywords_str.split(",")] if keywords_str else None
     days = int(body.get("days", 7))
     period_type = body.get("period_type", "weekly")
 
@@ -2855,16 +2805,14 @@ async def api_techwatch_generate(request: Request):
     }
 
     thread = threading.Thread(
-        target=_run_tech_monitor, args=(
-            job_id, keywords, days, period_type), daemon=True
+        target=_run_tech_monitor, args=(job_id, keywords, days, period_type), daemon=True
     )
     thread.start()
 
     return {"job_id": job_id}
 
 
-def _run_tech_monitor(
-        job_id: str, keywords: List[str], days: int, period_type: str):
+def _run_tech_monitor(job_id: str, keywords: List[str], days: int, period_type: str):
     """Execute la génération de digest en background"""
     job = jobs[job_id]
 
@@ -2872,11 +2820,9 @@ def _run_tech_monitor(
         agent = TechMonitorAgent()
 
         # Step 1: Collecte
-        job["steps"].append(
-            {"step": "collect", "status": "active", "progress": 10})
+        job["steps"].append({"step": "collect", "status": "active", "progress": 10})
         articles = agent.collect_articles(keywords=keywords, days=days)
-        job["steps"].append(
-            {"step": "collect", "status": "done", "progress": 40})
+        job["steps"].append({"step": "collect", "status": "done", "progress": 40})
 
         if not articles:
             job["status"] = "done"
@@ -2886,25 +2832,19 @@ def _run_tech_monitor(
                 "period": period_type,
                 "md_path": None,
             }
-            job["steps"].append(
-                {"step": "analyze", "status": "done", "progress": 60})
-            job["steps"].append(
-                {"step": "generate", "status": "done", "progress": 100})
+            job["steps"].append({"step": "analyze", "status": "done", "progress": 60})
+            job["steps"].append({"step": "generate", "status": "done", "progress": 100})
             return
 
         # Step 2: Analyse
-        job["steps"].append(
-            {"step": "analyze", "status": "active", "progress": 45})
+        job["steps"].append({"step": "analyze", "status": "active", "progress": 45})
         trends = agent.analyze_trends(articles)
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 60})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 60})
 
         # Step 3: Generation
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 65})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 65})
         result = agent.generate_digest(articles, trends, period=period_type)
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 100})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2912,14 +2852,13 @@ def _run_tech_monitor(
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"tech_digest_{period_type}_{timestamp}.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(f"# Veille Technologique {period_type.capitalize()}\n\n")
-            f.write(
-                f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
+            f.write(f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
             f.write(f"**Période:** {days} derniers jours\n")
             f.write(f"**Articles:** {len(articles)}\n\n")
             f.write("---\n\n")
-            f.write(result['content'])
+            f.write(result["content"])
 
         job["status"] = "done"
         job["result"] = {
@@ -2938,6 +2877,7 @@ def _run_tech_monitor(
 @app.get("/api/techwatch/stream/{job_id}")
 async def api_techwatch_stream(job_id: str):
     """Streame le progres de la génération de digest"""
+
     async def event_generator():
         while True:
             if job_id not in jobs:
@@ -2961,6 +2901,7 @@ async def api_techwatch_stream(job_id: str):
 
 # === API: TECH WATCH FEEDBACK ===
 
+
 @app.post("/api/techwatch/regenerate")
 async def api_techwatch_regenerate(request: Request):
     """Regenere le digest avec feedback"""
@@ -2971,8 +2912,7 @@ async def api_techwatch_regenerate(request: Request):
     period = body.get("period", "weekly")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -2994,19 +2934,17 @@ async def api_techwatch_regenerate(request: Request):
 
 
 def _run_techwatch_feedback(
-        job_id: str, previous_digest: str, feedback: str, num_articles: int, period: str):
+    job_id: str, previous_digest: str, feedback: str, num_articles: int, period: str
+):
     """Regenere le digest en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         agent = TechMonitorAgent()
 
-        job["steps"].append(
-            {"step": "collect", "status": "done", "progress": 20})
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 40})
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 50})
+        job["steps"].append({"step": "collect", "status": "done", "progress": 20})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 40})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 50})
 
         system_prompt = """Tu es {
             agent.consultant_info['name']}, {
@@ -3031,8 +2969,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
             max_tokens=3000,
         )
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 100})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3040,11 +2977,9 @@ Ne modifie que ce qui est demandé dans le feedback.""",
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"tech_digest_{period}_{timestamp}_revised.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(
-                f"# Veille Technologique {period.capitalize()} (Révisé)\n\n")
-            f.write(
-                f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(f"# Veille Technologique {period.capitalize()} (Révisé)\n\n")
+            f.write(f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("---\n\n")
             f.write(revised_digest)
 
@@ -3064,13 +2999,17 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
 # === PAGE & API: DATASET ANALYZER ===
 
+
 @app.get("/dataset", response_class=HTMLResponse)
 async def dataset_page(request: Request):
-    return templates.TemplateResponse("dataset.html", {
-        "request": request,
-        "active": "dataset",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "dataset.html",
+        {
+            "request": request,
+            "active": "dataset",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/dataset/analyze")
@@ -3079,7 +3018,7 @@ async def api_dataset_analyze(request: Request, file: UploadFile = File(...)):
     """Lance l'analyse d'un dataset"""
 
     # Valider le fichier (taille, type)
-    allowed_exts = {'.csv', '.xlsx', '.xls'}
+    allowed_exts = {".csv", ".xlsx", ".xls"}
     content = await validate_file_upload(file, allowed_extensions=allowed_exts)
     filename = sanitize_filename(file.filename or "dataset.csv")
 
@@ -3090,7 +3029,7 @@ async def api_dataset_analyze(request: Request, file: UploadFile = File(...)):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     temp_path = temp_dir / f"upload_{timestamp}_{filename}"
 
-    with open(temp_path, 'wb') as f:
+    with open(temp_path, "wb") as f:
         f.write(content)
 
     job_id = str(uuid.uuid4())[:8]
@@ -3119,38 +3058,29 @@ def _run_dataset_analyzer(job_id: str, file_path: str, filename: str):
         agent = DatasetAnalyzerAgent()
 
         # Step 1: Load
-        job["steps"].append(
-            {"step": "load", "status": "active", "progress": 10})
+        job["steps"].append({"step": "load", "status": "active", "progress": 10})
         df = agent.load_dataset(file_path)
         job["steps"].append({"step": "load", "status": "done", "progress": 25})
 
         # Step 2: Structure
-        job["steps"].append(
-            {"step": "structure", "status": "active", "progress": 30})
+        job["steps"].append({"step": "structure", "status": "active", "progress": 30})
         structure = agent.analyze_structure(df)
-        job["steps"].append(
-            {"step": "structure", "status": "done", "progress": 45})
+        job["steps"].append({"step": "structure", "status": "done", "progress": 45})
 
         # Step 3: Quality
-        job["steps"].append(
-            {"step": "quality", "status": "active", "progress": 50})
+        job["steps"].append({"step": "quality", "status": "active", "progress": 50})
         quality = agent.analyze_quality(df)
-        job["steps"].append(
-            {"step": "quality", "status": "done", "progress": 65})
+        job["steps"].append({"step": "quality", "status": "done", "progress": 65})
 
         # Step 4: Stats
-        job["steps"].append(
-            {"step": "stats", "status": "active", "progress": 70})
+        job["steps"].append({"step": "stats", "status": "active", "progress": 70})
         stats = agent.analyze_statistics(df, structure)
-        job["steps"].append(
-            {"step": "stats", "status": "done", "progress": 85})
+        job["steps"].append({"step": "stats", "status": "done", "progress": 85})
 
         # Step 5: Report
-        job["steps"].append(
-            {"step": "report", "status": "active", "progress": 90})
+        job["steps"].append({"step": "report", "status": "active", "progress": 90})
         result = agent.generate_report(df, structure, quality, stats, filename)
-        job["steps"].append(
-            {"step": "report", "status": "done", "progress": 100})
+        job["steps"].append({"step": "report", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3158,8 +3088,8 @@ def _run_dataset_analyzer(job_id: str, file_path: str, filename: str):
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"dataset_analysis_{timestamp}.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(result['report'])
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(result["report"])
 
         job["status"] = "done"
         job["result"] = {
@@ -3192,6 +3122,7 @@ def _run_dataset_analyzer(job_id: str, file_path: str, filename: str):
 @app.get("/api/dataset/stream/{job_id}")
 async def api_dataset_stream(job_id: str):
     """Streame le progres de l'analyse"""
+
     async def event_generator():
         while True:
             if job_id not in jobs:
@@ -3215,6 +3146,7 @@ async def api_dataset_stream(job_id: str):
 
 # === API: DATASET FEEDBACK ===
 
+
 @app.post("/api/dataset/regenerate")
 async def api_dataset_regenerate(request: Request):
     """Regenere le rapport avec feedback"""
@@ -3224,8 +3156,7 @@ async def api_dataset_regenerate(request: Request):
     filename = body.get("filename", "dataset")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3246,8 +3177,7 @@ async def api_dataset_regenerate(request: Request):
     return {"job_id": job_id}
 
 
-def _run_dataset_feedback(
-        job_id: str, previous_report: str, feedback: str, filename: str):
+def _run_dataset_feedback(job_id: str, previous_report: str, feedback: str, filename: str):
     """Regenere le rapport en tenant compte du feedback"""
     job = jobs[job_id]
 
@@ -3256,14 +3186,10 @@ def _run_dataset_feedback(
 
         # Skip aux étapes finales
         job["steps"].append({"step": "load", "status": "done", "progress": 20})
-        job["steps"].append(
-            {"step": "structure", "status": "done", "progress": 40})
-        job["steps"].append(
-            {"step": "quality", "status": "done", "progress": 60})
-        job["steps"].append(
-            {"step": "stats", "status": "done", "progress": 70})
-        job["steps"].append(
-            {"step": "report", "status": "active", "progress": 80})
+        job["steps"].append({"step": "structure", "status": "done", "progress": 40})
+        job["steps"].append({"step": "quality", "status": "done", "progress": 60})
+        job["steps"].append({"step": "stats", "status": "done", "progress": 70})
+        job["steps"].append({"step": "report", "status": "active", "progress": 80})
 
         system_prompt = """Tu es {
             agent.consultant_info['name']}, {
@@ -3288,8 +3214,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
             max_tokens=2000,
         )
 
-        job["steps"].append(
-            {"step": "report", "status": "done", "progress": 100})
+        job["steps"].append({"step": "report", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3297,7 +3222,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"dataset_analysis_{timestamp}_revised.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(revised_report)
 
         job["status"] = "done"
@@ -3315,13 +3240,17 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
 # === PAGE & API: WORKSHOP PLANNER ===
 
+
 @app.get("/workshop", response_class=HTMLResponse)
 async def workshop_page(request: Request):
-    return templates.TemplateResponse("workshop.html", {
-        "request": request,
-        "active": "workshop",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "workshop.html",
+        {
+            "request": request,
+            "active": "workshop",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/workshop/generate")
@@ -3335,8 +3264,7 @@ async def api_workshop_generate(request: Request):
     objectives = body.get("objectives", "").strip()
 
     if not topic:
-        return JSONResponse(
-            {"error": "Le sujet est obligatoire."}, status_code=400)
+        return JSONResponse({"error": "Le sujet est obligatoire."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3348,45 +3276,37 @@ async def api_workshop_generate(request: Request):
     }
 
     thread = threading.Thread(
-        target=_run_workshop_planner, args=(
-            job_id, topic, duration, audience, objectives), daemon=True
+        target=_run_workshop_planner,
+        args=(job_id, topic, duration, audience, objectives),
+        daemon=True,
     )
     thread.start()
 
     return {"job_id": job_id}
 
 
-def _run_workshop_planner(job_id: str, topic: str,
-                          duration: str, audience: str, objectives: str):
+def _run_workshop_planner(job_id: str, topic: str, duration: str, audience: str, objectives: str):
     """Execute la génération de plan en background"""
     job = jobs[job_id]
 
     try:
         agent = WorkshopPlannerAgent()
 
-        job["steps"].append(
-            {"step": "plan", "status": "active", "progress": 30})
-        result = agent.generate_workshop_plan(
-            topic, duration, audience, objectives)
-        job["steps"].append(
-            {"step": "plan", "status": "done", "progress": 100})
+        job["steps"].append({"step": "plan", "status": "active", "progress": 30})
+        result = agent.generate_workshop_plan(topic, duration, audience, objectives)
+        job["steps"].append({"step": "plan", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
-        safe_topic = "".join(
-            c for c in topic if c.isalnum() or c in (
-                ' ',
-                '-',
-                '_')).strip()[
-            :50]
-        safe_topic = safe_topic.replace(' ', '_')
+        safe_topic = "".join(c for c in topic if c.isalnum() or c in (" ", "-", "_")).strip()[:50]
+        safe_topic = safe_topic.replace(" ", "_")
 
         md_path = output_dir / f"workshop_{safe_topic}_{timestamp}.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
-            f.write(result['plan'])
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(result["plan"])
 
         job["status"] = "done"
         job["result"] = {
@@ -3406,6 +3326,7 @@ def _run_workshop_planner(job_id: str, topic: str,
 @app.get("/api/workshop/stream/{job_id}")
 async def api_workshop_stream(job_id: str):
     """Streame le progres"""
+
     async def event_generator():
         while True:
             if job_id not in jobs:
@@ -3436,8 +3357,7 @@ async def api_workshop_regenerate(request: Request):
     topic = body.get("topic", "Workshop")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3458,16 +3378,14 @@ async def api_workshop_regenerate(request: Request):
     return {"job_id": job_id}
 
 
-def _run_workshop_feedback(
-        job_id: str, previous_plan: str, feedback: str, topic: str):
+def _run_workshop_feedback(job_id: str, previous_plan: str, feedback: str, topic: str):
     """Regenere avec feedback"""
     job = jobs[job_id]
 
     try:
         agent = WorkshopPlannerAgent()
 
-        job["steps"].append(
-            {"step": "plan", "status": "active", "progress": 50})
+        job["steps"].append({"step": "plan", "status": "active", "progress": 50})
 
         system_prompt = """Tu es {
             agent.consultant_info['name']}, {
@@ -3491,24 +3409,18 @@ Ne modifie que ce qui est demandé dans le feedback.""",
             max_tokens=3500,
         )
 
-        job["steps"].append(
-            {"step": "plan", "status": "done", "progress": 100})
+        job["steps"].append({"step": "plan", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = BASE_DIR / "output"
         output_dir.mkdir(exist_ok=True)
 
-        safe_topic = "".join(
-            c for c in topic if c.isalnum() or c in (
-                ' ',
-                '-',
-                '_')).strip()[
-            :50]
-        safe_topic = safe_topic.replace(' ', '_')
+        safe_topic = "".join(c for c in topic if c.isalnum() or c in (" ", "-", "_")).strip()[:50]
+        safe_topic = safe_topic.replace(" ", "_")
 
         md_path = output_dir / f"workshop_{safe_topic}_{timestamp}_revised.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(revised_plan)
 
         job["status"] = "done"
@@ -3526,13 +3438,17 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
 # === PAGE & API: RFP RESPONDER ===
 
+
 @app.get("/rfp", response_class=HTMLResponse)
 async def rfp_page(request: Request):
-    return templates.TemplateResponse("rfp.html", {
-        "request": request,
-        "active": "rfp",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "rfp.html",
+        {
+            "request": request,
+            "active": "rfp",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/rfp/generate")
@@ -3550,9 +3466,7 @@ async def api_rfp_generate(
         filename = file.filename or ""
         if filename.lower().endswith(".pdf"):
             pdf_reader = PdfReader(io.BytesIO(content))
-            text = "\n\n".join(
-                page.extract_text() or "" for page in pdf_reader.pages
-            )
+            text = "\n\n".join(page.extract_text() or "" for page in pdf_reader.pages)
         else:
             text = content.decode("utf-8")
     elif rfp_text:
@@ -3561,8 +3475,7 @@ async def api_rfp_generate(
         return JSONResponse({"error": "Aucun RFP fourni."}, status_code=400)
 
     if len(text.strip()) < 100:
-        return JSONResponse(
-            {"error": "Le RFP semble trop court."}, status_code=400)
+        return JSONResponse({"error": "Le RFP semble trop court."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3573,9 +3486,7 @@ async def api_rfp_generate(
         "error": None,
     }
 
-    thread = threading.Thread(
-        target=_run_rfp_responder, args=(job_id, text), daemon=True
-    )
+    thread = threading.Thread(target=_run_rfp_responder, args=(job_id, text), daemon=True)
     thread.start()
 
     return {"job_id": job_id}
@@ -3589,18 +3500,14 @@ def _run_rfp_responder(job_id: str, rfp_text: str):
         agent = RFPResponderAgent()
 
         # Step 1: Analyze
-        job["steps"].append(
-            {"step": "analyze", "status": "active", "progress": 20})
+        job["steps"].append({"step": "analyze", "status": "active", "progress": 20})
         analysis = agent.analyze_rfp(rfp_text)
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 40})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 40})
 
         # Step 2: Generate response
-        job["steps"].append(
-            {"step": "response", "status": "active", "progress": 50})
+        job["steps"].append({"step": "response", "status": "active", "progress": 50})
         result = agent.generate_response(rfp_text, analysis)
-        job["steps"].append(
-            {"step": "response", "status": "done", "progress": 100})
+        job["steps"].append({"step": "response", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3608,12 +3515,11 @@ def _run_rfp_responder(job_id: str, rfp_text: str):
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"rfp_response_{timestamp}.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write("# Réponse à l'appel d'offres\n\n")
-            f.write(
-                f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
+            f.write(f"**Généré le:** {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n")
             f.write("---\n\n")
-            f.write(result['response'])
+            f.write(result["response"])
 
         job["status"] = "done"
         job["result"] = {
@@ -3631,6 +3537,7 @@ def _run_rfp_responder(job_id: str, rfp_text: str):
 @app.get("/api/rfp/stream/{job_id}")
 async def api_rfp_stream(job_id: str):
     """Streame le progres"""
+
     async def event_generator():
         while True:
             if job_id not in jobs:
@@ -3660,8 +3567,7 @@ async def api_rfp_regenerate(request: Request):
     previous_response = body.get("previous_response", "")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3689,10 +3595,8 @@ def _run_rfp_feedback(job_id: str, previous_response: str, feedback: str):
     try:
         agent = RFPResponderAgent()
 
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 30})
-        job["steps"].append(
-            {"step": "response", "status": "active", "progress": 50})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 30})
+        job["steps"].append({"step": "response", "status": "active", "progress": 50})
 
         system_prompt = """Tu es {
             agent.consultant_info['name']}, {
@@ -3716,8 +3620,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
             max_tokens=4000,
         )
 
-        job["steps"].append(
-            {"step": "response", "status": "done", "progress": 100})
+        job["steps"].append({"step": "response", "status": "done", "progress": 100})
 
         # Sauvegarde
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3725,7 +3628,7 @@ Ne modifie que ce qui est demandé dans le feedback.""",
         output_dir.mkdir(exist_ok=True)
 
         md_path = output_dir / f"rfp_response_{timestamp}_revised.md"
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(revised_response)
 
         job["status"] = "done"
@@ -3742,13 +3645,17 @@ Ne modifie que ce qui est demandé dans le feedback.""",
 
 # === PAGE & API: ARTICLE GENERATOR ===
 
+
 @app.get("/article-generator", response_class=HTMLResponse)
 async def article_generator_page(request: Request):
-    return templates.TemplateResponse("article-generator.html", {
-        "request": request,
-        "active": "article-generator",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "article-generator.html",
+        {
+            "request": request,
+            "active": "article-generator",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/article-generator/generate")
@@ -3761,7 +3668,8 @@ async def api_article_generator_generate(
     """Lance la génération d'un article de blog"""
     if len(idea_text.strip()) < 20:
         return JSONResponse(
-            {"error": "L'idée est trop courte (minimum 20 caractères)."}, status_code=400)
+            {"error": "L'idée est trop courte (minimum 20 caractères)."}, status_code=400
+        )
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3788,19 +3696,15 @@ def _run_article_generator(job_id: str, idea: str, use_context: bool = False):
 
     try:
         from agents.article_generator import ArticleGeneratorAgent
+
         agent = ArticleGeneratorAgent()
 
-        job["steps"].append(
-            {"step": "article", "status": "active", "progress": 10})
+        job["steps"].append({"step": "article", "status": "active", "progress": 10})
 
         # Pipeline complet (article + linkedin + image + sources)
-        result = agent.run(
-            idea,
-            target_length="medium",
-            use_context=use_context)
+        result = agent.run(idea, target_length="medium", use_context=use_context)
 
-        job["steps"].append(
-            {"step": "article", "status": "done", "progress": 100})
+        job["steps"].append({"step": "article", "status": "done", "progress": 100})
 
         word_count = len(result["article"].split())
 
@@ -3862,8 +3766,7 @@ async def api_article_generator_regenerate(request: Request):
     previous_idea = body.get("previous_idea", "")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -3885,16 +3788,17 @@ async def api_article_generator_regenerate(request: Request):
 
 
 def _run_article_generator_feedback(
-        job_id: str, previous_content: str, feedback: str, previous_idea: str):
+    job_id: str, previous_content: str, feedback: str, previous_idea: str
+):
     """Régénère l'article en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         from agents.article_generator import ArticleGeneratorAgent
+
         agent = ArticleGeneratorAgent()
 
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 20})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 20})
 
         revised_prompt = """{previous_idea}
 
@@ -3907,15 +3811,12 @@ FEEDBACK de l'utilisateur:
 
 Régénère l'article en tenant compte du feedback. Applique les modifications demandées tout en gardant le style et la qualité Consulting Tools."""
 
-        revised_content = agent.generate_article(
-            revised_prompt, target_length="medium")
+        revised_content = agent.generate_article(revised_prompt, target_length="medium")
 
         # Générer le nouveau prompt d'illustration
-        illustration_prompt = agent.generate_illustration_prompt(
-            revised_content)
+        illustration_prompt = agent.generate_illustration_prompt(revised_content)
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 100})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 100})
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3924,8 +3825,9 @@ Régénère l'article en tenant compte du feedback. Applique les modifications d
 
         # Créer un slug pour le nom de fichier
         import re
-        slug = re.sub(r'[^\w\s-]', '', previous_idea.lower())
-        slug = re.sub(r'[-\s]+', '-', slug)[:50]
+
+        slug = re.sub(r"[^\w\s-]", "", previous_idea.lower())
+        slug = re.sub(r"[-\s]+", "-", slug)[:50]
 
         md_path = output_dir / f"article_{slug}_revised_{timestamp}.md"
 
@@ -3975,10 +3877,9 @@ async def api_article_generator_export_gdocs(
             doc_url = google_client.export_markdown_to_docs(content, title)
 
             if doc_url:
-                return JSONResponse({
-                    "doc_url": doc_url,
-                    "message": "Article exporte vers Google Docs"
-                })
+                return JSONResponse(
+                    {"doc_url": doc_url, "message": "Article exporte vers Google Docs"}
+                )
             else:
                 return JSONResponse(
                     {"error": "Echec de la creation du document Google Docs"},
@@ -3987,30 +3888,36 @@ async def api_article_generator_export_gdocs(
 
         except Exception as e:
             if "credentials" in str(e).lower() or "token" in str(e).lower():
-                return JSONResponse({
-                    "error": "Google API non configuree. Configurez vos credentials.",
-                    "setup_required": True,
-                }, status_code=400)
+                return JSONResponse(
+                    {
+                        "error": "Google API non configuree. Configurez vos credentials.",
+                        "setup_required": True,
+                    },
+                    status_code=400,
+                )
             else:
                 raise
 
     except Exception as e:
         print(f"Erreur export article GDocs: {e}")
-        return JSONResponse(
-            {"error": safe_error_message(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # ====================================
 # FORMATION GENERATOR
 # ====================================
 
+
 @app.get("/formation", response_class=HTMLResponse)
 async def formation_page(request: Request):
-    return templates.TemplateResponse("formation.html", {
-        "request": request,
-        "active": "formation",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "formation.html",
+        {
+            "request": request,
+            "active": "formation",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/formation/generate")
@@ -4022,7 +3929,8 @@ async def api_formation_generate(
     """Lance la génération d'un programme de formation"""
     if len(client_needs.strip()) < 20:
         return JSONResponse(
-            {"error": "Le besoin est trop court (minimum 20 caractères)."}, status_code=400)
+            {"error": "Le besoin est trop court (minimum 20 caractères)."}, status_code=400
+        )
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -4049,21 +3957,17 @@ def _run_formation_generator(job_id: str, client_needs: str):
 
     try:
         from agents.formation_generator import FormationGeneratorAgent
+
         agent = FormationGeneratorAgent()
 
-        job["steps"].append(
-            {"step": "analyze", "status": "active", "progress": 10})
-        job["steps"].append(
-            {"step": "analyze", "status": "done", "progress": 20})
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 30})
+        job["steps"].append({"step": "analyze", "status": "active", "progress": 10})
+        job["steps"].append({"step": "analyze", "status": "done", "progress": 20})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 30})
 
         result = agent.generate_programme(client_needs)
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
-        job["steps"].append(
-            {"step": "format", "status": "active", "progress": 85})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "format", "status": "active", "progress": 85})
 
         # Sauvegarder le markdown
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -4077,8 +3981,7 @@ def _run_formation_generator(job_id: str, client_needs: str):
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(result["markdown"])
 
-        job["steps"].append(
-            {"step": "format", "status": "done", "progress": 100})
+        job["steps"].append({"step": "format", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -4133,8 +4036,7 @@ async def api_formation_regenerate(request: Request):
     previous_content = body.get("previous_content", "")
 
     if not feedback:
-        return JSONResponse(
-            {"error": "Aucun feedback fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -4155,24 +4057,21 @@ async def api_formation_regenerate(request: Request):
     return {"job_id": job_id}
 
 
-def _run_formation_regenerate(
-        job_id: str, previous_content: str, feedback: str):
+def _run_formation_regenerate(job_id: str, previous_content: str, feedback: str):
     """Régénère le programme en tenant compte du feedback"""
     job = jobs[job_id]
 
     try:
         from agents.formation_generator import FormationGeneratorAgent
+
         agent = FormationGeneratorAgent()
 
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 20})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 20})
 
         result = agent.regenerate_with_feedback(previous_content, feedback)
 
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
-        job["steps"].append(
-            {"step": "format", "status": "active", "progress": 85})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "format", "status": "active", "progress": 85})
 
         # Sauvegarder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -4183,8 +4082,7 @@ def _run_formation_regenerate(
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(result["markdown"])
 
-        job["steps"].append(
-            {"step": "format", "status": "done", "progress": 100})
+        job["steps"].append({"step": "format", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -4214,22 +4112,23 @@ async def api_formation_export_gdocs(
             doc_url = google_client.export_markdown_to_docs(content, title)
 
             if doc_url:
-                return JSONResponse({
-                    "doc_url": doc_url,
-                    "message": "Document Google Docs créé avec succès"
-                })
+                return JSONResponse(
+                    {"doc_url": doc_url, "message": "Document Google Docs créé avec succès"}
+                )
             else:
                 return JSONResponse(
-                    {"error": "Échec de la création du document Google Docs"},
-                    status_code=500
+                    {"error": "Échec de la création du document Google Docs"}, status_code=500
                 )
 
         except Exception as e:
             if "credentials" in str(e).lower() or "token" in str(e).lower():
-                return JSONResponse({
-                    "error": "Google API non configurée. Configurez vos credentials dans config/google_credentials.json",
-                    "setup_required": True
-                }, status_code=400)
+                return JSONResponse(
+                    {
+                        "error": "Google API non configurée. Configurez vos credentials dans config/google_credentials.json",
+                        "setup_required": True,
+                    },
+                    status_code=400,
+                )
             else:
                 raise
 
@@ -4242,13 +4141,17 @@ async def api_formation_export_gdocs(
 # TRAINING SLIDES GENERATOR
 # ====================================
 
+
 @app.get("/training-slides", response_class=HTMLResponse)
 async def training_slides_page(request: Request):
-    return templates.TemplateResponse("training-slides.html", {
-        "request": request,
-        "active": "training-slides",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "training-slides.html",
+        {
+            "request": request,
+            "active": "training-slides",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/training-slides/generate")
@@ -4317,7 +4220,8 @@ async def api_training_slides_generate(
 
     if not text or len(text) < 50:
         return JSONResponse(
-            {"error": "Le programme est trop court (minimum 50 caractères)."}, status_code=400)
+            {"error": "Le programme est trop court (minimum 50 caractères)."}, status_code=400
+        )
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -4344,34 +4248,28 @@ def _run_training_slides_generator(job_id: str, programme_text: str):
 
     try:
         from agents.training_slides_generator import TrainingSlidesGeneratorAgent
+
         agent = TrainingSlidesGeneratorAgent()
 
-        job["steps"].append(
-            {"step": "parse", "status": "active", "progress": 10})
+        job["steps"].append({"step": "parse", "status": "active", "progress": 10})
 
         result = agent.generate_all_slides(programme_text)
 
-        job["steps"].append(
-            {"step": "parse", "status": "done", "progress": 30})
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
-        job["steps"].append(
-            {"step": "pptx", "status": "active", "progress": 85})
+        job["steps"].append({"step": "parse", "status": "done", "progress": 30})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "pptx", "status": "active", "progress": 85})
 
         # Générer les PPTX par module
         pptx_paths = {}
         for module_name, module_slides in result["modules_slides"].items():
             if module_slides:
-                pptx_path = agent.generate_module_pptx(
-                    module_slides, module_name)
+                pptx_path = agent.generate_module_pptx(module_slides, module_name)
                 pptx_paths[module_name] = pptx_path
 
         # Générer le PPTX complet
-        all_pptx_path = agent.generate_module_pptx(
-            result["all_slides"], "Complet")
+        all_pptx_path = agent.generate_module_pptx(result["all_slides"], "Complet")
 
-        job["steps"].append(
-            {"step": "pptx", "status": "done", "progress": 100})
+        job["steps"].append({"step": "pptx", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -4436,7 +4334,7 @@ async def api_training_slides_export(
         # Sanitize pour éviter les erreurs JSON (supprime les caractères de
         # contrôle)
         sanitized = slides_data.strip()
-        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', sanitized)
+        sanitized = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", sanitized)
 
         slides = json.loads(sanitized)
 
@@ -4444,30 +4342,27 @@ async def api_training_slides_export(
 
         try:
             google_client = GoogleAPIClient()
-            presentation_id = google_client.export_pptx_to_slides(
-                slides_data=slides,
-                title=title
-            )
+            presentation_id = google_client.export_pptx_to_slides(slides_data=slides, title=title)
 
             if presentation_id:
                 presentation_url = f"https://docs.google.com/presentation/d/{presentation_id}/edit"
-                return JSONResponse({
-                    "presentation_id": presentation_id,
-                    "presentation_url": presentation_url,
-                    "message": "Présentation Google Slides créée avec succès"
-                })
+                return JSONResponse(
+                    {
+                        "presentation_id": presentation_id,
+                        "presentation_url": presentation_url,
+                        "message": "Présentation Google Slides créée avec succès",
+                    }
+                )
             else:
                 return JSONResponse(
-                    {"error": "Échec de la création de la présentation"},
-                    status_code=500
+                    {"error": "Échec de la création de la présentation"}, status_code=500
                 )
 
         except Exception as e:
             if "credentials" in str(e).lower() or "token" in str(e).lower():
-                return JSONResponse({
-                    "error": "Google API non configurée.",
-                    "setup_required": True
-                }, status_code=400)
+                return JSONResponse(
+                    {"error": "Google API non configurée.", "setup_required": True}, status_code=400
+                )
             else:
                 raise
 
@@ -4477,6 +4372,7 @@ async def api_training_slides_export(
 
 
 # === API: DOWNLOAD ===
+
 
 @app.get("/api/download")
 async def api_download(path: str):
@@ -4489,37 +4385,33 @@ async def api_download(path: str):
         # Vérifier que le fichier existe
         if not file_path.exists():
             print(f"Fichier non trouve: {file_path}")
-            return JSONResponse(
-                {"error": "Fichier non trouve"}, status_code=404)
+            return JSONResponse({"error": "Fichier non trouve"}, status_code=404)
 
         # Vérifier que le fichier est bien dans le répertoire BASE_DIR
         # (sécurité)
         if not file_path.is_relative_to(BASE_DIR):
-            print(
-                f"Tentative d'accès à un fichier hors du répertoire autorisé: {file_path}")
-            return JSONResponse(
-                {"error": "Accès non autorisé"}, status_code=403)
+            print(f"Tentative d'accès à un fichier hors du répertoire autorisé: {file_path}")
+            return JSONResponse({"error": "Accès non autorisé"}, status_code=403)
 
         # Déterminer le type MIME en fonction de l'extension
         media_type = None
-        if file_path.suffix == '.pptx':
+        if file_path.suffix == ".pptx":
             media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        elif file_path.suffix == '.pdf':
+        elif file_path.suffix == ".pdf":
             media_type = "application/pdf"
-        elif file_path.suffix == '.md':
+        elif file_path.suffix == ".md":
             media_type = "text/markdown"
-        elif file_path.suffix == '.json':
+        elif file_path.suffix == ".json":
             media_type = "application/json"
-        elif file_path.suffix == '.png':
+        elif file_path.suffix == ".png":
             media_type = "image/png"
-        elif file_path.suffix == '.jpg' or file_path.suffix == '.jpeg':
+        elif file_path.suffix == ".jpg" or file_path.suffix == ".jpeg":
             media_type = "image/jpeg"
 
         # Retourner le fichier avec les bons headers
         # Pour les images (PNG, JPG), utiliser inline pour affichage dans le
         # navigateur
-        disposition = "inline" if file_path.suffix in [
-            '.png', '.jpg', '.jpeg'] else "attachment"
+        disposition = "inline" if file_path.suffix in [".png", ".jpg", ".jpeg"] else "attachment"
 
         return FileResponse(
             file_path,
@@ -4527,14 +4419,15 @@ async def api_download(path: str):
             media_type=media_type,
             headers={
                 "Content-Disposition": f'{disposition}; filename="{file_path.name}"',
-                "Cache-Control": "no-cache"
-            }
+                "Cache-Control": "no-cache",
+            },
         )
 
     except Exception as e:
         print(f"Erreur lors du téléchargement: {safe_error_message(e)}")
         return JSONResponse(
-            {"error": f"Erreur lors du téléchargement: {safe_error_message(e)}"}, status_code=500)
+            {"error": f"Erreur lors du téléchargement: {safe_error_message(e)}"}, status_code=500
+        )
 
 
 @app.post("/api/convert-to-pdf")
@@ -4550,53 +4443,47 @@ async def api_convert_to_pdf(request: Request):
         from utils.pdf_converter import pdf_converter
 
         body = await request.json()
-        file_path = body.get('file_path', '').strip()
-        file_type = body.get('file_type', 'pptx')
+        file_path = body.get("file_path", "").strip()
+        file_type = body.get("file_type", "pptx")
 
         if not file_path:
-            return JSONResponse(
-                {"error": "Chemin de fichier manquant"}, status_code=400)
+            return JSONResponse({"error": "Chemin de fichier manquant"}, status_code=400)
 
         # Chemin absolu
         full_path = BASE_DIR / file_path
 
         if not full_path.exists():
-            return JSONResponse(
-                {"error": "Fichier non trouvé"}, status_code=404)
+            return JSONResponse({"error": "Fichier non trouvé"}, status_code=404)
 
         # Vérifier la sécurité
         if not full_path.is_relative_to(BASE_DIR):
-            return JSONResponse(
-                {"error": "Accès non autorisé"}, status_code=403)
+            return JSONResponse({"error": "Accès non autorisé"}, status_code=403)
 
         # Convertir selon le type
         pdf_path = None
-        if file_type == 'pptx' and full_path.suffix == '.pptx':
+        if file_type == "pptx" and full_path.suffix == ".pptx":
             pdf_path = pdf_converter.pptx_to_pdf(str(full_path))
-        elif file_type == 'markdown' and full_path.suffix in ['.md', '.markdown']:
+        elif file_type == "markdown" and full_path.suffix in [".md", ".markdown"]:
             pdf_path = pdf_converter.markdown_to_pdf(str(full_path))
         else:
-            return JSONResponse(
-                {"error": "Type de fichier non supporté"}, status_code=400)
+            return JSONResponse({"error": "Type de fichier non supporté"}, status_code=400)
 
         if pdf_path:
             # Retourner le chemin relatif du PDF
             pdf_rel_path = str(Path(pdf_path).relative_to(BASE_DIR))
-            return {
-                "success": True,
-                "pdf_path": pdf_rel_path,
-                "message": "Conversion réussie"
-            }
+            return {"success": True, "pdf_path": pdf_rel_path, "message": "Conversion réussie"}
         else:
-            return JSONResponse({
-                "error": "Conversion PDF échouée",
-                "message": "Vérifiez que LibreOffice est installé (pour PPTX) ou pandoc/weasyprint (pour Markdown)"
-            }, status_code=500)
+            return JSONResponse(
+                {
+                    "error": "Conversion PDF échouée",
+                    "message": "Vérifiez que LibreOffice est installé (pour PPTX) ou pandoc/weasyprint (pour Markdown)",
+                },
+                status_code=500,
+            )
 
     except Exception as e:
         print(f"Erreur lors de la conversion PDF: {safe_error_message(e)}")
-        return JSONResponse(
-            {"error": f"Erreur: {safe_error_message(e)}"}, status_code=500)
+        return JSONResponse({"error": f"Erreur: {safe_error_message(e)}"}, status_code=500)
 
 
 @app.get("/api/pdf-capabilities")
@@ -4604,10 +4491,11 @@ async def api_pdf_capabilities():
     """Retourne les capacités de conversion PDF disponibles"""
     try:
         from utils.pdf_converter import pdf_converter
+
         capabilities = pdf_converter.is_pdf_conversion_available()
         return {
             "capabilities": capabilities,
-            "message": "Pour activer la conversion PDF, installez LibreOffice (PPTX→PDF) ou pandoc/weasyprint (MD→PDF)"
+            "message": "Pour activer la conversion PDF, installez LibreOffice (PPTX→PDF) ou pandoc/weasyprint (MD→PDF)",
         }
     except Exception as e:
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
@@ -4617,13 +4505,17 @@ async def api_pdf_capabilities():
 # DOCUMENT TO PRESENTATION
 # ===================================
 
+
 @app.get("/doc-to-presentation", response_class=HTMLResponse)
 async def doc_to_presentation_page(request: Request):
-    return templates.TemplateResponse("doc-to-presentation.html", {
-        "request": request,
-        "active": "doc-to-presentation",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "doc-to-presentation.html",
+        {
+            "request": request,
+            "active": "doc-to-presentation",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/doc-to-presentation/generate")
@@ -4635,8 +4527,7 @@ async def api_doc_to_presentation_generate(
 ):
     """Lance la generation de presentation a partir de documents"""
     if not files:
-        return JSONResponse(
-            {"error": "Aucun fichier fourni."}, status_code=400)
+        return JSONResponse({"error": "Aucun fichier fourni."}, status_code=400)
 
     # Lire les fichiers uploades
     documents = []
@@ -4663,19 +4554,17 @@ async def api_doc_to_presentation_generate(
     return {"job_id": job_id}
 
 
-def _run_doc_to_presentation(
-        job_id: str, documents: list, target_audience: str, objective: str):
+def _run_doc_to_presentation(job_id: str, documents: list, target_audience: str, objective: str):
     """Execute la generation de presentation en background"""
     job = jobs[job_id]
     try:
         from agents.doc_to_presentation import DocToPresentationAgent
+
         agent = DocToPresentationAgent()
 
-        job["steps"].append(
-            {"step": "parse", "status": "active", "progress": 10})
+        job["steps"].append({"step": "parse", "status": "active", "progress": 10})
         result = agent.run(documents, target_audience, objective)
-        job["steps"].append(
-            {"step": "pptx", "status": "done", "progress": 100})
+        job["steps"].append({"step": "pptx", "status": "done", "progress": 100})
 
         if result.get("error"):
             job["status"] = "error"
@@ -4692,6 +4581,7 @@ def _run_doc_to_presentation(
 @app.get("/api/doc-to-presentation/stream/{job_id}")
 async def api_doc_to_presentation_stream(job_id: str):
     """SSE stream pour la progression"""
+
     async def event_generator():
         job = jobs.get(job_id)
         if not job:
@@ -4721,10 +4611,12 @@ async def api_doc_to_presentation_stream(job_id: str):
 # HTML SLIDES PREMIUM (Gemini 3.1 Pro)
 # ===================================
 
+
 @app.get("/html-slides")
 async def html_slides_page():
     """Redirige vers le Slide Editor (HTML Premium integre)"""
     from starlette.responses import RedirectResponse
+
     return RedirectResponse(url="/slide-editor", status_code=301)
 
 
@@ -4740,8 +4632,8 @@ async def api_html_slides_generate(
     topic = sanitize_text_input(topic)
     if not topic or len(topic.strip()) < 5:
         return JSONResponse(
-            {"error": "Le sujet est trop court (minimum 5 caracteres)."},
-            status_code=400)
+            {"error": "Le sujet est trop court (minimum 5 caracteres)."}, status_code=400
+        )
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -4762,27 +4654,23 @@ async def api_html_slides_generate(
     return {"job_id": job_id}
 
 
-def _run_html_slides_generator(
-        job_id: str, topic: str, num_slides: int, language: str):
+def _run_html_slides_generator(job_id: str, topic: str, num_slides: int, language: str):
     """Generate HTML slides in background"""
     job = jobs[job_id]
     try:
         from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
         agent = HtmlSlideGeneratorAgent()
 
         # Step 1: Extract design system
-        job["steps"].append(
-            {"step": "design", "status": "active", "progress": 10})
+        job["steps"].append({"step": "design", "status": "active", "progress": 10})
         design_system = agent.extract_design_system()
-        job["steps"].append(
-            {"step": "design", "status": "done", "progress": 30})
+        job["steps"].append({"step": "design", "status": "done", "progress": 30})
 
         # Step 2: Generate HTML via Gemini 3.1 Pro
-        job["steps"].append(
-            {"step": "generate", "status": "active", "progress": 35})
+        job["steps"].append({"step": "generate", "status": "active", "progress": 35})
 
-        system_instruction, user_prompt = agent.build_prompt(
-            topic, num_slides, design_system)
+        system_instruction, user_prompt = agent.build_prompt(topic, num_slides, design_system)
 
         lang_prefix = ""
         if language == "en":
@@ -4796,16 +4684,13 @@ def _run_html_slides_generator(
             temperature=0.2,
             max_tokens=16384,
         )
-        job["steps"].append(
-            {"step": "generate", "status": "done", "progress": 80})
+        job["steps"].append({"step": "generate", "status": "done", "progress": 80})
 
         # Step 3: Clean and save
-        job["steps"].append(
-            {"step": "save", "status": "active", "progress": 85})
+        job["steps"].append({"step": "save", "status": "active", "progress": 85})
         html_content = agent.clean_html_response(raw_html)
         html_path = agent.save_html(html_content)
-        job["steps"].append(
-            {"step": "save", "status": "done", "progress": 100})
+        job["steps"].append({"step": "save", "status": "done", "progress": 100})
 
         job["status"] = "done"
         job["result"] = {
@@ -4824,6 +4709,7 @@ def _run_html_slides_generator(
 @app.get("/api/html-slides/stream/{job_id}")
 async def api_html_slides_stream(job_id: str):
     """SSE stream pour la progression de generation de slides HTML"""
+
     async def event_generator():
         job = jobs.get(job_id)
         if not job:
@@ -4857,16 +4743,13 @@ async def api_html_slides_stream(job_id: str):
 # PROPOSAL CANVA (Mode Gemini)
 # ===================================
 
+
 @app.get("/proposal-canva")
 async def proposal_canva_page(request: Request):
     """Page de génération de propositions en mode Canva (conversationnel avec Gemini)"""
     return templates.TemplateResponse(
         "proposal-canva.html",
-        {
-            "request": request,
-            "consultant_name": CONSULTANT_NAME,
-            "active": "proposal"
-        }
+        {"request": request, "consultant_name": CONSULTANT_NAME, "active": "proposal"},
     )
 
 
@@ -4875,16 +4758,17 @@ async def api_proposal_canva_generate(request: Request):
     """Génère des propositions en mode conversationnel avec Gemini"""
     try:
         data = await request.json()
-        user_message = data.get('message', '')
-        conversation_history = data.get('conversation_history', [])
-        data.get('current_proposal')
+        user_message = data.get("message", "")
+        conversation_history = data.get("conversation_history", [])
+        data.get("current_proposal")
 
         if not user_message:
             return JSONResponse({"error": "Message manquant"}, status_code=400)
 
         # Initialiser le client Gemini
         from utils.llm_client import LLMClient
-        llm = LLMClient(provider='gemini', model='gemini-3-flash-preview')
+
+        llm = LLMClient(provider="gemini", model="gemini-3-flash-preview")
 
         # System prompt pour le mode conversationnel
         system_prompt = """Tu es un assistant expert en propositions commerciales pour {COMPANY_NAME}.
@@ -4927,62 +4811,48 @@ Société: {COMPANY_NAME} """
         # Construire les messages pour l'API
         messages = []
         for msg in conversation_history:
-            if msg['role'] in ['user', 'assistant']:
-                messages.append({
-                    "role": msg['role'],
-                    "content": msg['content']
-                })
+            if msg["role"] in ["user", "assistant"]:
+                messages.append({"role": msg["role"], "content": msg["content"]})
 
         # Ajouter le nouveau message
-        messages.append({
-            "role": "user",
-            "content": user_message
-        })
+        messages.append({"role": "user", "content": user_message})
 
         # Générer la réponse
         response_text = llm.generate_with_context(
-            messages=messages,
-            system_prompt=system_prompt,
-            temperature=0.7,
-            max_tokens=8000
+            messages=messages, system_prompt=system_prompt, temperature=0.7, max_tokens=8000
         )
 
         # Extraire le JSON s'il existe
         slides = []
         pptx_path = None
 
-        if '```json' in response_text:
+        if "```json" in response_text:
             # Extraire le JSON
-            json_start = response_text.find('```json') + 7
-            json_end = response_text.find('```', json_start)
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
             json_str = response_text[json_start:json_end].strip()
 
             try:
                 slides_data = json.loads(json_str)
-                slides = slides_data.get('slides', [])
+                slides = slides_data.get("slides", [])
 
                 # Générer le PPTX si des slides sont présentes
                 if slides:
                     from utils.pptx_generator import build_proposal_pptx
 
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     output_dir = BASE_DIR / "output"
                     output_dir.mkdir(exist_ok=True)
 
-                    output_path = output_dir / \
-                        f"proposal_canva_{timestamp}.pptx"
+                    output_path = output_dir / f"proposal_canva_{timestamp}.pptx"
 
-                    consultant_info = {
-                        'name': CONSULTANT_NAME,
-                        'company': COMPANY_NAME
-                    }
+                    consultant_info = {"name": CONSULTANT_NAME, "company": COMPANY_NAME}
 
                     pptx_path = build_proposal_pptx(
-                        template_path=str(
-                            BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
+                        template_path=str(BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
                         slides_data=slides,
                         output_path=str(output_path),
-                        consultant_info=consultant_info
+                        consultant_info=consultant_info,
                     )
 
                     pptx_path = str(Path(pptx_path).relative_to(BASE_DIR))
@@ -4992,23 +4862,23 @@ Société: {COMPANY_NAME} """
                 # Continue sans slides
 
         # Nettoyer la réponse (enlever le JSON)
-        response_text_clean = response_text.split('```json')[0].strip()
+        response_text_clean = response_text.split("```json")[0].strip()
 
         # Mettre à jour l'historique
         conversation_history.append({"role": "user", "content": user_message})
-        conversation_history.append(
-            {"role": "assistant", "content": response_text_clean})
+        conversation_history.append({"role": "assistant", "content": response_text_clean})
 
         return {
             "response": response_text_clean,
             "slides": slides,
             "pptx_path": pptx_path,
-            "conversation_history": conversation_history
+            "conversation_history": conversation_history,
         }
 
     except Exception as e:
         print(f"❌ Erreur génération Canva: {e}")
         import traceback
+
         traceback.print_exc()
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
@@ -5018,32 +4888,33 @@ async def api_proposal_canva_generate_section(request: Request):
     """Génère une section spécifique de proposition (mode modulaire)"""
     try:
         data = await request.json()
-        section = data.get('section', '')
-        tender_text = data.get('tender_text', '')
-        data.get('current_proposal')
+        section = data.get("section", "")
+        tender_text = data.get("tender_text", "")
+        data.get("current_proposal")
 
         if not section or not tender_text:
-            return JSONResponse(
-                {"error": "Section et tender_text requis"}, status_code=400)
+            return JSONResponse({"error": "Section et tender_text requis"}, status_code=400)
 
         # Initialiser le client Gemini
         from utils.llm_client import LLMClient
-        llm = LLMClient(provider='gemini', model='gemini-3-flash-preview')
+
+        llm = LLMClient(provider="gemini", model="gemini-3-flash-preview")
 
         # Mapping des sections
         section_prompts = {
-            'cover': 'Génère une slide de couverture professionnelle',
-            'agenda': 'Génère une slide d\'agenda avec la structure de la proposition',
-            'context': 'Génère 2-3 slides de contexte avec les enjeux et objectifs',
-            'approach': 'Génère 3-4 slides d\'approche méthodologique',
-            'planning': 'Génère 2-3 slides de planning avec les phases',
-            'budget': 'Génère 1-2 slides de chiffrage avec estimation budgétaire',
-            'references': 'Génère 2-3 slides de références projets similaires',
-            'cvs': 'Génère 2-3 slides de CVs adaptés au projet'
+            "cover": "Génère une slide de couverture professionnelle",
+            "agenda": "Génère une slide d'agenda avec la structure de la proposition",
+            "context": "Génère 2-3 slides de contexte avec les enjeux et objectifs",
+            "approach": "Génère 3-4 slides d'approche méthodologique",
+            "planning": "Génère 2-3 slides de planning avec les phases",
+            "budget": "Génère 1-2 slides de chiffrage avec estimation budgétaire",
+            "references": "Génère 2-3 slides de références projets similaires",
+            "cvs": "Génère 2-3 slides de CVs adaptés au projet",
         }
 
         section_instruction = section_prompts.get(
-            section, f'Génère des slides pour la section {section}')
+            section, f"Génère des slides pour la section {section}"
+        )
 
         # System prompt
         system_prompt = """Tu es un expert en propositions commerciales pour {COMPANY_NAME}.
@@ -5085,76 +4956,75 @@ Société: {COMPANY_NAME}
             prompt=f"Génère les slides pour la section {section}",
             system_prompt=system_prompt,
             temperature=0.7,
-            max_tokens=4000
+            max_tokens=4000,
         )
 
         # Extraire le JSON
         slides = []
         pptx_path = None
 
-        if '```json' in response_text:
-            json_start = response_text.find('```json') + 7
-            json_end = response_text.find('```', json_start)
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
             json_str = response_text[json_start:json_end].strip()
 
             try:
                 slides_data = json.loads(json_str)
-                slides = slides_data.get('slides', [])
+                slides = slides_data.get("slides", [])
 
                 # Générer le PPTX si des slides sont présentes
                 if slides:
                     from utils.pptx_generator import build_proposal_pptx
 
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     output_dir = BASE_DIR / "output"
                     output_dir.mkdir(exist_ok=True)
 
-                    output_path = output_dir / \
-                        f"proposal_section_{section}_{timestamp}.pptx"
+                    output_path = output_dir / f"proposal_section_{section}_{timestamp}.pptx"
 
-                    consultant_info = {
-                        'name': CONSULTANT_NAME,
-                        'company': COMPANY_NAME
-                    }
+                    consultant_info = {"name": CONSULTANT_NAME, "company": COMPANY_NAME}
 
                     pptx_path = build_proposal_pptx(
-                        template_path=str(
-                            BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
+                        template_path=str(BASE_DIR / "Consulting Tools_Template_Palette 2026.pptx"),
                         slides_data=slides,
                         output_path=str(output_path),
-                        consultant_info=consultant_info
+                        consultant_info=consultant_info,
                     )
 
                     pptx_path = str(Path(pptx_path).relative_to(BASE_DIR))
 
             except json.JSONDecodeError as e:
                 print(f"❌ Erreur JSON section: {e}")
-                return JSONResponse(
-                    {"error": "Erreur parsing JSON"}, status_code=500)
+                return JSONResponse({"error": "Erreur parsing JSON"}, status_code=500)
 
         return {
             "response": f"✅ Section '{section}' générée avec succès ({len(slides)} slides)",
             "slides": slides,
             "pptx_path": pptx_path,
-            "section": section
+            "section": section,
         }
 
     except Exception as e:
         print(f"❌ Erreur génération section: {e}")
         import traceback
+
         traceback.print_exc()
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # === SLIDE EDITOR (HTML-First) ===
 
+
 @app.get("/slide-editor", response_class=HTMLResponse)
 async def slide_editor_page(request: Request):
-    return templates.TemplateResponse("slide-editor.html", {
-        "request": request,
-        "active": "slide-editor",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "slide-editor.html",
+        {
+            "request": request,
+            "active": "slide-editor",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 def _extract_images_from_pdf(content_bytes):
@@ -5165,19 +5035,26 @@ def _extract_images_from_pdf(content_bytes):
         import io
 
         from PyPDF2 import PdfReader
+
         reader = PdfReader(io.BytesIO(content_bytes))
         for page_num, page in enumerate(reader.pages):
             for img_key in page.images:
                 img_data = img_key.data
-                ext = img_key.name.rsplit('.', 1)[-1].lower()
-                mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg",
-                        "png": "image/png", "gif": "image/gif"}.get(ext, "image/png")
+                ext = img_key.name.rsplit(".", 1)[-1].lower()
+                mime = {
+                    "jpg": "image/jpeg",
+                    "jpeg": "image/jpeg",
+                    "png": "image/png",
+                    "gif": "image/gif",
+                }.get(ext, "image/png")
                 b64 = base64.b64encode(img_data).decode()
-                images.append({
-                    "data_uri": f"data:{mime};base64,{b64}",
-                    "name": img_key.name,
-                    "page": page_num + 1,
-                })
+                images.append(
+                    {
+                        "data_uri": f"data:{mime};base64,{b64}",
+                        "name": img_key.name,
+                        "page": page_num + 1,
+                    }
+                )
                 if len(images) >= 20:
                     return images
     except Exception as e:
@@ -5193,19 +5070,22 @@ def _extract_images_from_pptx(content_bytes):
         import io
 
         from pptx import Presentation as PptxPres
+
         prs = PptxPres(io.BytesIO(content_bytes))
         for slide_num, slide in enumerate(prs.slides):
             for shape in slide.shapes:
                 if shape.shape_type == 13:  # Picture
                     img = shape.image
-                    ext = img.content_type.split('/')[-1]
+                    ext = img.content_type.split("/")[-1]
                     mime = img.content_type
                     b64 = base64.b64encode(img.blob).decode()
-                    images.append({
-                        "data_uri": f"data:{mime};base64,{b64}",
-                        "name": f"slide_{slide_num + 1}_{shape.name}.{ext}",
-                        "slide": slide_num + 1,
-                    })
+                    images.append(
+                        {
+                            "data_uri": f"data:{mime};base64,{b64}",
+                            "name": f"slide_{slide_num + 1}_{shape.name}.{ext}",
+                            "slide": slide_num + 1,
+                        }
+                    )
                     if len(images) >= 20:
                         return images
     except Exception as e:
@@ -5215,8 +5095,7 @@ def _extract_images_from_pptx(content_bytes):
 
 @app.post("/api/slide-editor/parse-document")
 @limiter.limit("20/minute")
-async def api_slide_editor_parse_document(
-        request: Request, file: UploadFile = File(...)):
+async def api_slide_editor_parse_document(request: Request, file: UploadFile = File(...)):
     """Parse un document uploade et retourne son contenu texte + images extraites"""
     try:
         # Valider le fichier uploade (taille, type)
@@ -5225,47 +5104,57 @@ async def api_slide_editor_parse_document(
         ext = Path(filename).suffix.lower()
         images = []
 
-        if ext in ('.md', '.txt'):
-            text = content.decode('utf-8')
-        elif ext == '.pdf':
+        if ext in (".md", ".txt"):
+            text = content.decode("utf-8")
+        elif ext == ".pdf":
             import io
 
             from PyPDF2 import PdfReader
+
             reader = PdfReader(io.BytesIO(content))
-            text = "\n".join(page.extract_text()
-                             for page in reader.pages if page.extract_text())
+            text = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
             images = _extract_images_from_pdf(content)
-        elif ext == '.docx':
+        elif ext == ".docx":
             import io
 
             from docx import Document as DocxDocument
+
             doc = DocxDocument(io.BytesIO(content))
             text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-        elif ext == '.pptx':
+        elif ext == ".pptx":
             images = _extract_images_from_pptx(content)
             # Pour PPTX: sauvegarder temporairement le fichier et retourner le
             # chemin
             import tempfile
+
             temp_dir = Path(tempfile.gettempdir()) / "consulting-tools_uploads"
             temp_dir.mkdir(exist_ok=True)
 
-            temp_path = temp_dir / \
-                f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-            with open(temp_path, 'wb') as f:
+            temp_path = temp_dir / f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+            with open(temp_path, "wb") as f:
                 f.write(content)
 
             # Retourner le chemin au lieu du texte
-            return {"text": str(temp_path), "filename": filename,
-                    "length": len(content), "is_pptx": True,
-                    "images": images, "image_count": len(images)}
-        elif ext == '.html':
-            text = content.decode('utf-8')
+            return {
+                "text": str(temp_path),
+                "filename": filename,
+                "length": len(content),
+                "is_pptx": True,
+                "images": images,
+                "image_count": len(images),
+            }
+        elif ext == ".html":
+            text = content.decode("utf-8")
         else:
-            return JSONResponse(
-                {"error": f"Format non supporte: {ext}"}, status_code=400)
+            return JSONResponse({"error": f"Format non supporte: {ext}"}, status_code=400)
 
-        return {"text": text, "filename": filename, "length": len(text),
-                "images": images, "image_count": len(images)}
+        return {
+            "text": text,
+            "filename": filename,
+            "length": len(text),
+            "images": images,
+            "image_count": len(images),
+        }
     except Exception as e:
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
@@ -5274,20 +5163,14 @@ def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
     """Add Nano Banana image generation prompts to relevant slides (no actual image generation)"""
     try:
         # Slide types that benefit from illustrations
-        visual_types = [
-            "content",
-            "highlight",
-            "stat",
-            "diagram",
-            "image",
-            "two_column"]
+        visual_types = ["content", "highlight", "stat", "diagram", "image", "two_column"]
 
         # Context adapte au type de generation
         context_map = {
             "formation": "training presentation",
             "proposal": "business proposal",
             "rex": "experience feedback presentation",
-            "presentation": "business presentation"
+            "presentation": "business presentation",
         }
         context_map.get(gen_type, "business presentation")
 
@@ -5350,7 +5233,8 @@ Format: Wide 16:9, 1792x1024px."""
             slide["image_prompt"] = prompt.strip()
             slide["image_dimensions"] = "1792x1024px (16:9)"
             job["steps"].append(
-                {"message": f"Prompt Nano Banana ajoute pour slide {idx + 1}", "step": 4})
+                {"message": f"Prompt Nano Banana ajoute pour slide {idx + 1}", "step": 4}
+            )
 
     except Exception as e:
         print(f"  Erreur ajout prompts illustrations: {e}")
@@ -5363,12 +5247,12 @@ def _extract_slides_from_buffer(buffer, job):
     # Find the slides array content
     content = buffer
     # Strip markdown fences
-    if '```json' in content:
-        content = content.split('```json', 1)[1]
-        if '```' in content:
-            content = content.rsplit('```', 1)[0]
-    elif '```' in content:
-        parts = content.split('```')
+    if "```json" in content:
+        content = content.split("```json", 1)[1]
+        if "```" in content:
+            content = content.rsplit("```", 1)[0]
+    elif "```" in content:
+        parts = content.split("```")
         if len(parts) >= 2:
             content = parts[1]
 
@@ -5377,14 +5261,14 @@ def _extract_slides_from_buffer(buffer, job):
     for marker in ['"slides"', "'slides'"]:
         idx = content.find(marker)
         if idx != -1:
-            bracket = content.find('[', idx)
+            bracket = content.find("[", idx)
             if bracket != -1:
                 start = bracket
                 break
 
     if start == -1:
         # Maybe it's a top-level array
-        bracket = content.find('[')
+        bracket = content.find("[")
         if bracket != -1:
             start = bracket
         else:
@@ -5398,21 +5282,20 @@ def _extract_slides_from_buffer(buffer, job):
 
     for i in range(start, len(content)):
         c = content[i]
-        if c == '{':
+        if c == "{":
             if depth == 0:
                 obj_start = i
             depth += 1
-        elif c == '}':
+        elif c == "}":
             depth -= 1
             if depth == 0 and obj_start != -1:
                 slide_count += 1
                 if slide_count > existing_count:
                     # New slide found - try to parse it
-                    obj_str = content[obj_start:i + 1]
+                    obj_str = content[obj_start : i + 1]
                     try:
                         slide = json.loads(obj_str)
-                        if isinstance(slide, dict) and (
-                                "type" in slide or "title" in slide):
+                        if isinstance(slide, dict) and ("type" in slide or "title" in slide):
                             job["slides"].append(slide)
                     except json.JSONDecodeError:
                         pass
@@ -5428,7 +5311,7 @@ async def api_slide_editor_start_generate(request: Request):
     audience = data.get("audience", "")
     slide_count = min(int(data.get("slide_count", 10)), 40)
     gen_type = data.get("type", "presentation")
-    model = data.get("model", "gemini-3.1-pro-preview")
+    model = data.get("model", "gemini-2.0-flash")
     document_text = data.get("document_text", "")
     feedback = data.get("feedback", "")
     previous_slides = data.get("previous_slides", "")
@@ -5451,45 +5334,45 @@ async def api_slide_editor_start_generate(request: Request):
         job = jobs[job_id]
         try:
             job["steps"].append(
-                {"message": f"Initialisation {model}...",
-                 "substep": "Chargement du modele",
-                 "step": 0})
+                {
+                    "message": f"Initialisation {model}...",
+                    "substep": "Chargement du modele",
+                    "step": 0,
+                }
+            )
 
             from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
             agent = HtmlSlideGeneratorAgent(model=model, provider=provider)
 
             # Load extra context for proposals (references + CVs)
             extra_context = ""
             if gen_type == "proposal":
                 try:
-                    references_path = (
-                        Path(BASE_DIR) / "data" / "notebooklm"
-                        / "references.json")
+                    references_path = Path(BASE_DIR) / "data" / "notebooklm" / "references.json"
                     if references_path.exists():
-                        with open(references_path, 'r', encoding='utf-8') as f:
+                        with open(references_path, "r", encoding="utf-8") as f:
                             refs = json.load(f)
                         projects = json.dumps(
-                            refs.get('projects', []),
-                            indent=2, ensure_ascii=False)[:3000]
-                        expertise = json.dumps(
-                            refs.get('expertise', []),
-                            ensure_ascii=False)[:1000]
+                            refs.get("projects", []), indent=2, ensure_ascii=False
+                        )[:3000]
+                        expertise = json.dumps(refs.get("expertise", []), ensure_ascii=False)[:1000]
                         methodologies = json.dumps(
-                            refs.get('methodologies', []),
-                            ensure_ascii=False)[:1000]
+                            refs.get("methodologies", []), ensure_ascii=False
+                        )[:1000]
                         extra_context += (
                             f"\nREFERENCES Consulting Tools :\n{projects}"
                             f"\nEXPERTISE : {expertise}"
-                            f"\nMETHODOLOGIES : {methodologies}")
+                            f"\nMETHODOLOGIES : {methodologies}"
+                        )
                 except Exception as e:
                     print(f"  Erreur chargement references: {e}")
 
                 try:
-                    bio_path = (
-                        Path(BASE_DIR)
-                        / "Biographies - CV All Consulting Tools.pptx")
+                    bio_path = Path(BASE_DIR) / "Biographies - CV All Consulting Tools.pptx"
                     if bio_path.exists():
                         from pptx import Presentation as PptxPres
+
                         prs = PptxPres(str(bio_path))
                         cvs = []
                         for slide in prs.slides:
@@ -5504,8 +5387,8 @@ async def api_slide_editor_start_generate(request: Request):
                                 cvs.append(full)
                         if cvs:
                             extra_context += (
-                                "\nCVs EQUIPE Consulting Tools :\n"
-                                + "\n---\n".join(cvs[:5])[:3000])
+                                "\nCVs EQUIPE Consulting Tools :\n" + "\n---\n".join(cvs[:5])[:3000]
+                            )
                 except Exception as e:
                     print(f"  Erreur chargement CVs: {e}")
 
@@ -5514,13 +5397,18 @@ async def api_slide_editor_start_generate(request: Request):
                 extra_context += (
                     "\n\nSLIDES ACTUELLES (a modifier selon le feedback) :\n"
                     + previous_slides[:6000]
-                    + "\n\nFEEDBACK UTILISATEUR :\n" + feedback
-                    + "\n\nModifie les slides en tenant compte du feedback.")
+                    + "\n\nFEEDBACK UTILISATEUR :\n"
+                    + feedback
+                    + "\n\nModifie les slides en tenant compte du feedback."
+                )
 
             job["steps"].append(
-                {"message": "Generation HTML Premium...",
-                 "substep": "Analyse du sujet et creation des slides",
-                 "step": 1})
+                {
+                    "message": "Generation HTML Premium...",
+                    "substep": "Analyse du sujet et creation des slides",
+                    "step": 1,
+                }
+            )
             job["head_html"] = ""
             job["html_sections"] = []
 
@@ -5542,18 +5430,18 @@ async def api_slide_editor_start_generate(request: Request):
                 job["slides"].append(slide_data)
 
                 slide_title = (
-                    result.get("slide_json", {}).get("title", "")
-                    or f"Slide {result['index'] + 1}"
+                    result.get("slide_json", {}).get("title", "") or f"Slide {result['index'] + 1}"
                 )
-                job["steps"].append({
-                    "message": f"Slide {result['index'] + 1} generee",
-                    "substep": slide_title,
-                    "step": 2,
-                })
+                job["steps"].append(
+                    {
+                        "message": f"Slide {result['index'] + 1} generee",
+                        "substep": slide_title,
+                        "step": 2,
+                    }
+                )
 
             if not job["slides"]:
-                raise ValueError(
-                    "Aucune slide generee - reponse LLM invalide")
+                raise ValueError("Aucune slide generee - reponse LLM invalide")
 
             job["result"] = {
                 "slides": job["slides"],
@@ -5563,17 +5451,18 @@ async def api_slide_editor_start_generate(request: Request):
             job["status"] = "done"
 
             # Add image prompts in background (non-blocking)
-            _generate_slide_illustrations(
-                job["slides"], job, topic, gen_type)
+            _generate_slide_illustrations(job["slides"], job, topic, gen_type)
 
         except Exception as e:
             print(f"Erreur slide-editor generate: {e}")
             import traceback
+
             traceback.print_exc()
             job["error"] = safe_error_message(e)
             job["status"] = "error"
 
     import threading
+
     threading.Thread(target=run_generation, daemon=True).start()
 
     return {"job_id": job_id}
@@ -5582,6 +5471,7 @@ async def api_slide_editor_start_generate(request: Request):
 @app.get("/api/slide-editor/stream/{job_id}")
 async def api_slide_editor_stream(job_id: str):
     """SSE stream pour la progression de generation de slides"""
+
     async def event_generator():
         job = jobs.get(job_id)
         if not job:
@@ -5601,13 +5491,15 @@ async def api_slide_editor_stream(job_id: str):
             # Send slides progressively as they appear
             while last_slide_idx < len(job["slides"]):
                 slide = job["slides"][last_slide_idx]
-                yield send_sse("slide", {
-                    "index": last_slide_idx,
-                    "total": len(job["slides"]),
-                    "slide": slide,
-                    "head_html": job.get(
-                        "head_html", "") if last_slide_idx == 0 else "",
-                })
+                yield send_sse(
+                    "slide",
+                    {
+                        "index": last_slide_idx,
+                        "total": len(job["slides"]),
+                        "slide": slide,
+                        "head_html": job.get("head_html", "") if last_slide_idx == 0 else "",
+                    },
+                )
                 last_slide_idx += 1
                 await asyncio.sleep(0.1)
 
@@ -5615,18 +5507,23 @@ async def api_slide_editor_stream(job_id: str):
                 # Send any remaining slides
                 while last_slide_idx < len(job["slides"]):
                     slide = job["slides"][last_slide_idx]
-                    yield send_sse("slide", {
-                        "index": last_slide_idx,
-                        "total": len(job["slides"]),
-                        "slide": slide,
-                        "head_html": job.get(
-                            "head_html", "") if last_slide_idx == 0 else "",
-                    })
+                    yield send_sse(
+                        "slide",
+                        {
+                            "index": last_slide_idx,
+                            "total": len(job["slides"]),
+                            "slide": slide,
+                            "head_html": job.get("head_html", "") if last_slide_idx == 0 else "",
+                        },
+                    )
                     last_slide_idx += 1
-                yield send_sse("done", {
-                    "total": len(job["slides"]),
-                    "head_html": job.get("head_html", ""),
-                })
+                yield send_sse(
+                    "done",
+                    {
+                        "total": len(job["slides"]),
+                        "head_html": job.get("head_html", ""),
+                    },
+                )
                 return
 
             if job["status"] == "error":
@@ -5636,7 +5533,6 @@ async def api_slide_editor_stream(job_id: str):
             await asyncio.sleep(0.3)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-
 
 
 def _get_slide_json_format():
@@ -5681,8 +5577,16 @@ def _get_proposal_system_prompt(company_name):
 - Ajoute des slides CV equipe et references missions si ces informations sont fournies"""
 
 
-def _get_proposal_prompt(topic, audience, company_name, consultant_name,
-                         json_format, document_text="", references="", cvs=""):
+def _get_proposal_prompt(
+    topic,
+    audience,
+    company_name,
+    consultant_name,
+    json_format,
+    document_text="",
+    references="",
+    cvs="",
+):
     doc_section = ""
     if document_text:
         doc_section = """
@@ -5747,8 +5651,7 @@ REGLES STRICTES :
 Tu retournes UNIQUEMENT un JSON valide."""
 
 
-def _get_presentation_prompt(
-        topic, audience, slide_count, json_format, document_text=""):
+def _get_presentation_prompt(topic, audience, slide_count, json_format, document_text=""):
     doc_section = ""
     if document_text:
         doc_section = """
@@ -5927,73 +5830,53 @@ async def api_slide_editor_generate(request: Request):
         data = await request.json()
 
         # Valider et sanitizer les inputs texte
-        topic = sanitize_text_input(
-            data.get(
-                "topic",
-                ""),
-            max_length=1000,
-            field_name="topic")
+        topic = sanitize_text_input(data.get("topic", ""), max_length=1000, field_name="topic")
         audience = sanitize_text_input(
-            data.get(
-                "audience",
-                ""),
-            max_length=500,
-            field_name="audience")
+            data.get("audience", ""), max_length=500, field_name="audience"
+        )
         document_text = sanitize_text_input(
-            data.get(
-                "document_text",
-                ""),
-            max_length=50000,
-            field_name="document_text")
+            data.get("document_text", ""), max_length=50000, field_name="document_text"
+        )
 
         slide_count = data.get("slide_count", 10)
         gen_type = data.get("type", "presentation")
         model = data.get("model", "")
 
         from utils.llm_client import LLMClient
+
         llm_kwargs = {"max_tokens": 8192}
         if model:
             llm_kwargs["model"] = model
             llm_kwargs["provider"] = "gemini"
         llm = LLMClient(**llm_kwargs)
 
-        consultant_name = os.getenv(
-            'CONSULTANT_NAME',
-            'Jean-Sebastien Abessouguie Bayiha')
-        company_name = os.getenv('COMPANY_NAME', 'Consulting Tools')
+        consultant_name = os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha")
+        company_name = os.getenv("COMPANY_NAME", "Consulting Tools")
         json_format = _get_slide_json_format()
 
         if gen_type == "proposal":
             system_prompt = _get_proposal_system_prompt(company_name)
             prompt = _get_proposal_prompt(
-                topic,
-                audience,
-                company_name,
-                consultant_name,
-                json_format,
-                document_text)
+                topic, audience, company_name, consultant_name, json_format, document_text
+            )
         elif gen_type == "formation":
             system_prompt = _get_formation_system_prompt(company_name)
-            prompt = _get_formation_prompt(
-                topic, audience, json_format, document_text)
+            prompt = _get_formation_prompt(topic, audience, json_format, document_text)
         elif gen_type == "rex":
             system_prompt = _get_rex_system_prompt(company_name)
-            prompt = _get_rex_prompt(
-                topic, audience, json_format, document_text)
+            prompt = _get_rex_prompt(topic, audience, json_format, document_text)
         else:
             system_prompt = _get_presentation_system_prompt(company_name)
             prompt = _get_presentation_prompt(
-                topic, audience, slide_count, json_format, document_text)
+                topic, audience, slide_count, json_format, document_text
+            )
 
-        response = llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.7)
+        response = llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.7)
 
-        if '```json' in response:
-            json_str = response.split('```json')[1].split('```')[0].strip()
-        elif '```' in response:
-            json_str = response.split('```')[1].split('```')[0].strip()
+        if "```json" in response:
+            json_str = response.split("```json")[1].split("```")[0].strip()
+        elif "```" in response:
+            json_str = response.split("```")[1].split("```")[0].strip()
         else:
             json_str = response.strip()
 
@@ -6002,8 +5885,7 @@ async def api_slide_editor_generate(request: Request):
 
     except json.JSONDecodeError as e:
         print(f"Erreur JSON slide-editor: {e}")
-        return JSONResponse(
-            {"error": "Erreur de parsing JSON", "slides": []}, status_code=422)
+        return JSONResponse({"error": "Erreur de parsing JSON", "slides": []}, status_code=422)
     except Exception as e:
         print(f"Erreur slide-editor generate: {e}")
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
@@ -6011,22 +5893,29 @@ async def api_slide_editor_generate(request: Request):
 
 # === DOCUMENT EDITOR ===
 
+
 @app.get("/document-editor", response_class=HTMLResponse)
 async def document_editor_page(request: Request):
-    return templates.TemplateResponse("document-editor.html", {
-        "request": request,
-        "active": "document-editor",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "document-editor.html",
+        {
+            "request": request,
+            "active": "document-editor",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.get("/veille", response_class=HTMLResponse)
 async def veille_page(request: Request):
-    return templates.TemplateResponse("veille.html", {
-        "request": request,
-        "active": "veille",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "veille.html",
+        {
+            "request": request,
+            "active": "veille",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.post("/api/document-editor/start-generate")
@@ -6037,36 +5926,15 @@ async def api_document_editor_start_generate(request: Request):
     doc_type = data.get("type", "formation")
 
     # Valider et sanitizer les inputs texte
-    topic = sanitize_text_input(
-        data.get(
-            "topic",
-            ""),
-        max_length=1000,
-        field_name="topic")
+    topic = sanitize_text_input(data.get("topic", ""), max_length=1000, field_name="topic")
     document_text = sanitize_text_input(
-        data.get(
-            "document_text",
-            ""),
-        max_length=50000,
-        field_name="document_text")
-    audience = sanitize_text_input(
-        data.get(
-            "audience",
-            ""),
-        max_length=500,
-        field_name="audience")
-    feedback = sanitize_text_input(
-        data.get(
-            "feedback",
-            ""),
-        max_length=5000,
-        field_name="feedback")
+        data.get("document_text", ""), max_length=50000, field_name="document_text"
+    )
+    audience = sanitize_text_input(data.get("audience", ""), max_length=500, field_name="audience")
+    feedback = sanitize_text_input(data.get("feedback", ""), max_length=5000, field_name="feedback")
     previous_content = sanitize_text_input(
-        data.get(
-            "previous_content",
-            ""),
-        max_length=50000,
-        field_name="previous_content")
+        data.get("previous_content", ""), max_length=50000, field_name="previous_content"
+    )
 
     length = data.get("length", "medium")
     model = data.get("model", "")
@@ -6091,6 +5959,7 @@ async def api_document_editor_start_generate(request: Request):
             job["steps"].append({"message": "Initialisation du modele..."})
 
             from utils.llm_client import LLMClient
+
             llm_kwargs = {"max_tokens": 8192}
             if model:
                 llm_kwargs["model"] = model
@@ -6104,11 +5973,11 @@ async def api_document_editor_start_generate(request: Request):
 
                 if doc_type == "formation":
                     from agents.formation_generator import FormationGeneratorAgent
+
                     agent = FormationGeneratorAgent()
                     if model:
                         agent.llm = LLMClient(**llm_kwargs)
-                    gen_result = agent.regenerate_with_feedback(
-                        previous_content, feedback)
+                    gen_result = agent.regenerate_with_feedback(previous_content, feedback)
                     result["markdown"] = gen_result.get("markdown", "")
                 else:
                     # Article or REX text: generic LLM regeneration
@@ -6130,27 +5999,29 @@ Modifie le document en tenant compte du feedback. Retourne UNIQUEMENT le documen
                     buffer = ""
                     try:
                         for chunk in llm.generate_stream(
-                                prompt=prompt, system_prompt=system_prompt, temperature=0.7):
+                            prompt=prompt, system_prompt=system_prompt, temperature=0.7
+                        ):
                             buffer += chunk
                             job["chunks"].append(chunk)
                     except Exception:
                         buffer = llm.generate(
-                            prompt=prompt, system_prompt=system_prompt, temperature=0.7)
+                            prompt=prompt, system_prompt=system_prompt, temperature=0.7
+                        )
                         job["chunks"].append(buffer)
 
                     response = buffer.strip()
-                    if response.startswith('```markdown'):
-                        response = response[len('```markdown'):]
-                    if response.startswith('```'):
+                    if response.startswith("```markdown"):
+                        response = response[len("```markdown") :]
+                    if response.startswith("```"):
                         response = response[3:]
-                    if response.endswith('```'):
+                    if response.endswith("```"):
                         response = response[:-3]
                     result["markdown"] = response.strip()
 
             elif doc_type == "formation":
-                job["steps"].append(
-                    {"message": "Generation du programme de formation..."})
+                job["steps"].append({"message": "Generation du programme de formation..."})
                 from agents.formation_generator import FormationGeneratorAgent
+
                 agent = FormationGeneratorAgent()
                 if model:
                     agent.llm = LLMClient(**llm_kwargs)
@@ -6165,14 +6036,14 @@ Modifie le document en tenant compte du feedback. Retourne UNIQUEMENT le documen
             elif doc_type == "article":
                 job["steps"].append({"message": "Generation de l'article..."})
                 from agents.article_generator import ArticleGeneratorAgent
+
                 agent = ArticleGeneratorAgent()
                 if model:
                     agent.llm = LLMClient(**llm_kwargs)
                 idea = topic
                 if document_text:
                     idea += f"\n\nDocument source :\n{document_text[:4000]}"
-                gen_result = agent.run(
-                    idea, target_length=length, use_context=use_context)
+                gen_result = agent.run(idea, target_length=length, use_context=use_context)
                 result["markdown"] = gen_result.get("article", "")
                 result["linkedin_post"] = gen_result.get("linkedin_post", "")
 
@@ -6227,32 +6098,30 @@ Retourne UNIQUEMENT le document markdown, sans preambule."""
                 buffer = ""
                 try:
                     for chunk in llm.generate_stream(
-                            prompt=prompt, system_prompt=system_prompt, temperature=0.7):
+                        prompt=prompt, system_prompt=system_prompt, temperature=0.7
+                    ):
                         buffer += chunk
                         job["chunks"].append(chunk)
                 except Exception:
                     buffer = llm.generate(
-                        prompt=prompt,
-                        system_prompt=system_prompt,
-                        temperature=0.7)
+                        prompt=prompt, system_prompt=system_prompt, temperature=0.7
+                    )
                     job["chunks"].append(buffer)
 
                 response = buffer.strip()
-                if response.startswith('```markdown'):
-                    response = response[len('```markdown'):]
-                if response.startswith('```'):
+                if response.startswith("```markdown"):
+                    response = response[len("```markdown") :]
+                if response.startswith("```"):
                     response = response[3:]
-                if response.endswith('```'):
+                if response.endswith("```"):
                     response = response[:-3]
                 result["markdown"] = response.strip()
 
             elif doc_type == "linkedin":
-                job["steps"].append(
-                    {"message": "Generation du post LinkedIn..."})
+                job["steps"].append({"message": "Generation du post LinkedIn..."})
                 llm = LLMClient(**llm_kwargs)
-                consultant_name = os.getenv(
-                    'CONSULTANT_NAME', 'Jean-Sebastien Abessouguie Bayiha')
-                os.getenv('COMPANY_NAME', 'Consulting Tools')
+                consultant_name = os.getenv("CONSULTANT_NAME", "Jean-Sebastien Abessouguie Bayiha")
+                os.getenv("COMPANY_NAME", "Consulting Tools")
 
                 system_prompt = """Tu es {consultant_name}, consultant en strategie data et IA chez {company_name}.
 Tu rediges des posts LinkedIn engageants, pragmatiques, orientes resultats, avec une vision critique et constructive.
@@ -6285,28 +6154,29 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
                 buffer = ""
                 try:
                     for chunk in llm.generate_stream(
-                            prompt=prompt, system_prompt=system_prompt, temperature=0.7):
+                        prompt=prompt, system_prompt=system_prompt, temperature=0.7
+                    ):
                         buffer += chunk
                         job["chunks"].append(chunk)
                 except Exception:
                     buffer = llm.generate(
-                        prompt=prompt,
-                        system_prompt=system_prompt,
-                        temperature=0.7)
+                        prompt=prompt, system_prompt=system_prompt, temperature=0.7
+                    )
                     job["chunks"].append(buffer)
 
                 response = buffer.strip()
-                if response.startswith('```'):
-                    response = response.split('```', 1)[1]
-                    if response.startswith('\n'):
+                if response.startswith("```"):
+                    response = response.split("```", 1)[1]
+                    if response.startswith("\n"):
                         response = response[1:]
-                    if '```' in response:
-                        response = response.rsplit('```', 1)[0]
+                    if "```" in response:
+                        response = response.rsplit("```", 1)[0]
                 result["markdown"] = response.strip()
 
             elif doc_type == "compte_rendu":
                 job["steps"].append({"message": "Analyse du transcript..."})
                 from agents.meeting_summarizer import MeetingSummarizerAgent
+
                 agent = MeetingSummarizerAgent()
                 if model:
                     agent.llm = LLMClient(**llm_kwargs)
@@ -6319,40 +6189,46 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
                 info_result = agent.extract_key_info(transcript)
                 extracted_info = info_result.get("extracted_info", "")
 
-                job["steps"].append(
-                    {"message": "Generation du compte rendu..."})
+                job["steps"].append({"message": "Generation du compte rendu..."})
                 minutes = agent.generate_minutes(transcript, extracted_info)
 
-                job["steps"].append(
-                    {"message": "Generation de l'email de partage..."})
+                job["steps"].append({"message": "Generation de l'email de partage..."})
                 email_result = agent.generate_email(extracted_info, minutes)
 
                 result["markdown"] = minutes
                 result["email"] = email_result
 
             elif doc_type == "cv_reference":
-                job["steps"].append(
-                    {"message": "Adaptation du CV/Reference..."})
+                job["steps"].append({"message": "Adaptation du CV/Reference..."})
 
                 from agents.cv_reference_adapter import CVReferenceAdapterAgent
+
                 agent = CVReferenceAdapterAgent()
                 if model:
                     agent.llm = LLMClient(**llm_kwargs)
 
                 # Detecter automatiquement si c est un CV ou une reference
-                is_cv = any(kw in document_text.lower() for kw in [
-                    'experience', 'competences', 'formation', 'cv', 'consultant',
-                    'diplome', 'certification', 'parcours professionnel'
-                ])
+                is_cv = any(
+                    kw in document_text.lower()
+                    for kw in [
+                        "experience",
+                        "competences",
+                        "formation",
+                        "cv",
+                        "consultant",
+                        "diplome",
+                        "certification",
+                        "parcours professionnel",
+                    ]
+                )
                 type_label = "CV" if is_cv else "Reference"
 
-                job["steps"].append(
-                    {"message": f"Generation des slides {type_label}..."})
+                job["steps"].append({"message": f"Generation des slides {type_label}..."})
 
                 gen_result = agent.run(
                     document_text=document_text,
                     mission_brief=topic,  # Le "topic" = l appel d offre
-                    doc_type=type_label
+                    doc_type=type_label,
                 )
 
                 # Retourner slides au lieu de markdown
@@ -6361,16 +6237,17 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
                 result["doc_type"] = type_label
 
             elif doc_type == "presentation_script":
-                job["steps"].append(
-                    {"message": "Extraction du contenu PPTX..."})
+                job["steps"].append({"message": "Extraction du contenu PPTX..."})
 
                 # document_text contient le chemin vers le fichier PPTX
                 # temporaire
-                if not document_text or not document_text.endswith('.pptx'):
+                if not document_text or not document_text.endswith(".pptx"):
                     raise ValueError(
-                        "Fichier PPTX obligatoire pour generer un script de presentation")
+                        "Fichier PPTX obligatoire pour generer un script de presentation"
+                    )
 
                 from agents.presentation_script_generator import PresentationScriptGenerator
+
                 agent = PresentationScriptGenerator()
                 if model:
                     agent.llm = LLMClient(**llm_kwargs)
@@ -6378,15 +6255,11 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
                 job["steps"].append({"message": "Analyse des slides..."})
 
                 # Stream chunks si possible
-                gen_result = agent.run(
-                    pptx_path=document_text,
-                    presentation_context=topic or ""
-                )
+                gen_result = agent.run(pptx_path=document_text, presentation_context=topic or "")
 
                 result["markdown"] = gen_result.get("markdown", "")
                 result["num_slides"] = gen_result.get("num_slides", 0)
-                result["estimated_duration"] = gen_result.get(
-                    "estimated_duration", "")
+                result["estimated_duration"] = gen_result.get("estimated_duration", "")
 
             job["result"] = result
             job["status"] = "done"
@@ -6395,11 +6268,13 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
         except Exception as e:
             print(f"Erreur document-editor generate: {e}")
             import traceback
+
             traceback.print_exc()
             job["error"] = safe_error_message(e)
             job["status"] = "error"
 
     import threading
+
     threading.Thread(target=run_doc_generation, daemon=True).start()
 
     return {"job_id": job_id}
@@ -6408,6 +6283,7 @@ Retourne UNIQUEMENT le texte du post, sans explication."""
 @app.get("/api/document-editor/stream/{job_id}")
 async def api_document_editor_stream(job_id: str):
     """SSE stream pour la progression de generation de document"""
+
     async def event_generator():
         job = jobs.get(job_id)
         if not job:
@@ -6452,10 +6328,10 @@ async def api_document_editor_export_gdocs(request: Request):
         title = data.get("title", "Document Consulting Tools")
 
         if not markdown:
-            return JSONResponse(
-                {"error": "Pas de contenu a exporter"}, status_code=400)
+            return JSONResponse({"error": "Pas de contenu a exporter"}, status_code=400)
 
         from utils.google_api import GoogleAPIClient
+
         client = GoogleAPIClient()
         url = client.export_markdown_to_docs(markdown, title)
 
@@ -6467,25 +6343,19 @@ async def api_document_editor_export_gdocs(request: Request):
 
 # ===== VEILLE TECHNOLOGIQUE =====
 
+
 @app.get("/api/veille/articles")
 async def api_veille_get_articles(
-    limit: int = 50,
-    offset: int = 0,
-    source: str = None,
-    keyword: str = None,
-    days: int = None
+    limit: int = 50, offset: int = 0, source: str = None, keyword: str = None, days: int = None
 ):
     """Liste les articles de veille avec filtres"""
     try:
         from utils.article_db import ArticleDatabase
+
         db = ArticleDatabase()
 
         articles = db.get_articles(
-            limit=limit,
-            offset=offset,
-            source=source,
-            keyword=keyword,
-            days=days
+            limit=limit, offset=offset, source=source, keyword=keyword, days=days
         )
 
         return {"articles": articles, "count": len(articles)}
@@ -6499,6 +6369,7 @@ async def api_veille_stats():
     """Statistiques sur les articles stockes"""
     try:
         from utils.article_db import ArticleDatabase
+
         db = ArticleDatabase()
         stats = db.get_article_stats()
         return stats
@@ -6517,13 +6388,10 @@ async def api_veille_generate_digest(request: Request):
         keywords = data.get("keywords", [])
 
         from agents.tech_monitor import TechMonitorAgent
+
         agent = TechMonitorAgent()
 
-        result = agent.run(
-            keywords=keywords if keywords else None,
-            days=days,
-            period=period
-        )
+        result = agent.run(keywords=keywords if keywords else None, days=days, period=period)
 
         return {
             "success": True,
@@ -6535,6 +6403,7 @@ async def api_veille_generate_digest(request: Request):
     except Exception as e:
         print(f"Erreur generation digest: {e}")
         import traceback
+
         traceback.print_exc()
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
@@ -6544,6 +6413,7 @@ async def api_veille_get_digests(period: str = "daily"):
     """Liste les digests generes"""
     try:
         from utils.article_db import ArticleDatabase
+
         db = ArticleDatabase()
 
         # Recuperer le dernier digest de cette periode
@@ -6560,6 +6430,7 @@ async def api_veille_mark_read(article_id: int):
     """Marque un article comme lu"""
     try:
         from utils.article_db import ArticleDatabase
+
         db = ArticleDatabase()
         db.mark_as_read(article_id)
         return {"success": True}
@@ -6573,6 +6444,7 @@ async def api_veille_toggle_favorite(article_id: int):
     """Toggle favori sur un article"""
     try:
         from utils.article_db import ArticleDatabase
+
         db = ArticleDatabase()
         db.toggle_favorite(article_id)
         return {"success": True}
@@ -6606,10 +6478,7 @@ async def api_bug_report(request: Request):
         data = await request.json()
         description = data.get("description", "").strip()
         if not description:
-            return JSONResponse(
-                {"error": "La description est requise"},
-                status_code=400
-            )
+            return JSONResponse({"error": "La description est requise"}, status_code=400)
 
         severity = data.get("severity", "medium")
         if severity not in ("low", "medium", "high", "critical"):
@@ -6623,19 +6492,20 @@ async def api_bug_report(request: Request):
         title = description[:80]
         try:
             from utils.llm_client import LLMClient
-            llm = LLMClient(
-                model="gemini-2.0-flash",
-                provider="gemini",
-                max_tokens=100
+
+            llm = LLMClient(model="gemini-2.0-flash", provider="gemini", max_tokens=100)
+            title = (
+                llm.generate_with_context(
+                    f"Genere un titre court (max 10 mots) pour ce bug: " f"{description}",
+                    system_prompt=(
+                        "Tu generes des titres de bug concis en francais. "
+                        "Reponds uniquement avec le titre, sans guillemets."
+                    ),
+                )
+                .strip()
+                .strip('"')
+                .strip("'")
             )
-            title = llm.generate_with_context(
-                f"Genere un titre court (max 10 mots) pour ce bug: "
-                f"{description}",
-                system_prompt=(
-                    "Tu generes des titres de bug concis en francais. "
-                    "Reponds uniquement avec le titre, sans guillemets."
-                ),
-            ).strip().strip('"').strip("'")
         except Exception:
             pass
 
@@ -6660,10 +6530,7 @@ async def api_bug_report(request: Request):
 
     except Exception as e:
         print(f"Erreur bug report: {e}")
-        return JSONResponse(
-            {"error": safe_error_message(e)},
-            status_code=500
-        )
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # === SKILLS MARKET ===
@@ -6673,11 +6540,14 @@ skills_market_db = ConsultantDatabase()
 
 @app.get("/skills-market", response_class=HTMLResponse)
 async def skills_market_page(request: Request):
-    return templates.TemplateResponse("skills-market.html", {
-        "request": request,
-        "active": "skills-market",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "skills-market.html",
+        {
+            "request": request,
+            "active": "skills-market",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 @app.get("/api/skills-market/import/status")
@@ -6693,15 +6563,15 @@ async def api_skills_market_import_status():
 @limiter.limit("3/minute")
 async def api_skills_market_import(request: Request):
     """Importe les consultants depuis le fichier PPTX"""
-    pptx_path = str(
-        BASE_DIR / "Biographies - CV All Consulting Tools.pptx"
-    )
+    pptx_path = str(BASE_DIR / "Biographies - CV All Consulting Tools.pptx")
 
     if not os.path.exists(pptx_path):
         return JSONResponse(
-            {"error": "Fichier PPTX non trouve. "
-             "Placez 'Biographies - CV All Consulting Tools.pptx' "
-             "a la racine du projet."},
+            {
+                "error": "Fichier PPTX non trouve. "
+                "Placez 'Biographies - CV All Consulting Tools.pptx' "
+                "a la racine du projet."
+            },
             status_code=404,
         )
 
@@ -6732,44 +6602,31 @@ def _run_skills_import(job_id: str, pptx_path: str):
         skills_market_db.delete_all()
         agent = SkillsMarketAgent()
 
-        job["steps"].append(
-            {"step": "reading", "status": "active",
-             "progress": 5}
-        )
+        job["steps"].append({"step": "reading", "status": "active", "progress": 5})
 
         def progress_cb(current, total, name):
             pct = int(10 + (current / max(total, 1)) * 80)
-            job["steps"].append({
-                "step": f"parsing_{current}",
-                "status": "active",
-                "progress": pct,
-                "message": (
-                    f"Analyse: {name} ({current}/{total})"
-                ),
-            })
+            job["steps"].append(
+                {
+                    "step": f"parsing_{current}",
+                    "status": "active",
+                    "progress": pct,
+                    "message": (f"Analyse: {name} ({current}/{total})"),
+                }
+            )
 
-        consultants = agent.import_from_pptx(
-            pptx_path, progress_callback=progress_cb
-        )
+        consultants = agent.import_from_pptx(pptx_path, progress_callback=progress_cb)
 
-        job["steps"].append(
-            {"step": "saving", "status": "active",
-             "progress": 90}
-        )
+        job["steps"].append({"step": "saving", "status": "active", "progress": 90})
 
         for consultant_data in consultants:
             skills_market_db.save_consultant(consultant_data)
 
-        job["steps"].append(
-            {"step": "done", "status": "done",
-             "progress": 100}
-        )
+        job["steps"].append({"step": "done", "status": "done", "progress": 100})
         job["status"] = "done"
         job["result"] = {
             "imported": len(consultants),
-            "message": (
-                f"{len(consultants)} consultants importes"
-            ),
+            "message": (f"{len(consultants)} consultants importes"),
         }
 
     except Exception as e:
@@ -6790,8 +6647,7 @@ async def api_skills_market_upload(
 
     if ext not in allowed:
         return JSONResponse(
-            {"error": f"Format non supporte: {ext}. "
-             f"Formats acceptes: {', '.join(allowed)}"},
+            {"error": f"Format non supporte: {ext}. " f"Formats acceptes: {', '.join(allowed)}"},
             status_code=400,
         )
 
@@ -6803,9 +6659,8 @@ async def api_skills_market_upload(
         )
 
     import tempfile
-    with tempfile.NamedTemporaryFile(
-        suffix=ext, delete=False
-    ) as tmp:
+
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
 
@@ -6829,36 +6684,39 @@ async def api_skills_market_upload(
 
 
 def _run_skills_upload(
-    job_id: str, file_path: str,
-    filename: str, ext: str,
+    job_id: str,
+    file_path: str,
+    filename: str,
+    ext: str,
 ):
     """Upload et parse un fichier CV en background"""
     job = jobs[job_id]
 
     try:
         agent = SkillsMarketAgent()
-        job["steps"].append({
-            "step": "reading", "status": "active",
-            "progress": 10,
-            "message": f"Lecture de {filename}...",
-        })
+        job["steps"].append(
+            {
+                "step": "reading",
+                "status": "active",
+                "progress": 10,
+                "message": f"Lecture de {filename}...",
+            }
+        )
 
         consultants = []
 
         if ext == ".pptx":
+
             def progress_cb(current, total, name):
-                pct = int(
-                    10 + (current / max(total, 1)) * 80
+                pct = int(10 + (current / max(total, 1)) * 80)
+                job["steps"].append(
+                    {
+                        "step": f"parsing_{current}",
+                        "status": "active",
+                        "progress": pct,
+                        "message": (f"Analyse: {name} " f"({current}/{total})"),
+                    }
                 )
-                job["steps"].append({
-                    "step": f"parsing_{current}",
-                    "status": "active",
-                    "progress": pct,
-                    "message": (
-                        f"Analyse: {name} "
-                        f"({current}/{total})"
-                    ),
-                })
 
             consultants = agent.import_from_pptx(
                 file_path,
@@ -6867,100 +6725,94 @@ def _run_skills_upload(
 
         elif ext == ".pdf":
             from utils.document_parser import DocumentParser
-            text = DocumentParser.parse_file(
-                file_path
-            ) or ""
-            if not text.strip():
-                raise ValueError(
-                    "Impossible d'extraire du texte du PDF"
-                )
 
-            job["steps"].append({
-                "step": "parsing", "status": "active",
-                "progress": 30,
-                "message": "Analyse du contenu PDF...",
-            })
+            text = DocumentParser.parse_file(file_path) or ""
+            if not text.strip():
+                raise ValueError("Impossible d'extraire du texte du PDF")
+
+            job["steps"].append(
+                {
+                    "step": "parsing",
+                    "status": "active",
+                    "progress": 30,
+                    "message": "Analyse du contenu PDF...",
+                }
+            )
 
             def progress_cb(current, total, name):
-                pct = int(
-                    30 + (current / max(total, 1)) * 50
+                pct = int(30 + (current / max(total, 1)) * 50)
+                job["steps"].append(
+                    {
+                        "step": f"parsing_{current}",
+                        "status": "active",
+                        "progress": pct,
+                        "message": name,
+                    }
                 )
-                job["steps"].append({
-                    "step": f"parsing_{current}",
-                    "status": "active",
-                    "progress": pct,
-                    "message": name,
-                })
 
             consultants = agent.import_from_text(
-                text, filename,
+                text,
+                filename,
                 progress_callback=progress_cb,
             )
 
         elif ext in (".html", ".htm"):
             from bs4 import BeautifulSoup
-            raw_html = open(
-                file_path, "r", encoding="utf-8"
-            ).read()
+
+            raw_html = open(file_path, "r", encoding="utf-8").read()
             soup = BeautifulSoup(raw_html, "html.parser")
             for tag in soup(["script", "style"]):
                 tag.decompose()
-            text = soup.get_text(
-                separator="\n", strip=True
-            )
+            text = soup.get_text(separator="\n", strip=True)
 
             if not text.strip():
-                raise ValueError(
-                    "Impossible d'extraire du texte "
-                    "du HTML"
-                )
+                raise ValueError("Impossible d'extraire du texte " "du HTML")
 
-            job["steps"].append({
-                "step": "parsing", "status": "active",
-                "progress": 30,
-                "message": "Analyse du contenu HTML...",
-            })
+            job["steps"].append(
+                {
+                    "step": "parsing",
+                    "status": "active",
+                    "progress": 30,
+                    "message": "Analyse du contenu HTML...",
+                }
+            )
 
             def progress_cb(current, total, name):
-                pct = int(
-                    30 + (current / max(total, 1)) * 50
+                pct = int(30 + (current / max(total, 1)) * 50)
+                job["steps"].append(
+                    {
+                        "step": f"parsing_{current}",
+                        "status": "active",
+                        "progress": pct,
+                        "message": name,
+                    }
                 )
-                job["steps"].append({
-                    "step": f"parsing_{current}",
-                    "status": "active",
-                    "progress": pct,
-                    "message": name,
-                })
 
             consultants = agent.import_from_text(
-                text, filename,
+                text,
+                filename,
                 progress_callback=progress_cb,
             )
 
-        job["steps"].append({
-            "step": "saving", "status": "active",
-            "progress": 90,
-            "message": "Sauvegarde en base...",
-        })
+        job["steps"].append(
+            {
+                "step": "saving",
+                "status": "active",
+                "progress": 90,
+                "message": "Sauvegarde en base...",
+            }
+        )
 
         saved = 0
         for consultant_data in consultants:
-            skills_market_db.save_consultant(
-                consultant_data
-            )
+            skills_market_db.save_consultant(consultant_data)
             saved += 1
 
-        job["steps"].append(
-            {"step": "done", "status": "done",
-             "progress": 100}
-        )
+        job["steps"].append({"step": "done", "status": "done", "progress": 100})
         job["status"] = "done"
         job["result"] = {
             "imported": saved,
-            "message": (
-                f"{saved} consultant(s) ajoute(s) "
-                f"depuis {filename}"
-            ),
+            "message": (f"{saved} consultant(s) ajoute(s) " f"depuis {filename}"),
         }
 
     except Exception as e:
@@ -6977,9 +6829,7 @@ def _run_skills_upload(
 async def api_skills_market_stream(job_id: str):
     """Stream SSE pour l'import"""
     if job_id not in jobs:
-        return JSONResponse(
-            {"error": "Job non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Job non trouve"}, status_code=404)
 
     async def event_generator():
         last_idx = 0
@@ -6989,9 +6839,7 @@ async def api_skills_market_stream(job_id: str):
 
             if len(steps) > last_idx:
                 for step in steps[last_idx:]:
-                    yield (
-                        f"data: {json.dumps(step)}\n\n"
-                    )
+                    yield (f"data: {json.dumps(step)}\n\n")
                 last_idx = len(steps)
 
             if job.get("status") in ("done", "error"):
@@ -7000,9 +6848,7 @@ async def api_skills_market_stream(job_id: str):
                     "result": job.get("result"),
                     "error": job.get("error"),
                 }
-                yield (
-                    f"data: {json.dumps(final)}\n\n"
-                )
+                yield (f"data: {json.dumps(final)}\n\n")
                 break
 
             await asyncio.sleep(0.5)
@@ -7019,21 +6865,11 @@ async def api_skills_market_list(
     sector: Optional[str] = None,
 ):
     """Liste les consultants avec filtres optionnels"""
-    tech_list = (
-        [t.strip() for t in technical.split(",")
-         if t.strip()]
-        if technical else None
-    )
-    sector_list = (
-        [s.strip() for s in sector.split(",")
-         if s.strip()]
-        if sector else None
-    )
+    tech_list = [t.strip() for t in technical.split(",") if t.strip()] if technical else None
+    sector_list = [s.strip() for s in sector.split(",") if s.strip()] if sector else None
 
     if tech_list or sector_list:
-        consultants = skills_market_db.search_by_skills(
-            technical=tech_list, sector=sector_list
-        )
+        consultants = skills_market_db.search_by_skills(technical=tech_list, sector=sector_list)
     else:
         consultants = skills_market_db.get_all_consultants()
 
@@ -7043,9 +6879,7 @@ async def api_skills_market_list(
 @app.get("/api/skills-market/consultants/{consultant_id}")
 async def api_skills_market_detail(consultant_id: int):
     """Recupere le profil complet d'un consultant"""
-    consultant = skills_market_db.get_consultant(
-        consultant_id
-    )
+    consultant = skills_market_db.get_consultant(consultant_id)
     if not consultant:
         return JSONResponse(
             {"error": "Consultant non trouve"},
@@ -7054,14 +6888,10 @@ async def api_skills_market_detail(consultant_id: int):
     return {"consultant": consultant}
 
 
-@app.delete(
-    "/api/skills-market/consultants/{consultant_id}"
-)
+@app.delete("/api/skills-market/consultants/{consultant_id}")
 async def api_skills_market_delete(consultant_id: int):
     """Supprime un consultant"""
-    deleted = skills_market_db.delete_consultant(
-        consultant_id
-    )
+    deleted = skills_market_db.delete_consultant(consultant_id)
     if not deleted:
         return JSONResponse(
             {"error": "Consultant non trouve"},
@@ -7076,13 +6906,11 @@ async def api_skills_market_skills():
     return skills_market_db.get_all_skills()
 
 
-@app.post(
-    "/api/skills-market/consultants"
-    "/{consultant_id}/missions"
-)
+@app.post("/api/skills-market/consultants" "/{consultant_id}/missions")
 @limiter.limit("10/minute")
 async def api_skills_market_add_mission(
-    request: Request, consultant_id: int,
+    request: Request,
+    consultant_id: int,
 ):
     """Ajoute une mission et met a jour les competences"""
     body = await request.json()
@@ -7096,37 +6924,42 @@ async def api_skills_market_add_mission(
 
     mission_data = {
         "client_name": client_name,
-        "context_and_challenges": body.get(
-            "context_and_challenges", ""
-        ).strip(),
-        "deliverables": body.get(
-            "deliverables", ""
-        ).strip(),
+        "context_and_challenges": body.get("context_and_challenges", "").strip(),
+        "deliverables": body.get("deliverables", "").strip(),
         "tasks": body.get("tasks", "").strip(),
         "start_date": body.get("start_date", ""),
         "end_date": body.get("end_date", ""),
-        "skills_technical": body.get(
-            "skills_technical", []
-        ),
-        "skills_sector": body.get(
-            "skills_sector", []
-        ),
+        "skills_technical": body.get("skills_technical", []),
+        "skills_sector": body.get("skills_sector", []),
     }
 
-    mission_id = skills_market_db.add_mission(
-        consultant_id, mission_data
-    )
-    return {"mission_id": mission_id,
-            "message": "Mission ajoutee"}
+    mission_id = skills_market_db.add_mission(consultant_id, mission_data)
+    return {"mission_id": mission_id, "message": "Experience ajoutee"}
 
 
-@app.post(
-    "/api/skills-market/consultants"
-    "/{consultant_id}/certifications"
-)
+@app.put("/api/skills-market/consultants/{consultant_id}/info")
+@limiter.limit("20/minute")
+async def api_skills_market_update_consultant_info(
+    request: Request,
+    consultant_id: int,
+):
+    """Met a jour les informations de base d'un consultant (nom, prenom, entreprise,
+    linkedin, titre, bio, theme couleurs/polices)."""
+    body = await request.json()
+    updated = skills_market_db.update_consultant_info(consultant_id, body)
+    if not updated:
+        return JSONResponse(
+            {"error": "Consultant introuvable ou aucune modification"},
+            status_code=404,
+        )
+    return {"ok": True, "message": "Profil mis a jour"}
+
+
+@app.post("/api/skills-market/consultants" "/{consultant_id}/certifications")
 @limiter.limit("10/minute")
 async def api_skills_market_add_certification(
-    request: Request, consultant_id: int,
+    request: Request,
+    consultant_id: int,
 ):
     """Ajoute une certification et met a jour les skills"""
     body = await request.json()
@@ -7140,37 +6973,22 @@ async def api_skills_market_add_certification(
 
     cert_data = {
         "name": cert_name,
-        "organization": body.get(
-            "organization", ""
-        ).strip(),
-        "date_obtained": body.get(
-            "date_obtained", ""
-        ).strip(),
-        "description": body.get(
-            "description", ""
-        ).strip(),
-        "skills_technical": body.get(
-            "skills_technical", []
-        ),
-        "skills_sector": body.get(
-            "skills_sector", []
-        ),
+        "organization": body.get("organization", "").strip(),
+        "date_obtained": body.get("date_obtained", "").strip(),
+        "description": body.get("description", "").strip(),
+        "skills_technical": body.get("skills_technical", []),
+        "skills_sector": body.get("skills_sector", []),
     }
 
-    cert_id = skills_market_db.add_certification(
-        consultant_id, cert_data
-    )
-    return {"certification_id": cert_id,
-            "message": "Certification ajoutee"}
+    cert_id = skills_market_db.add_certification(consultant_id, cert_data)
+    return {"certification_id": cert_id, "message": "Certification ajoutee"}
 
 
-@app.put(
-    "/api/skills-market/consultants"
-    "/{consultant_id}/interests"
-)
+@app.put("/api/skills-market/consultants" "/{consultant_id}/interests")
 @limiter.limit("10/minute")
 async def api_skills_market_update_interests(
-    request: Request, consultant_id: int,
+    request: Request,
+    consultant_id: int,
 ):
     """Met a jour les centres d'interet"""
     body = await request.json()
@@ -7182,19 +7000,15 @@ async def api_skills_market_update_interests(
             status_code=400,
         )
 
-    skills_market_db.update_interests(
-        consultant_id, interests
-    )
+    skills_market_db.update_interests(consultant_id, interests)
     return {"message": "Centres d'interet mis a jour"}
 
 
-@app.put(
-    "/api/skills-market/consultants"
-    "/{consultant_id}/disinterests"
-)
+@app.put("/api/skills-market/consultants" "/{consultant_id}/disinterests")
 @limiter.limit("10/minute")
 async def api_skills_market_update_disinterests(
-    request: Request, consultant_id: int,
+    request: Request,
+    consultant_id: int,
 ):
     """Met a jour les centres de desinteret"""
     body = await request.json()
@@ -7206,9 +7020,7 @@ async def api_skills_market_update_disinterests(
             status_code=400,
         )
 
-    skills_market_db.update_disinterests(
-        consultant_id, disinterests
-    )
+    skills_market_db.update_disinterests(consultant_id, disinterests)
     return {"message": "Centres de desinteret mis a jour"}
 
 
@@ -7230,38 +7042,32 @@ async def api_skills_market_search(request: Request):
         return {"results": [], "consultants": []}
 
     agent = SkillsMarketAgent()
-    results = agent.natural_language_search(
-        query, consultants
-    )
+    results = agent.natural_language_search(query, consultants)
 
     enriched = []
     for r in results:
         consultant = next(
-            (c for c in consultants
-             if c["id"] == r["id"]),
+            (c for c in consultants if c["id"] == r["id"]),
             None,
         )
         if consultant:
-            enriched.append({
-                **consultant,
-                "score": r.get("score", 0),
-                "explanation": r.get("explanation", ""),
-            })
+            enriched.append(
+                {
+                    **consultant,
+                    "score": r.get("score", 0),
+                    "explanation": r.get("explanation", ""),
+                }
+            )
 
     return {"results": enriched}
 
 
-@app.get(
-    "/api/skills-market/consultants"
-    "/{consultant_id}/analysis"
-)
+@app.get("/api/skills-market/consultants" "/{consultant_id}/analysis")
 async def api_skills_market_analysis(
     consultant_id: int,
 ):
     """Analyse forces/faiblesses via LLM"""
-    consultant = skills_market_db.get_consultant(
-        consultant_id
-    )
+    consultant = skills_market_db.get_consultant(consultant_id)
     if not consultant:
         return JSONResponse(
             {"error": "Consultant non trouve"},
@@ -7274,12 +7080,8 @@ async def api_skills_market_analysis(
     skills_market_db.update_consultant_analysis(
         consultant_id,
         strengths=analysis.get("strengths", []),
-        improvement_areas=analysis.get(
-            "improvement_areas", []
-        ),
-        management_suggestions=analysis.get(
-            "management_suggestions", ""
-        ),
+        improvement_areas=analysis.get("improvement_areas", []),
+        management_suggestions=analysis.get("management_suggestions", ""),
     )
 
     return {"analysis": analysis}
@@ -7294,9 +7096,7 @@ _ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 _MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
-@app.post(
-    "/api/skills-market/consultants/{consultant_id}/photo"
-)
+@app.post("/api/skills-market/consultants/{consultant_id}/photo")
 @limiter.limit("5/minute")
 async def api_skills_market_upload_photo(
     request: Request,
@@ -7306,9 +7106,7 @@ async def api_skills_market_upload_photo(
     """Upload et associe une photo de profil a un consultant"""
     consultant = skills_market_db.get_consultant(consultant_id)
     if not consultant:
-        return JSONResponse(
-            {"error": "Consultant non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Consultant non trouve"}, status_code=404)
 
     ext = Path(photo.filename).suffix.lower()
     if ext not in _ALLOWED_IMAGE_EXTS:
@@ -7319,9 +7117,7 @@ async def api_skills_market_upload_photo(
 
     content = await photo.read()
     if len(content) > _MAX_PHOTO_SIZE:
-        return JSONResponse(
-            {"error": "Fichier trop volumineux (max 5 Mo)"}, status_code=400
-        )
+        return JSONResponse({"error": "Fichier trop volumineux (max 5 Mo)"}, status_code=400)
 
     # Sauvegarder avec un nom stable par consultant
     safe_name = f"consultant_{consultant_id}{ext}"
@@ -7332,9 +7128,7 @@ async def api_skills_market_upload_photo(
     photo_url = f"/static/photos/{safe_name}"
     updated = skills_market_db.update_photo_url(consultant_id, photo_url)
     if not updated:
-        return JSONResponse(
-            {"error": "Mise a jour echouee"}, status_code=500
-        )
+        return JSONResponse({"error": "Mise a jour echouee"}, status_code=500)
 
     return {"photo_url": photo_url, "message": "Photo mise a jour"}
 
@@ -7342,9 +7136,7 @@ async def api_skills_market_upload_photo(
 # --- Generation de CV depuis le profil consultant ---
 
 
-@app.post(
-    "/api/skills-market/consultants/{consultant_id}/cv"
-)
+@app.post("/api/skills-market/consultants/{consultant_id}/cv")
 @limiter.limit("5/minute")
 async def api_skills_market_generate_cv(
     request: Request,
@@ -7357,9 +7149,7 @@ async def api_skills_market_generate_cv(
 
     consultant = skills_market_db.get_consultant(consultant_id)
     if not consultant:
-        return JSONResponse(
-            {"error": "Consultant non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Consultant non trouve"}, status_code=404)
 
     agent = SkillsMarketAgent()
     try:
@@ -7371,17 +7161,24 @@ async def api_skills_market_generate_cv(
 
     if output_format == "pdf":
         try:
-            from utils.pdf_converter import markdown_to_pdf
             from datetime import datetime as _dt
+
+            from utils.pdf_converter import pdf_converter as _pdf_conv
 
             timestamp = _dt.now().strftime("%Y%m%d_%H%M%S")
             safe_name_cv = consultant.get("name", "consultant").replace(" ", "_")
-            pdf_path = BASE_DIR / "output" / f"cv_{safe_name_cv}_{timestamp}.pdf"
-            markdown_to_pdf(cv_html, str(pdf_path))
+            cv_dir = BASE_DIR / "static" / "cvs"
+            cv_dir.mkdir(parents=True, exist_ok=True)
+            pdf_path = cv_dir / f"cv_{safe_name_cv}_{timestamp}.pdf"
+            result = _pdf_conv.html_to_pdf(cv_html, str(pdf_path))
+            if not result:
+                return JSONResponse(
+                    {"error": "Conversion PDF indisponible (WeasyPrint non installe)"},
+                    status_code=500,
+                )
             return {
                 "format": "pdf",
-                "path": str(pdf_path.relative_to(BASE_DIR)),
-                "download_url": f"/output/{pdf_path.name}",
+                "download_url": f"/static/cvs/{pdf_path.name}",
             }
         except Exception as e:
             return JSONResponse(
@@ -7391,6 +7188,61 @@ async def api_skills_market_generate_cv(
     return {"format": "html", "cv_html": cv_html}
 
 
+@app.post("/api/skills-market/consultants/{consultant_id}/cover-letter")
+@limiter.limit("5/minute")
+async def api_skills_market_cover_letter(
+    request: Request,
+    consultant_id: int,
+):
+    """Genere une lettre de motivation PDF/HTML a partir du profil consultant et d'une offre"""
+    body = await request.json()
+    job_offer = sanitize_text_input(body.get("job_offer", ""), max_length=5000)
+    output_format = body.get("format", "pdf").lower()
+
+    if not job_offer:
+        return JSONResponse({"error": "Champ 'job_offer' requis"}, status_code=400)
+
+    consultant = skills_market_db.get_consultant(consultant_id)
+    if not consultant:
+        return JSONResponse({"error": "Consultant non trouve"}, status_code=404)
+
+    agent = SkillsMarketAgent()
+    try:
+        letter_html = agent.generate_cover_letter(consultant, job_offer)
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur generation lettre: {safe_error_message(e)}"}, status_code=500
+        )
+
+    if output_format == "pdf":
+        try:
+            from datetime import datetime as _dt
+
+            from utils.pdf_converter import pdf_converter as _pdf_conv
+
+            timestamp = _dt.now().strftime("%Y%m%d_%H%M%S")
+            safe_name = consultant.get("name", "consultant").replace(" ", "_")
+            cv_dir = BASE_DIR / "static" / "cvs"
+            cv_dir.mkdir(parents=True, exist_ok=True)
+            pdf_path = cv_dir / f"lettre_{safe_name}_{timestamp}.pdf"
+            result = _pdf_conv.html_to_pdf(letter_html, str(pdf_path))
+            if not result:
+                return JSONResponse(
+                    {"error": "Conversion PDF indisponible (WeasyPrint non installe)"},
+                    status_code=500,
+                )
+            return {
+                "format": "pdf",
+                "download_url": f"/static/cvs/{pdf_path.name}",
+            }
+        except Exception as e:
+            return JSONResponse(
+                {"error": f"Erreur export PDF: {safe_error_message(e)}"}, status_code=500
+            )
+
+    return {"format": "html", "letter_html": letter_html}
+
+
 # === E-LEARNING ADAPTATIF ===
 
 elearning_db = ElearningDatabase()
@@ -7398,11 +7250,14 @@ elearning_db = ElearningDatabase()
 
 @app.get("/elearning", response_class=HTMLResponse)
 async def elearning_page(request: Request):
-    return templates.TemplateResponse("elearning.html", {
-        "request": request,
-        "active": "elearning",
-        "consultant_name": CONSULTANT_NAME,
-    })
+    return templates.TemplateResponse(
+        "elearning.html",
+        {
+            "request": request,
+            "active": "elearning",
+            "consultant_name": CONSULTANT_NAME,
+        },
+    )
 
 
 # --- Sessions ---
@@ -7421,17 +7276,32 @@ async def api_elearning_session_init(request: Request):
 
 
 def _run_course_generator(
-    job_id, topic, audience, difficulty, duration,
-    document_content=None, mode="free",
+    job_id,
+    topic,
+    audience,
+    difficulty,
+    duration,
+    document_content=None,
+    mode="free",
+    interview_type="",
+    consultant_id=0,
 ):
     """Background job pour generer un cours"""
     try:
         agent = ElearningAgent()
 
         def progress(step, detail):
-            jobs[job_id]["steps"].append(
-                {"step": step, "detail": detail}
-            )
+            jobs[job_id]["steps"].append({"step": step, "detail": detail})
+
+        # Charger le profil consultant si fourni
+        consultant_profile = None
+        if consultant_id and int(consultant_id) > 0:
+            try:
+                from utils.consultant_db import ConsultantDatabase
+                cdb = ConsultantDatabase()
+                consultant_profile = cdb.get_consultant(int(consultant_id))
+            except Exception as e:
+                print(f"Erreur chargement consultant {consultant_id}: {e}")
 
         if document_content:
             result = agent.generate_course_from_document(
@@ -7450,6 +7320,8 @@ def _run_course_generator(
                 duration_hours=duration,
                 progress_callback=progress,
                 mode=mode,
+                interview_type=interview_type,
+                consultant_profile=consultant_profile,
             )
 
         if "error" in result:
@@ -7465,9 +7337,7 @@ def _run_course_generator(
             }
     except Exception as e:
         jobs[job_id]["status"] = "error"
-        jobs[job_id]["error"] = safe_error_message(
-            e, "Generation du cours"
-        )
+        jobs[job_id]["error"] = safe_error_message(e, "Generation du cours")
 
 
 @app.post("/api/elearning/course/generate")
@@ -7480,13 +7350,15 @@ async def api_elearning_generate_course(
     duration_hours: int = Form(3),
     document_content: str = Form(""),
     mode: str = Form("free"),
+    interview_type: str = Form(""),
+    consultant_id: int = Form(0),
+    auto_duration: str = Form("false"),
 ):
     """Lance la generation d'un cours (depuis sujet ou document)"""
     topic = sanitize_text_input(topic, max_length=1000)
     target_audience = sanitize_text_input(target_audience)
-    document_content = sanitize_text_input(
-        document_content, max_length=50000
-    )
+    document_content = sanitize_text_input(document_content, max_length=50000)
+    interview_type = sanitize_text_input(interview_type)
 
     if not topic and not document_content:
         return JSONResponse(
@@ -7495,24 +7367,37 @@ async def api_elearning_generate_course(
         )
 
     if difficulty not in ("beginner", "intermediate", "advanced"):
-        return JSONResponse(
-            {"error": "Difficulte invalide"}, status_code=400
-        )
+        return JSONResponse({"error": "Difficulte invalide"}, status_code=400)
 
     valid_modes = ("free", "interview", "certification", "training")
     if mode not in valid_modes:
         mode = "free"
 
+    valid_interview_types = ("rh", "technique", "cas", "fit", "")
+    if interview_type not in valid_interview_types:
+        interview_type = ""
+
+    # Durée auto : passer 0 à l'agent pour qu'il la détermine lui-même
+    if auto_duration.lower() in ("true", "1", "on"):
+        duration_hours = 0
+
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {"status": "running", "steps": []}
 
     import threading
+
     t = threading.Thread(
         target=_run_course_generator,
         args=(
-            job_id, topic, target_audience,
-            difficulty, duration_hours,
-            document_content or None, mode,
+            job_id,
+            topic,
+            target_audience,
+            difficulty,
+            duration_hours,
+            document_content or None,
+            mode,
+            interview_type,
+            consultant_id,
         ),
         daemon=True,
     )
@@ -7533,24 +7418,22 @@ async def api_elearning_upload_document(
         filename = sanitize_filename(file.filename or "document.txt")
         ext = Path(filename).suffix.lower()
 
-        if ext in ('.md', '.txt', '.markdown'):
-            text = content.decode('utf-8')
-        elif ext == '.pdf':
+        if ext in (".md", ".txt", ".markdown"):
+            text = content.decode("utf-8")
+        elif ext == ".pdf":
             import io
 
             from PyPDF2 import PdfReader
+
             reader = PdfReader(io.BytesIO(content))
-            text = "\n".join(
-                page.extract_text()
-                for page in reader.pages
-                if page.extract_text()
-            )
-        elif ext in ('.html', '.htm'):
-            text = content.decode('utf-8')
-        elif ext == '.pptx':
+            text = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+        elif ext in (".html", ".htm"):
+            text = content.decode("utf-8")
+        elif ext == ".pptx":
             import io
 
             from pptx import Presentation as PptxPres
+
             prs = PptxPres(io.BytesIO(content))
             slide_texts = []
             for slide in prs.slides:
@@ -7585,9 +7468,7 @@ async def api_elearning_upload_document(
 async def api_elearning_course_stream(job_id: str):
     """SSE stream pour la generation de cours"""
     if job_id not in jobs:
-        return JSONResponse(
-            {"error": "Job non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Job non trouve"}, status_code=404)
 
     async def event_generator():
         last_idx = 0
@@ -7632,13 +7513,9 @@ def _run_course_regenerator(job_id, course_id, feedback):
         agent = ElearningAgent()
 
         def progress(step, detail):
-            jobs[job_id]["steps"].append(
-                {"step": step, "detail": detail}
-            )
+            jobs[job_id]["steps"].append({"step": step, "detail": detail})
 
-        result = agent.regenerate_with_feedback(
-            course, feedback, progress_callback=progress
-        )
+        result = agent.regenerate_with_feedback(course, feedback, progress_callback=progress)
 
         if "error" in result:
             jobs[job_id]["status"] = "error"
@@ -7653,9 +7530,7 @@ def _run_course_regenerator(job_id, course_id, feedback):
             }
     except Exception as e:
         jobs[job_id]["status"] = "error"
-        jobs[job_id]["error"] = safe_error_message(
-            e, "Regeneration du cours"
-        )
+        jobs[job_id]["error"] = safe_error_message(e, "Regeneration du cours")
 
 
 @app.post("/api/elearning/course/{course_id}/regenerate")
@@ -7671,6 +7546,7 @@ async def api_elearning_regenerate_course(
     jobs[job_id] = {"status": "running", "steps": []}
 
     import threading
+
     t = threading.Thread(
         target=_run_course_regenerator,
         args=(job_id, course_id, feedback),
@@ -7696,9 +7572,7 @@ async def api_elearning_get_course(course_id: int):
     """Recupere un cours complet"""
     course = elearning_db.get_course(course_id)
     if not course:
-        return JSONResponse(
-            {"error": "Cours non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Cours non trouve"}, status_code=404)
     return {"course": course}
 
 
@@ -7707,10 +7581,48 @@ async def api_elearning_delete_course(course_id: int):
     """Supprime un cours"""
     deleted = elearning_db.delete_course(course_id)
     if not deleted:
-        return JSONResponse(
-            {"error": "Cours non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Cours non trouve"}, status_code=404)
     return {"ok": True}
+
+
+@app.post("/api/elearning/lesson/{lesson_id}/solutions")
+@limiter.limit("10/minute")
+async def api_elearning_lesson_solutions(request: Request, lesson_id: int):
+    """Génère les solutions pour les exercices d'une leçon existante."""
+    body = await request.json()
+    consultant_id = int(body.get("consultant_id", 0))
+
+    # Trouver la leçon dans la DB via le cours
+    course_id = int(body.get("course_id", 0))
+    topic = sanitize_text_input(body.get("topic", ""), max_length=500)
+    lesson_title = sanitize_text_input(body.get("lesson_title", ""), max_length=500)
+    exercises = body.get("exercises", [])
+
+    if not exercises:
+        return JSONResponse({"error": "Aucun exercice fourni"}, status_code=400)
+
+    consultant_profile = None
+    if consultant_id > 0:
+        try:
+            consultant_db = ConsultantDatabase()
+            consultant_profile = consultant_db.get_consultant(consultant_id)
+        except Exception:
+            pass
+
+    try:
+        agent = ElearningAgent()
+        updated_exercises = agent.generate_exercise_solutions(
+            exercises=exercises,
+            topic=topic,
+            lesson_title=lesson_title,
+            consultant_profile=consultant_profile,
+        )
+        # Persister en DB si lesson_id fourni
+        if lesson_id > 0:
+            elearning_db.update_lesson_exercises(lesson_id, updated_exercises)
+        return {"exercises": updated_exercises}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # --- Entretien: Chat & Simulation ---
@@ -7767,9 +7679,7 @@ async def api_elearning_interview_analyze(
 # --- Quiz: Generation ---
 
 
-def _run_quiz_generator(
-    job_id, course_id, lesson_id, difficulty, mode="free"
-):
+def _run_quiz_generator(job_id, course_id, lesson_id, difficulty, mode="free"):
     """Background job pour generer un quiz"""
     try:
         if lesson_id:
@@ -7804,17 +7714,13 @@ def _run_quiz_generator(
             all_content = []
             for mod in course.get("modules", []):
                 for les in mod.get("lessons", []):
-                    all_content.append(
-                        les.get("content_markdown", "")
-                    )
+                    all_content.append(les.get("content_markdown", ""))
             lesson_content = "\n\n".join(all_content)
 
         agent = ElearningAgent()
 
         def progress(step, detail):
-            jobs[job_id]["steps"].append(
-                {"step": step, "detail": detail}
-            )
+            jobs[job_id]["steps"].append({"step": step, "detail": detail})
 
         result = agent.generate_quiz(
             lesson_title=lesson_title,
@@ -7835,15 +7741,11 @@ def _run_quiz_generator(
             jobs[job_id]["status"] = "done"
             jobs[job_id]["result"] = {
                 "quiz_id": quiz_id,
-                "questions_count": len(
-                    result.get("questions", [])
-                ),
+                "questions_count": len(result.get("questions", [])),
             }
     except Exception as e:
         jobs[job_id]["status"] = "error"
-        jobs[job_id]["error"] = safe_error_message(
-            e, "Generation du quiz"
-        )
+        jobs[job_id]["error"] = safe_error_message(e, "Generation du quiz")
 
 
 @app.post("/api/elearning/quiz/generate")
@@ -7857,9 +7759,7 @@ async def api_elearning_generate_quiz(
 ):
     """Lance la generation d'un quiz"""
     if difficulty not in ("easy", "medium", "hard"):
-        return JSONResponse(
-            {"error": "Difficulte invalide"}, status_code=400
-        )
+        return JSONResponse({"error": "Difficulte invalide"}, status_code=400)
 
     valid_modes = ("free", "interview", "certification", "training")
     if mode not in valid_modes:
@@ -7869,6 +7769,7 @@ async def api_elearning_generate_quiz(
     jobs[job_id] = {"status": "running", "steps": []}
 
     import threading
+
     t = threading.Thread(
         target=_run_quiz_generator,
         args=(job_id, course_id, lesson_id, difficulty, mode),
@@ -7883,9 +7784,7 @@ async def api_elearning_generate_quiz(
 async def api_elearning_quiz_stream(job_id: str):
     """SSE stream pour la generation de quiz"""
     if job_id not in jobs:
-        return JSONResponse(
-            {"error": "Job non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Job non trouve"}, status_code=404)
 
     async def event_generator():
         last_idx = 0
@@ -7931,13 +7830,9 @@ async def api_elearning_quiz_start(
 
     quiz = elearning_db.get_quiz(quiz_id)
     if not quiz:
-        return JSONResponse(
-            {"error": "Quiz non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Quiz non trouve"}, status_code=404)
 
-    attempt_id = elearning_db.create_attempt(
-        session["id"], quiz_id
-    )
+    attempt_id = elearning_db.create_attempt(session["id"], quiz_id)
 
     # Get first question at medium difficulty
     questions = quiz.get("questions", [])
@@ -7969,15 +7864,11 @@ async def api_elearning_quiz_answer(
     """Soumet une reponse et obtient la suivante (adaptatif)"""
     results = elearning_db.get_attempt_results(attempt_id)
     if not results:
-        return JSONResponse(
-            {"error": "Tentative non trouvee"}, status_code=404
-        )
+        return JSONResponse({"error": "Tentative non trouvee"}, status_code=404)
 
     quiz = elearning_db.get_quiz(results["quiz_id"])
     if not quiz:
-        return JSONResponse(
-            {"error": "Quiz non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Quiz non trouve"}, status_code=404)
 
     # Find the question
     question = None
@@ -7987,9 +7878,7 @@ async def api_elearning_quiz_answer(
             break
 
     if not question:
-        return JSONResponse(
-            {"error": "Question non trouvee"}, status_code=404
-        )
+        return JSONResponse({"error": "Question non trouvee"}, status_code=404)
 
     # Evaluate answer
     agent = ElearningAgent()
@@ -8007,21 +7896,14 @@ async def api_elearning_quiz_answer(
     # Adaptive difficulty
     recent = elearning_db.get_recent_answers(attempt_id, 3)
     new_difficulty = agent.adapt_difficulty(recent)
-    current_difficulty = results.get(
-        "current_difficulty", "medium"
-    )
+    current_difficulty = results.get("current_difficulty", "medium")
 
     if new_difficulty:
-        elearning_db.update_attempt_difficulty(
-            attempt_id, new_difficulty
-        )
+        elearning_db.update_attempt_difficulty(attempt_id, new_difficulty)
         current_difficulty = new_difficulty
 
     # Find next unanswered question
-    answered_ids = {
-        a["question_id"]
-        for a in results.get("answers", [])
-    }
+    answered_ids = {a["question_id"] for a in results.get("answers", [])}
     answered_ids.add(question_id)
 
     next_question = None
@@ -8039,9 +7921,7 @@ async def api_elearning_quiz_answer(
         "current_difficulty": current_difficulty,
         "difficulty_changed": new_difficulty is not None,
         "next_question": next_question,
-        "questions_remaining": len(
-            quiz.get("questions", [])
-        ) - len(answered_ids),
+        "questions_remaining": len(quiz.get("questions", [])) - len(answered_ids),
     }
 
 
@@ -8053,9 +7933,7 @@ async def api_elearning_quiz_results(attempt_id: int):
 
     results = elearning_db.get_attempt_results(attempt_id)
     if not results:
-        return JSONResponse(
-            {"error": "Tentative non trouvee"}, status_code=404
-        )
+        return JSONResponse({"error": "Tentative non trouvee"}, status_code=404)
     return {"results": results}
 
 
@@ -8069,9 +7947,7 @@ async def api_elearning_list_quizzes(course_id: int):
 # --- Parcours d'apprentissage ---
 
 
-def _run_learning_path_generator(
-    job_id, session_id, course_id, goals
-):
+def _run_learning_path_generator(job_id, session_id, course_id, goals):
     """Background job pour generer un parcours"""
     try:
         course = elearning_db.get_course(course_id)
@@ -8089,24 +7965,16 @@ def _run_learning_path_generator(
         agent = ElearningAgent()
 
         def progress(step, detail):
-            jobs[job_id]["steps"].append(
-                {"step": step, "detail": detail}
-            )
+            jobs[job_id]["steps"].append({"step": step, "detail": detail})
 
         # Get quiz results for gap analysis
-        quiz_results = elearning_db.get_session_quiz_results(
-            session["id"], course_id
-        )
+        quiz_results = elearning_db.get_session_quiz_results(session["id"], course_id)
 
         progress("analyzing", "Analyse des performances...")
 
-        gaps = agent.analyze_knowledge_gaps(
-            quiz_results, course.get("modules", [])
-        )
+        gaps = agent.analyze_knowledge_gaps(quiz_results, course.get("modules", []))
 
-        progress(
-            "generating", "Generation du parcours..."
-        )
+        progress("generating", "Generation du parcours...")
 
         path_data = agent.generate_learning_path(
             gaps=gaps,
@@ -8116,30 +7984,24 @@ def _run_learning_path_generator(
         )
 
         # Save learning path
-        path_id = elearning_db.save_learning_path({
-            "session_id": session["id"],
-            "course_id": course_id,
-            "stated_goals": goals,
-            "knowledge_gaps": path_data.get(
-                "knowledge_gaps", []
-            ),
-            "recommendations": path_data.get(
-                "recommendations", []
-            ),
-        })
+        path_id = elearning_db.save_learning_path(
+            {
+                "session_id": session["id"],
+                "course_id": course_id,
+                "stated_goals": goals,
+                "knowledge_gaps": path_data.get("knowledge_gaps", []),
+                "recommendations": path_data.get("recommendations", []),
+            }
+        )
 
         jobs[job_id]["status"] = "done"
         jobs[job_id]["result"] = {
             "path_id": path_id,
-            "steps_count": len(
-                path_data.get("path_steps", [])
-            ),
+            "steps_count": len(path_data.get("path_steps", [])),
         }
     except Exception as e:
         jobs[job_id]["status"] = "error"
-        jobs[job_id]["error"] = safe_error_message(
-            e, "Generation du parcours"
-        )
+        jobs[job_id]["error"] = safe_error_message(e, "Generation du parcours")
 
 
 @app.post("/api/elearning/learning-path/create")
@@ -8154,20 +8016,16 @@ async def api_elearning_create_learning_path(
     try:
         goals_list = json.loads(goals) if goals else []
     except json.JSONDecodeError:
-        goals_list = [
-            g.strip() for g in goals.split(",")
-            if g.strip()
-        ]
+        goals_list = [g.strip() for g in goals.split(",") if g.strip()]
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {"status": "running", "steps": []}
 
     import threading
+
     t = threading.Thread(
         target=_run_learning_path_generator,
-        args=(
-            job_id, session_identifier, course_id, goals_list
-        ),
+        args=(job_id, session_identifier, course_id, goals_list),
         daemon=True,
     )
     t.start()
@@ -8179,9 +8037,7 @@ async def api_elearning_create_learning_path(
 async def api_elearning_learning_path_stream(job_id: str):
     """SSE stream pour la generation de parcours"""
     if job_id not in jobs:
-        return JSONResponse(
-            {"error": "Job non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Job non trouve"}, status_code=404)
 
     async def event_generator():
         last_idx = 0
@@ -8211,27 +8067,16 @@ async def api_elearning_learning_path_stream(job_id: str):
     )
 
 
-@app.get(
-    "/api/elearning/learning-path"
-    "/{session_identifier}/{course_id}"
-)
-async def api_elearning_get_learning_path(
-    session_identifier: str, course_id: int
-):
+@app.get("/api/elearning/learning-path" "/{session_identifier}/{course_id}")
+async def api_elearning_get_learning_path(session_identifier: str, course_id: int):
     """Recupere un parcours d'apprentissage"""
     session = elearning_db.get_session(session_identifier)
     if not session:
-        return JSONResponse(
-            {"error": "Session non trouvee"}, status_code=404
-        )
+        return JSONResponse({"error": "Session non trouvee"}, status_code=404)
 
-    path = elearning_db.get_learning_path(
-        session["id"], course_id
-    )
+    path = elearning_db.get_learning_path(session["id"], course_id)
     if not path:
-        return JSONResponse(
-            {"error": "Parcours non trouve"}, status_code=404
-        )
+        return JSONResponse({"error": "Parcours non trouve"}, status_code=404)
     return {"path": path}
 
 
@@ -8245,8 +8090,11 @@ async def api_elearning_update_progress(
 ):
     """Met a jour la progression d'un module"""
     valid_levels = (
-        "none", "beginner", "intermediate",
-        "proficient", "expert",
+        "none",
+        "beginner",
+        "intermediate",
+        "proficient",
+        "expert",
     )
     if mastery_level not in valid_levels:
         return JSONResponse(
@@ -8255,8 +8103,10 @@ async def api_elearning_update_progress(
         )
 
     elearning_db.update_module_progress(
-        learning_path_id, module_id,
-        completion_pct, mastery_level,
+        learning_path_id,
+        module_id,
+        completion_pct,
+        mastery_level,
     )
     return {"ok": True}
 
@@ -8300,6 +8150,7 @@ async def api_elearning_interview_chat(request: Request):
     role = str(body.get("role", ""))[:200]
     interviewer_name = str(body.get("interviewer_name", ""))[:200]
     interviewer_linkedin = str(body.get("interviewer_linkedin", ""))[:500]
+    interview_type = str(body.get("interview_type", ""))[:20]
 
     try:
         agent = ElearningAgent()
@@ -8309,6 +8160,7 @@ async def api_elearning_interview_chat(request: Request):
             role=role,
             interviewer_name=interviewer_name,
             interviewer_linkedin=interviewer_linkedin,
+            interview_type=interview_type,
         )
     except Exception as e:
         return JSONResponse({"error": f"Erreur entretien : {str(e)}"}, status_code=500)
@@ -8326,7 +8178,8 @@ async def api_elearning_interview_analyze(request: Request):
       {
         "messages": [{"role": "user"|"assistant", "content": "..."}],
         "topic": "Python",
-        "role": "Data Engineer"
+        "role": "Data Engineer",
+        "interview_type": "rh|technique|cas|fit"
       }
 
     Retourne {overall_score, grade, strengths, improvements, detailed_feedback, ...}
@@ -8344,6 +8197,7 @@ async def api_elearning_interview_analyze(request: Request):
     role = str(body.get("role", ""))[:200]
     interviewer_name = str(body.get("interviewer_name", ""))[:200]
     interviewer_linkedin = str(body.get("interviewer_linkedin", ""))[:500]
+    interview_type = str(body.get("interview_type", ""))[:20]
 
     try:
         agent = ElearningAgent()
@@ -8353,6 +8207,7 @@ async def api_elearning_interview_analyze(request: Request):
             role=role,
             interviewer_name=interviewer_name,
             interviewer_linkedin=interviewer_linkedin,
+            interview_type=interview_type,
         )
     except Exception as e:
         return JSONResponse({"error": f"Erreur analyse : {str(e)}"}, status_code=500)
@@ -8404,6 +8259,7 @@ async def api_elearning_premium_resources(
 
 # === MEETING CAPTURE AI ===
 
+
 @app.get("/meeting-capture", response_class=HTMLResponse)
 async def meeting_capture_page(request: Request):
     """Page Meeting Capture AI"""
@@ -8425,7 +8281,7 @@ async def meeting_capture_page(request: Request):
 async def api_meeting_capture_upload(
     request: Request,
     video: UploadFile = File(...),
-    gemini_model: str = Form(default="gemini-3.1-flash"),
+    gemini_model: str = Form(default="gemini-2.0-flash"),
 ):
     """Upload d'une vidéo de réunion et lancement de l'analyse Gemini"""
     user = get_current_user(request)
@@ -8446,7 +8302,10 @@ async def api_meeting_capture_upload(
     suffix = Path(filename).suffix.lower()
     if suffix not in allowed_exts:
         return JSONResponse(
-            {"detail": "Extension non supportée. Extensions acceptées : " + ", ".join(sorted(allowed_exts))},
+            {
+                "detail": "Extension non supportée. Extensions acceptées : "
+                + ", ".join(sorted(allowed_exts))
+            },
             status_code=400,
         )
 
@@ -8475,9 +8334,7 @@ async def api_meeting_capture_upload(
         "gemini_model": gemini_model,
     }
 
-    thread = threading.Thread(
-        target=_run_meeting_capture, args=(job_id,), daemon=True
-    )
+    thread = threading.Thread(target=_run_meeting_capture, args=(job_id,), daemon=True)
     thread.start()
 
     return {"job_id": job_id}
@@ -8494,22 +8351,51 @@ def _run_meeting_capture(job_id: str):
         agent = MeetingCaptureAgent(api_key=api_key, model=gemini_model)
 
         # Étape 1 : Upload
-        job["steps"].append({"step": "upload", "status": "active", "progress": 5, "message": "Upload de la vidéo vers Gemini…"})
+        job["steps"].append(
+            {
+                "step": "upload",
+                "status": "active",
+                "progress": 5,
+                "message": "Upload de la vidéo vers Gemini…",
+            }
+        )
         uploaded_file = agent.upload_video(video_path)
-        job["steps"].append({"step": "upload", "status": "done", "progress": 20, "message": "Vidéo uploadée"})
+        job["steps"].append(
+            {"step": "upload", "status": "done", "progress": 20, "message": "Vidéo uploadée"}
+        )
 
         # Étape 2 : Attente traitement
-        job["steps"].append({"step": "processing", "status": "active", "progress": 25, "message": "Traitement de la vidéo par Gemini…"})
+        job["steps"].append(
+            {
+                "step": "processing",
+                "status": "active",
+                "progress": 25,
+                "message": "Traitement de la vidéo par Gemini…",
+            }
+        )
         processed_file = agent.wait_for_processing(uploaded_file)
-        job["steps"].append({"step": "processing", "status": "done", "progress": 55, "message": "Vidéo traitée"})
+        job["steps"].append(
+            {"step": "processing", "status": "done", "progress": 55, "message": "Vidéo traitée"}
+        )
 
         # Étape 3 : Analyse IA
-        job["steps"].append({"step": "analyze", "status": "active", "progress": 60, "message": "Analyse IA en cours…"})
+        job["steps"].append(
+            {
+                "step": "analyze",
+                "status": "active",
+                "progress": 60,
+                "message": "Analyse IA en cours…",
+            }
+        )
         result = agent.analyze(processed_file)
-        job["steps"].append({"step": "analyze", "status": "done", "progress": 95, "message": "Analyse terminée"})
+        job["steps"].append(
+            {"step": "analyze", "status": "done", "progress": 95, "message": "Analyse terminée"}
+        )
 
         # Finalisation
-        job["steps"].append({"step": "done", "status": "done", "progress": 100, "message": "Résultats prêts"})
+        job["steps"].append(
+            {"step": "done", "status": "done", "progress": 100, "message": "Résultats prêts"}
+        )
         job["result"] = result
         job["status"] = "done"
 
@@ -8595,10 +8481,10 @@ async def api_meeting_capture_gmail_draft(request: Request):
         return JSONResponse({"detail": safe_error_message(exc)}, status_code=500)
 
 
-
 # ============================================================
 # === TENDERSCOUT AI ===
 # ============================================================
+
 
 @app.get("/tenderscout", response_class=HTMLResponse)
 async def tenderscout_page(request: Request):
@@ -8651,10 +8537,13 @@ async def api_tenderscout_scan(request: Request):
         )
 
     from agents.tender_scout_agent import VALID_SOURCES
+
     invalid = [s for s in sources if s not in VALID_SOURCES]
     if invalid:
         return JSONResponse(
-            {"detail": f"Sources invalides : {invalid}. Valeurs acceptées : {sorted(VALID_SOURCES)}."},
+            {
+                "detail": f"Sources invalides : {invalid}. Valeurs acceptées : {sorted(VALID_SOURCES)}."
+            },
             status_code=400,
         )
 
@@ -8688,27 +8577,43 @@ def _run_tender_scout(job_id: str, keywords: list, sources: list):
         # Étape 1 : scraping BOAMP
         if "boamp" in sources:
             job["steps"].append(
-                {"step": "scrape_boamp", "status": "active", "progress": 10,
-                 "message": "Scraping BOAMP…"}
+                {
+                    "step": "scrape_boamp",
+                    "status": "active",
+                    "progress": 10,
+                    "message": "Scraping BOAMP…",
+                }
             )
             boamp_tenders = agent.scrape_boamp(keywords)
             all_tenders.extend(boamp_tenders)
             job["steps"].append(
-                {"step": "scrape_boamp", "status": "done", "progress": 30,
-                 "message": f"{len(boamp_tenders)} AOs trouvés sur BOAMP"}
+                {
+                    "step": "scrape_boamp",
+                    "status": "done",
+                    "progress": 30,
+                    "message": f"{len(boamp_tenders)} AOs trouvés sur BOAMP",
+                }
             )
 
         # Étape 2 : scraping Francemarches
         if "francemarches" in sources:
             job["steps"].append(
-                {"step": "scrape_francemarches", "status": "active", "progress": 35,
-                 "message": "Scraping Francemarches.com…"}
+                {
+                    "step": "scrape_francemarches",
+                    "status": "active",
+                    "progress": 35,
+                    "message": "Scraping Francemarches.com…",
+                }
             )
             fm_tenders = agent.scrape_francemarches(keywords)
             all_tenders.extend(fm_tenders)
             job["steps"].append(
-                {"step": "scrape_francemarches", "status": "done", "progress": 50,
-                 "message": f"{len(fm_tenders)} AOs trouvés sur Francemarches"}
+                {
+                    "step": "scrape_francemarches",
+                    "status": "done",
+                    "progress": 50,
+                    "message": f"{len(fm_tenders)} AOs trouvés sur Francemarches",
+                }
             )
 
         # Étape 3 : sauvegarde idempotente
@@ -8717,8 +8622,12 @@ def _run_tender_scout(job_id: str, keywords: list, sources: list):
         )
         new_count = db.save_tenders(all_tenders)
         job["steps"].append(
-            {"step": "save", "status": "done", "progress": 55,
-             "message": f"{new_count} nouveau(x) AO(s) enregistré(s)"}
+            {
+                "step": "save",
+                "status": "done",
+                "progress": 55,
+                "message": f"{new_count} nouveau(x) AO(s) enregistré(s)",
+            }
         )
 
         # Étape 4 : analyse Gemini des nouveaux AOs
@@ -8908,7 +8817,9 @@ if __name__ == "__main__":
 
     # Security warning for default password
     auth_password = os.getenv("AUTH_PASSWORD", "")
-    if not auth_password or auth_password == "CHANGE_ME_ON_FIRST_INSTALL":  # pragma: allowlist secret
+    if (
+        not auth_password or auth_password == "CHANGE_ME_ON_FIRST_INSTALL"  # pragma: allowlist secret
+    ):
         print("\n  🚨 SECURITE : Mot de passe par defaut detecte !")
         print("  → Veuillez configurer AUTH_PASSWORD dans votre fichier .env")
         print("  → Utilisez un mot de passe fort et unique")
@@ -8917,11 +8828,7 @@ if __name__ == "__main__":
 
     if use_ssl:
         uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=port,
-            ssl_keyfile=str(ssl_key),
-            ssl_certfile=str(ssl_cert)
+            app, host="0.0.0.0", port=port, ssl_keyfile=str(ssl_key), ssl_certfile=str(ssl_cert)
         )
     else:
         uvicorn.run(app, host="0.0.0.0", port=port)

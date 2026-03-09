@@ -22,8 +22,12 @@ from google.api_core.exceptions import GoogleAPIError
 # ---------------------------------------------------------------------------
 
 GEMINI_MODELS: Dict[str, str] = {
-    "gemini-2.0-flash": "Gemini 2.0 Flash (Optimisé)",
-    "gemini-1.5-pro": "Gemini 1.5 Pro (Haute Qualité)",
+    "gemini-2.5-pro": "Gemini 2.5 Pro (Derniere generation)",
+    "gemini-2.5-flash": "Gemini 2.5 Flash (Rapide, derniere generation)",
+    "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite (Leger)",
+    "gemini-2.0-flash": "Gemini 2.0 Flash (Optimise)",
+    "gemini-2.0-flash-lite": "Gemini 2.0 Flash Lite (Leger)",
+    "gemini-1.5-pro": "Gemini 1.5 Pro (Haute Qualite)",
     "gemini-1.5-flash": "Gemini 1.5 Flash (Rapide)",
 }
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"

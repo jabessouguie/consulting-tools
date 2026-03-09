@@ -1,5 +1,5 @@
 """
-Service d'observabilité pour WEnvision.
+Service d'observabilité pour le consultant.
 Gère les logs systeme, l'analytique produit et le suivi LLM.
 """
 

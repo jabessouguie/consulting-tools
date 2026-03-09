@@ -51,7 +51,12 @@ class ElearningDatabase:
             try:
                 cursor.execute("ALTER TABLE courses ADD COLUMN mode TEXT DEFAULT 'free'")
             except sqlite3.OperationalError:
-                # Column already exists
+                pass
+
+            # Migration: add interview_type column if missing
+            try:
+                cursor.execute("ALTER TABLE courses ADD COLUMN interview_type TEXT DEFAULT ''")
+            except sqlite3.OperationalError:
                 pass
 
             cursor.execute(
@@ -266,8 +271,8 @@ class ElearningDatabase:
                 INSERT INTO courses
                 (title, description, topic, target_audience,
                  difficulty_level, duration_hours, learning_objectives,
-                 mode, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 mode, interview_type, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     data.get("title", ""),
@@ -281,6 +286,7 @@ class ElearningDatabase:
                         ensure_ascii=False,
                     ),
                     data.get("mode", "free"),
+                    data.get("interview_type", ""),
                     now,
                     now,
                 ),
@@ -401,7 +407,8 @@ class ElearningDatabase:
             cursor.execute(
                 """
                 SELECT c.id, c.title, c.topic, c.difficulty_level,
-                    c.duration_hours, c.target_audience, c.mode, c.created_at,
+                    c.duration_hours, c.target_audience, c.mode,
+                    c.interview_type, c.created_at,
                     (SELECT COUNT(*) FROM modules
                      WHERE course_id = c.id) as modules_count,
                     (SELECT COUNT(*) FROM lessons l
@@ -447,6 +454,17 @@ class ElearningDatabase:
                     now,
                     course_id,
                 ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_lesson_exercises(self, lesson_id: int, exercises: List[Dict]) -> bool:
+        """Met à jour le champ practical_exercises d'une leçon (avec solutions)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE lessons SET practical_exercises = ? WHERE id = ?",
+                (json.dumps(exercises, ensure_ascii=False), lesson_id),
             )
             conn.commit()
             return cursor.rowcount > 0
