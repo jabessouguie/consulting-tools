@@ -788,9 +788,33 @@
                         <option value="Professionnels techniques">Professionnels tech</option>
                         <option value="Managers et decideurs">Managers</option>
                     </select>
+                    <div id="consultant-select-group" style="display:none; margin-top:0.5rem;">
+                        <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:400; cursor:pointer; margin-bottom:0.4rem;">
+                            <input type="checkbox" id="gen-use-consultant" onchange="toggleConsultantSelect()">
+                            Personnaliser pour un consultant du Skills Market
+                        </label>
+                        <select id="gen-consultant-select" class="el-select" style="display:none;">
+                            <option value="0">Chargement...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="interview-type-group" style="display:none; grid-column: 1 / -1; background:#f8fafc; padding:0.75rem 1rem; border-radius:10px; border:1px solid #e5e7eb;">
+                    <label style="font-size:0.85rem; font-weight:600; margin-bottom:0.5rem; display:block;">Type d'entretien</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="interview-type" value="rh" checked><span>Entretien RH</span></label>
+                        <label><input type="radio" name="interview-type" value="technique"><span>Entretien technique</span></label>
+                        <label><input type="radio" name="interview-type" value="cas"><span>Etude de cas</span></label>
+                        <label><input type="radio" name="interview-type" value="fit"><span>Entretien de fit</span></label>
+                    </div>
                 </div>
                 <div class="el-form-group">
-                    <label>Duree (heures)</label>
+                    <label style="display:flex; align-items:center; justify-content:space-between;">
+                        <span>Duree (heures)</span>
+                        <label style="font-size:0.8rem; font-weight:400; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
+                            <input type="checkbox" id="gen-auto-duration" onchange="toggleAutoDuration()">
+                            L'IA choisit
+                        </label>
+                    </label>
                     <input type="number" id="gen-duration" class="el-input" value="3" min="1" max="40">
                 </div>
                 <div class="el-form-group" style="grid-column: 1 / -1;">
@@ -1086,6 +1110,7 @@
     let chatCurrentRole = "";
     let chatInterviewerName = "";
     let chatInterviewerLinkedin = "";
+    let chatInterviewType = "";
 
     // Init
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1155,7 +1180,6 @@
             document.getElementById('gen-audience').value = 'Candidat a la certification';
         } else {
             audienceGroup.style.display = '';
-            // Reset to default if was hidden
             const sel = document.getElementById('gen-audience');
             if (sel.value === 'Candidat a la certification') {
                 sel.value = 'Debutants sans experience';
@@ -1172,13 +1196,58 @@
             }
         }
 
-        // Show interviewer fields if in interview mode
+        // Show interviewer fields + interview type + consultant selector if in interview mode
         const interviewerGroup = document.getElementById('interviewer-group');
+        const interviewTypeGroup = document.getElementById('interview-type-group');
+        const consultantSelectGroup = document.getElementById('consultant-select-group');
         if (mode === 'interview') {
             interviewerGroup.style.display = 'block';
+            interviewTypeGroup.style.display = '';
+            consultantSelectGroup.style.display = 'block';
+            loadSkillsMarketConsultants();
         } else {
             interviewerGroup.style.display = 'none';
+            interviewTypeGroup.style.display = 'none';
+            consultantSelectGroup.style.display = 'none';
+            document.getElementById('gen-use-consultant').checked = false;
+            document.getElementById('gen-consultant-select').style.display = 'none';
         }
+    }
+
+    async function loadSkillsMarketConsultants() {
+        const sel = document.getElementById('gen-consultant-select');
+        if (sel.dataset.loaded === 'true') return;
+        try {
+            const resp = await fetch('/api/skills-market/consultants');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const consultants = data.consultants || data || [];
+            sel.innerHTML = '<option value="0">-- Choisir un consultant --</option>';
+            consultants.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = (c.name || '') + (c.title ? ' – ' + c.title : '');
+                sel.appendChild(opt);
+            });
+            sel.dataset.loaded = 'true';
+        } catch (e) {
+            console.error('Erreur chargement consultants Skills Market:', e);
+        }
+    }
+
+    function toggleConsultantSelect() {
+        const checked = document.getElementById('gen-use-consultant').checked;
+        const sel = document.getElementById('gen-consultant-select');
+        const audienceSel = document.getElementById('gen-audience');
+        sel.style.display = checked ? 'block' : 'none';
+        audienceSel.style.display = checked ? 'none' : '';
+    }
+
+    function toggleAutoDuration() {
+        const checked = document.getElementById('gen-auto-duration').checked;
+        const durationInput = document.getElementById('gen-duration');
+        durationInput.disabled = checked;
+        durationInput.style.opacity = checked ? '0.4' : '1';
     }
 
     // ==================
@@ -1244,16 +1313,25 @@
         document.getElementById('gen-steps').innerHTML = '';
         document.getElementById('gen-progress-bar').style.width = '10%';
 
+        const autoDuration = document.getElementById('gen-auto-duration').checked;
         const form = new FormData();
         form.append('topic', topic);
         form.append('target_audience', audience);
-        form.append('duration_hours', duration);
+        form.append('duration_hours', autoDuration ? '0' : duration);
         form.append('difficulty', difficulty);
         form.append('mode', currentMode);
+        form.append('auto_duration', autoDuration ? 'true' : 'false');
 
         if (currentMode === 'interview') {
             form.append('interviewer_name', document.getElementById('gen-interviewer-name').value.trim());
             form.append('interviewer_linkedin', document.getElementById('gen-interviewer-linkedin').value.trim());
+            const interviewTypeChecked = document.querySelector('input[name="interview-type"]:checked');
+            form.append('interview_type', interviewTypeChecked ? interviewTypeChecked.value : '');
+            const useConsultant = document.getElementById('gen-use-consultant').checked;
+            if (useConsultant) {
+                const consultantId = document.getElementById('gen-consultant-select').value;
+                form.append('consultant_id', consultantId || '0');
+            }
         }
 
         if (elDocumentContent) form.append('document_content', elDocumentContent);
@@ -1331,12 +1409,25 @@
                         <h5>Lecon ${l.lesson_number}: ${l.title}</h5>
                         <div class="markdown-content">${typeof marked !== 'undefined' ? marked.parse(l.content_markdown || '') : l.content_markdown || ''}</div>
                         ${(l.key_takeaways || []).length ? '<div style="margin-top: 0.5rem;"><strong>Points cles:</strong><ul>' + l.key_takeaways.map(k => '<li>' + k + '</li>').join('') + '</ul></div>' : ''}
-                        ${(l.practical_exercises || []).length ? '<div style="margin-top: 0.5rem;"><strong>Exercices:</strong>' + l.practical_exercises.map(e => '<div style="padding: 0.5rem; background: #eff6ff; border-radius: 6px; margin: 0.3rem 0;"><strong>' + e.title + '</strong><p style="margin: 0.2rem 0; font-size: 0.85rem;">' + e.description + '</p></div>').join('') + '</div>' : ''}
+                        ${(l.practical_exercises || []).length ? '<div style="margin-top: 0.5rem;"><strong>Exercices:</strong>' + l.practical_exercises.map((e, ei) => { const sid = 'sol-' + m.module_number + '-' + l.lesson_number + '-' + ei; return '<div style="padding: 0.5rem; background: #eff6ff; border-radius: 6px; margin: 0.3rem 0;"><strong>' + e.title + '</strong><p style="margin: 0.2rem 0; font-size: 0.85rem;">' + e.description + '</p>' + (e.hints && e.hints.length ? '<p style="margin: 0.2rem 0; font-size: 0.8rem; color: #6b7280;"><em>Indices : ' + e.hints.join(' · ') + '</em></p>' : '') + (e.solution ? '<div style="margin-top: 0.4rem;"><button onclick="toggleSolution(\'' + sid + '\')" style="font-size: 0.78rem; padding: 0.15rem 0.5rem; background: #fff; border: 1px solid #93c5fd; border-radius: 4px; cursor: pointer; color: #1d4ed8;">Voir la reponse</button><div id="' + sid + '" style="display:none; margin-top: 0.4rem; padding: 0.5rem; background: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 4px; font-size: 0.85rem; white-space: pre-wrap;">' + e.solution.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>' : '') + '</div>'; }).join('') + '</div>' : ''}
                     </div>
                 `).join('')}
             </div>
         </div>
     `).join('');
+    }
+
+    function toggleSolution(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const btn = el.previousElementSibling;
+        if (el.style.display === 'none') {
+            el.style.display = 'block';
+            if (btn) btn.textContent = 'Masquer la reponse';
+        } else {
+            el.style.display = 'none';
+            if (btn) btn.textContent = 'Voir la reponse';
+        }
     }
 
     function showRegenerateForm() {
@@ -1447,11 +1538,10 @@
 
         chatCurrentCourseId = course.id;
         chatCurrentTopic = course.topic;
-        chatCurrentRole = course.title; // Course title usually describes the role in interview mode
-
-        // Use interviewer info if it was stored or just use empty defaults
+        chatCurrentRole = course.title;
         chatInterviewerName = "";
         chatInterviewerLinkedin = "";
+        chatInterviewType = course.interview_type || "";
 
         // Reset chat
         chatMessages = [];
@@ -1496,14 +1586,19 @@
         document.getElementById('chat-btn-send').disabled = true;
 
         try {
-            const form = new FormData();
-            form.append('topic', chatCurrentTopic);
-            form.append('role', chatCurrentRole);
-            form.append('messages', JSON.stringify(chatMessages));
-            form.append('interviewer_name', chatInterviewerName);
-            form.append('interviewer_linkedin', chatInterviewerLinkedin);
-
-            const resp = await fetch('/api/elearning/interview/chat', { method: 'POST', body: form });
+            const chatBody = {
+                topic: chatCurrentTopic,
+                role: chatCurrentRole,
+                messages: chatMessages,
+                interviewer_name: chatInterviewerName,
+                interviewer_linkedin: chatInterviewerLinkedin,
+                interview_type: chatInterviewType,
+            };
+            const resp = await fetch('/api/elearning/interview/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(chatBody),
+            });
             const data = await resp.json();
 
             thinking.style.display = 'none';
@@ -1545,14 +1640,19 @@
         analysisContent.innerHTML = '<p>Analyse en cours par l\'IA...</p>';
 
         try {
-            const form = new FormData();
-            form.append('topic', chatCurrentTopic);
-            form.append('role', chatCurrentRole);
-            form.append('messages', JSON.stringify(chatMessages));
-            form.append('interviewer_name', chatInterviewerName);
-            form.append('interviewer_linkedin', chatInterviewerLinkedin);
-
-            const resp = await fetch('/api/elearning/interview/analyze', { method: 'POST', body: form });
+            const analyzeBody = {
+                topic: chatCurrentTopic,
+                role: chatCurrentRole,
+                messages: chatMessages,
+                interviewer_name: chatInterviewerName,
+                interviewer_linkedin: chatInterviewerLinkedin,
+                interview_type: chatInterviewType,
+            };
+            const resp = await fetch('/api/elearning/interview/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(analyzeBody),
+            });
             const data = await resp.json();
 
             if (data.analysis) {
