@@ -787,6 +787,94 @@ REGLES:
             print(f"Erreur generation lecons: {e}")
             return []
 
+    def generate_exercise_solutions(
+        self,
+        exercises: List[Dict],
+        topic: str,
+        lesson_title: str,
+        consultant_profile: Optional[Dict] = None,
+    ) -> List[Dict]:
+        """Génère les solutions pour une liste d'exercices existants.
+
+        Args:
+            exercises: Liste des exercices (title, description, hints, …)
+            topic: Sujet général du cours
+            lesson_title: Titre de la leçon concernée
+            consultant_profile: Profil consultant optionnel pour personnaliser les réponses
+
+        Returns:
+            Même liste d'exercices avec le champ "solution" renseigné.
+        """
+        if not exercises:
+            return exercises
+
+        consultant_block = ""
+        if consultant_profile:
+            missions = []
+            for m in (consultant_profile.get("missions") or [])[:3]:
+                if isinstance(m, dict) and m.get("client_name"):
+                    missions.append(
+                        "- " + m["client_name"] + ": "
+                        + (m.get("context_and_challenges") or "")[:120]
+                    )
+            skills = [
+                s.get("name", str(s)) if isinstance(s, dict) else str(s)
+                for s in (consultant_profile.get("skills") or [])[:8]
+            ]
+            consultant_block = (
+                "\n\nPROFIL DU CONSULTANT (illustrer les réponses avec son parcours) :\n"
+                + (consultant_profile.get("name", "") + " – " if consultant_profile.get("name") else "")
+                + (consultant_profile.get("title", "") + "\n" if consultant_profile.get("title") else "")
+                + ("Compétences : " + ", ".join(skills) + "\n" if skills else "")
+                + ("Missions : \n" + "\n".join(missions) + "\n" if missions else "")
+            )
+
+        exercises_json = json.dumps(
+            [{"index": i, "title": e.get("title", ""), "description": e.get("description", "")}
+             for i, e in enumerate(exercises)],
+            ensure_ascii=False,
+        )
+
+        prompt = (
+            "Cours : " + topic + "\n"
+            "Leçon : " + lesson_title + "\n"
+            + consultant_block
+            + "\nExercices :\n" + exercises_json
+            + "\n\nRetourne UNIQUEMENT un JSON valide :\n"
+            + '{"solutions": [{"index": 0, "solution": "Réponse complète et détaillée..."}]}\n\n'
+            + "RÈGLES :\n"
+            + "- Une solution par exercice (même index que l'entrée)\n"
+            + "- Réponses complètes, structurées, avec exemples concrets\n"
+            + "- Si un profil consultant est fourni, illustrer avec ses missions/compétences réelles"
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=(
+                    "Tu es un expert pédagogique. "
+                    "Tu fournis des corrigés détaillés pour des exercices de formation. "
+                    "Réponds uniquement en JSON."
+                ),
+                temperature=0.6,
+            )
+            result = self._parse_json_response(response)
+            solutions_map = {
+                item["index"]: item["solution"]
+                for item in (result.get("solutions") or [])
+                if "index" in item and "solution" in item
+            }
+            updated = []
+            for i, ex in enumerate(exercises):
+                ex_copy = dict(ex)
+                if i in solutions_map:
+                    ex_copy["solution"] = solutions_map[i]
+                updated.append(ex_copy)
+            return updated
+        except Exception as e:
+            print("Erreur generate_exercise_solutions: " + str(e))
+            return exercises
+
     def regenerate_with_feedback(
         self,
         course_data: Dict,
