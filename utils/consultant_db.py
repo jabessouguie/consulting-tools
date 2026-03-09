@@ -158,6 +158,19 @@ class ConsultantDatabase:
 
             conn.commit()
 
+            # Migration : ajout des colonnes etendues (idempotent)
+            for col_sql in [
+                "ALTER TABLE consultants ADD COLUMN firstname TEXT",
+                "ALTER TABLE consultants ADD COLUMN company TEXT",
+                "ALTER TABLE consultants ADD COLUMN linkedin_url TEXT",
+                "ALTER TABLE consultants ADD COLUMN consultant_theme TEXT",
+            ]:
+                try:
+                    cursor.execute(col_sql)
+                    conn.commit()
+                except sqlite3.OperationalError:
+                    pass  # Colonne deja existante
+
     def save_consultant(self, data: Dict[str, Any]) -> int:
         """
         Insere ou met a jour un consultant
@@ -860,3 +873,49 @@ class ConsultantDatabase:
                 ),
             )
             conn.commit()
+
+    def update_consultant_info(
+        self,
+        consultant_id: int,
+        info: Dict[str, Any],
+    ) -> bool:
+        """
+        Met a jour les informations de base d'un consultant.
+
+        Args:
+            consultant_id: ID du consultant.
+            info: Dict pouvant contenir name, firstname, title, company,
+                  linkedin_url, bio, consultant_theme (JSON str ou dict).
+
+        Returns:
+            True si le consultant existe et a ete mis a jour, False sinon.
+        """
+        now = datetime.now().isoformat()
+
+        # Serialise le theme si c'est un dict
+        theme = info.get("consultant_theme")
+        if isinstance(theme, dict):
+            theme = json.dumps(theme, ensure_ascii=False)
+
+        fields: Dict[str, Any] = {}
+        for key in ("name", "firstname", "title", "company", "linkedin_url", "bio"):
+            if key in info:
+                fields[key] = info[key]
+        if theme is not None:
+            fields["consultant_theme"] = theme
+        fields["updated_at"] = now
+
+        if len(fields) == 1:  # Que updated_at, rien a faire
+            return False
+
+        set_clause = ", ".join(f"{k} = ?" for k in fields)
+        values = list(fields.values()) + [consultant_id]
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"UPDATE consultants SET {set_clause} WHERE id = ?",
+                values,
+            )
+            conn.commit()
+            return cursor.rowcount > 0

@@ -436,59 +436,125 @@ REGLES:
 
     def generate_cv(self, consultant: Dict, client_need: str = "") -> str:
         """
-        Génère un CV HTML professionnel à partir du profil d'un consultant.
+        Genere un CV HTML professionnel une page a partir du profil d'un consultant.
+
+        Le CV est adapte au besoin client si fourni : les missions et competences
+        les plus pertinentes sont selectionnees et reformulees pour matcher le besoin.
 
         Args:
-            consultant: Dictionnaire contenant les données du consultant
-            client_need: Description du besoin client pour adapter le CV (optionnel)
+            consultant: Profil complet issu de ConsultantDatabase.get_consultant().
+                        Doit contenir skills_technical, skills_sector, certifications,
+                        missions, name, title, bio.
+            client_need: Description du besoin client en texte libre, markdown ou
+                         contenu extrait d'un PDF (optionnel).
 
         Returns:
-            CV au format HTML prêt à l'affichage ou à l'export PDF
+            Fragment HTML du CV, directement integrable dans une page web.
+            Commence par une balise <div> ou <header>, sans <html>/<head>/<body>.
         """
-        skills = ", ".join(consultant.get("skills", []) or [])
-        certifications = "\n".join(
-            f"- {c}" for c in (consultant.get("certifications") or [])
-        )
-        experiences = consultant.get("experience_years", "N/A")
+        # --- Extraction des competences (schemas DB : liste de dicts avec "name") ---
+        skills_tech = [
+            s.get("name", str(s)) if isinstance(s, dict) else str(s)
+            for s in (consultant.get("skills_technical") or [])
+        ]
+        skills_sector = [
+            s.get("name", str(s)) if isinstance(s, dict) else str(s)
+            for s in (consultant.get("skills_sector") or [])
+        ]
+
+        # --- Certifications (liste de dicts avec name, organization, date_obtained) ---
+        cert_lines = []
+        for c in (consultant.get("certifications") or []):
+            if isinstance(c, dict):
+                cert_lines.append(
+                    "- "
+                    + c.get("name", "")
+                    + (f" ({c.get('organization', '')})" if c.get("organization") else "")
+                    + (f", {c.get('date_obtained', '')}" if c.get("date_obtained") else "")
+                )
+            else:
+                cert_lines.append(f"- {c}")
+
+        # --- Missions (source principale de valeur pour l'adequation client) ---
+        mission_blocks = []
+        for m in (consultant.get("missions") or []):
+            if isinstance(m, dict):
+                parts = []
+                if m.get("client_name"):
+                    parts.append(f"Client : {m['client_name']}")
+                if m.get("context_and_challenges"):
+                    parts.append(f"Contexte : {m['context_and_challenges']}")
+                if m.get("deliverables"):
+                    parts.append(f"Livrables : {m['deliverables']}")
+                if m.get("tasks"):
+                    parts.append(f"Taches : {m['tasks']}")
+                if parts:
+                    mission_blocks.append("\n  ".join(parts))
+
+        # --- Bloc d'adaptation au besoin client ---
         adaptation_block = ""
         if client_need:
-            adaptation_block = f"""
-ADAPTATION DEMANDÉE :
-Le CV doit mettre en avant les compétences et expériences les plus pertinentes
-pour le besoin client suivant : {client_need}
-Réorganise les sections si nécessaire pour maximiser la pertinence."""
+            adaptation_block = (
+                "\n\nADAPTATION AU BESOIN CLIENT :\n"
+                + client_need.strip()[:3000]
+                + "\n\nSelectionne et reformule en priorite les missions et competences "
+                "qui correspondent a ce besoin. Reorganise les sections si necessaire "
+                "pour maximiser la pertinence. Ne garde que les experiences utiles."
+            )
 
-        prompt = f"""Génère un CV professionnel en HTML pour ce consultant :
+        skills_tech_str = ", ".join(skills_tech) if skills_tech else "N/A"
+        skills_sector_str = ", ".join(skills_sector) if skills_sector else "N/A"
+        missions_str = (
+            "\n\n".join(mission_blocks) if mission_blocks else "Aucune mission renseignee"
+        )
+        certs_str = "\n".join(cert_lines) if cert_lines else "Aucune"
+
+        # Photo consultant si disponible
+        photo_url = consultant.get("photo_url", "")
+        photo_block = ""
+        if photo_url:
+            photo_block = f"\nPHOTO URL : {photo_url} (a integrer en haut a droite, img circulaire 80px)"
+
+        prompt = f"""Genere un CV professionnel UNE PAGE A4 en HTML COMPLET pour ce consultant.
 
 NOM : {consultant.get("name", "N/A")}
 TITRE : {consultant.get("title", "N/A")}
-ENTREPRISE : {consultant.get("company", "N/A")}
-EXPÉRIENCE : {experiences} ans
-LOCALISATION : {consultant.get("location", "N/A")}
-COMPÉTENCES : {skills}
+EMAIL : {consultant.get("email") or (consultant.get("name", "consultant").lower().replace(" ", ".") + "@consulting.fr")}
+LINKEDIN : {consultant.get("linkedin_url") or "linkedin.com/in/" + consultant.get("name", "consultant").lower().replace(" ", "-")}
+BIO : {consultant.get("bio", "")}
+{photo_block}
+COMPETENCES TECHNIQUES : {skills_tech_str}
+EXPERTISE SECTORIELLE : {skills_sector_str}
+
+MISSIONS REALISEES :
+{missions_str}
+
 CERTIFICATIONS :
-{certifications or "Aucune"}
-BIO / PRÉSENTATION :
-{consultant.get("bio", "")}
+{certs_str}
 {adaptation_block}
 
-Génère uniquement le HTML (sans balise <html>/<head>/<body> wrapper) avec :
-- Un en-tête avec nom, titre, coordonnées fictives (email pro, LinkedIn)
-- Une section "Profil" avec la bio adaptée
-- Une section "Compétences clés" avec les skills en badges colorés
-- Une section "Expérience" (utilise le nombre d'années, invente des postes plausibles si besoin)
-- Une section "Certifications" si non vide
-- Un style CSS inline élégant et professionnel (palette sobre : bleu foncé #1a3a5c + blanc + gris clair)
-- Mise en page A4 (max-width 800px, police sans-serif)
+Genere un DOCUMENT HTML COMPLET (avec <!DOCTYPE html>, <html>, <head>, <body>) avec :
+- CSS @page pour A4 portrait, marges 1.2cm, forcer une seule page
+- Mise en page 2 colonnes : colonne gauche etroite (competences, certifications, contact), colonne droite large (profil, experiences)
+- En-tete : nom en grand (bleu #1a3a5c), titre en dessous, email et linkedin
+- Photo en haut a droite si URL fournie (img circulaire 80px)
+- Section "Profil" : bio courte adaptee
+- Section "Competences" : badges colores compacts (#e8f0fe fond, #1a3a5c texte)
+- Section "Experiences" : missions reformulees (client, contexte bref, livrables), les plus pertinentes en premier
+- Section "Certifications" si non vide
+- Police Inter ou Arial, taille 9pt corps, compact pour tenir sur UNE page A4
 
-RÈGLES :
-- Retourne UNIQUEMENT le HTML, sans markdown, sans explication
-- Pas de ```html ni de préambule
-- Le HTML doit être complet et directement intégrable dans une page web"""
+REGLES STRICTES :
+- Retourne UNIQUEMENT le HTML complet, sans markdown, sans explication, sans ```
+- Commence par <!DOCTYPE html>
+- CSS dans <style> dans <head>, pas de style inline sauf pour les badges
+- Textes en francais professionnel
+- UNE SEULE PAGE A4 PORTRAIT"""
 
         system_prompt = (
-            "Tu es un designer RH expert en création de CVs consultants haute valeur."
-            " Tu génères des CVs HTML visuellement professionnels et impactants."
+            "Tu es un designer RH expert en CVs consultants haute valeur. "
+            "Tu reformules les missions pour maximiser la pertinence au besoin client. "
+            "Tu generes des CVs HTML complets A4 visuellement professionnels tenant sur une page."
         )
 
         response = self.llm.generate(
@@ -497,10 +563,100 @@ RÈGLES :
             temperature=0.4,
         )
 
-        # Nettoyer les balises de code markdown si présentes
         cv_html = response.strip()
-        if cv_html.startswith("```"):
-            cv_html = re.sub(r"^```(?:html)?\s*", "", cv_html)
-            cv_html = re.sub(r"\s*```$", "", cv_html)
-
+        cv_html = re.sub(r"^```(?:html)?\s*", "", cv_html)
+        cv_html = re.sub(r"\s*```$", "", cv_html)
         return cv_html.strip()
+
+    def generate_cover_letter(self, consultant: Dict, job_offer: str) -> str:
+        """
+        Genere une lettre de motivation HTML complete une page A4.
+
+        Args:
+            consultant: Profil complet du consultant (name, title, bio, skills, missions...)
+            job_offer: Texte de l'offre d'emploi (libre ou copie-colle)
+
+        Returns:
+            Document HTML complet avec CSS A4, directement convertible en PDF.
+        """
+        name = consultant.get("name", "Consultant")
+        title = consultant.get("title", "")
+        email = consultant.get("email") or (name.lower().replace(" ", ".") + "@consulting.fr")
+        linkedin = consultant.get("linkedin_url") or ""
+
+        skills_tech = [
+            s.get("name", str(s)) if isinstance(s, dict) else str(s)
+            for s in (consultant.get("skills_technical") or [])
+        ]
+        skills_sector = [
+            s.get("name", str(s)) if isinstance(s, dict) else str(s)
+            for s in (consultant.get("skills_sector") or [])
+        ]
+
+        mission_highlights = []
+        for m in (consultant.get("missions") or [])[:3]:
+            if isinstance(m, dict):
+                parts = []
+                if m.get("client_name"):
+                    parts.append(m["client_name"])
+                if m.get("deliverables"):
+                    parts.append((m["deliverables"])[:150])
+                if parts:
+                    mission_highlights.append(" — ".join(parts))
+
+        skills_str = ", ".join(skills_tech[:8]) if skills_tech else "N/A"
+        sector_str = ", ".join(skills_sector[:5]) if skills_sector else "N/A"
+        missions_str = "\n".join(f"- {m}" for m in mission_highlights) if mission_highlights else ""
+
+        prompt = f"""Redige une lettre de motivation professionnelle UNE PAGE A4 en HTML COMPLET
+pour ce consultant qui postule a l'offre suivante.
+
+PROFIL DU CONSULTANT :
+Nom : {name}
+Titre : {title}
+Bio : {(consultant.get("bio") or "")[:300]}
+Competences : {skills_str}
+Secteurs : {sector_str}
+Missions marquantes :
+{missions_str}
+
+OFFRE D'EMPLOI :
+{job_offer[:3000]}
+
+Genere un DOCUMENT HTML COMPLET (<!DOCTYPE html>, <html>, <head>, <body>) avec :
+- CSS @page A4 portrait, marges 2cm, UNE SEULE PAGE
+- En-tete : nom, titre, email ({email}){", LinkedIn : " + linkedin if linkedin else ""}
+- Date du jour en haut a droite
+- Destinataire : "Madame, Monsieur," (equipe RH)
+- Corps : 3-4 paragraphes formels et percutants :
+    1. Accroche : poste vise + interet sincere pour l'entreprise/mission
+    2. Valeur ajoutee : competences et experiences les plus pertinentes pour l'offre
+    3. Adequation : preuves concretes depuis les missions (resultats chiffrables si possible)
+    4. Conclusion : disponibilite, entretien, formule de politesse
+- Signature : {name}, {title}
+- Police Inter ou Georgia, 10.5pt, neutre et professionnel
+- Couleur accent sobre : #1a3a5c pour les titres/bordures
+
+REGLES STRICTES :
+- UNIQUEMENT le HTML complet, sans markdown, sans explication, sans ```
+- Commence par <!DOCTYPE html>
+- Texte en francais formel et professionnel
+- Adapte le contenu precisement a l'offre (reprend les mots-cles de l'offre)
+- UNE SEULE PAGE A4"""
+
+        system_prompt = (
+            "Tu es un expert RH et redacteur professionnel specialise dans les lettres de motivation "
+            "pour consultants. Tu rediges des lettres percutantes, adaptees a l'offre, "
+            "en valorisant le parcours du consultant de facon convaincante."
+        )
+
+        response = self.llm.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.5,
+        )
+
+        letter_html = response.strip()
+        letter_html = re.sub(r"^```(?:html)?\s*", "", letter_html)
+        letter_html = re.sub(r"\s*```$", "", letter_html)
+        return letter_html.strip()

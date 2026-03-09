@@ -6934,7 +6934,25 @@ async def api_skills_market_add_mission(
     }
 
     mission_id = skills_market_db.add_mission(consultant_id, mission_data)
-    return {"mission_id": mission_id, "message": "Mission ajoutee"}
+    return {"mission_id": mission_id, "message": "Experience ajoutee"}
+
+
+@app.put("/api/skills-market/consultants/{consultant_id}/info")
+@limiter.limit("20/minute")
+async def api_skills_market_update_consultant_info(
+    request: Request,
+    consultant_id: int,
+):
+    """Met a jour les informations de base d'un consultant (nom, prenom, entreprise,
+    linkedin, titre, bio, theme couleurs/polices)."""
+    body = await request.json()
+    updated = skills_market_db.update_consultant_info(consultant_id, body)
+    if not updated:
+        return JSONResponse(
+            {"error": "Consultant introuvable ou aucune modification"},
+            status_code=404,
+        )
+    return {"ok": True, "message": "Profil mis a jour"}
 
 
 @app.post("/api/skills-market/consultants" "/{consultant_id}/certifications")
@@ -7145,16 +7163,22 @@ async def api_skills_market_generate_cv(
         try:
             from datetime import datetime as _dt
 
-            from utils.pdf_converter import markdown_to_pdf
+            from utils.pdf_converter import pdf_converter as _pdf_conv
 
             timestamp = _dt.now().strftime("%Y%m%d_%H%M%S")
             safe_name_cv = consultant.get("name", "consultant").replace(" ", "_")
-            pdf_path = BASE_DIR / "output" / f"cv_{safe_name_cv}_{timestamp}.pdf"
-            markdown_to_pdf(cv_html, str(pdf_path))
+            cv_dir = BASE_DIR / "static" / "cvs"
+            cv_dir.mkdir(parents=True, exist_ok=True)
+            pdf_path = cv_dir / f"cv_{safe_name_cv}_{timestamp}.pdf"
+            result = _pdf_conv.html_to_pdf(cv_html, str(pdf_path))
+            if not result:
+                return JSONResponse(
+                    {"error": "Conversion PDF indisponible (WeasyPrint non installe)"},
+                    status_code=500,
+                )
             return {
                 "format": "pdf",
-                "path": str(pdf_path.relative_to(BASE_DIR)),
-                "download_url": f"/output/{pdf_path.name}",
+                "download_url": f"/static/cvs/{pdf_path.name}",
             }
         except Exception as e:
             return JSONResponse(
@@ -7162,6 +7186,61 @@ async def api_skills_market_generate_cv(
             )
 
     return {"format": "html", "cv_html": cv_html}
+
+
+@app.post("/api/skills-market/consultants/{consultant_id}/cover-letter")
+@limiter.limit("5/minute")
+async def api_skills_market_cover_letter(
+    request: Request,
+    consultant_id: int,
+):
+    """Genere une lettre de motivation PDF/HTML a partir du profil consultant et d'une offre"""
+    body = await request.json()
+    job_offer = sanitize_text_input(body.get("job_offer", ""), max_length=5000)
+    output_format = body.get("format", "pdf").lower()
+
+    if not job_offer:
+        return JSONResponse({"error": "Champ 'job_offer' requis"}, status_code=400)
+
+    consultant = skills_market_db.get_consultant(consultant_id)
+    if not consultant:
+        return JSONResponse({"error": "Consultant non trouve"}, status_code=404)
+
+    agent = SkillsMarketAgent()
+    try:
+        letter_html = agent.generate_cover_letter(consultant, job_offer)
+    except Exception as e:
+        return JSONResponse(
+            {"error": f"Erreur generation lettre: {safe_error_message(e)}"}, status_code=500
+        )
+
+    if output_format == "pdf":
+        try:
+            from datetime import datetime as _dt
+
+            from utils.pdf_converter import pdf_converter as _pdf_conv
+
+            timestamp = _dt.now().strftime("%Y%m%d_%H%M%S")
+            safe_name = consultant.get("name", "consultant").replace(" ", "_")
+            cv_dir = BASE_DIR / "static" / "cvs"
+            cv_dir.mkdir(parents=True, exist_ok=True)
+            pdf_path = cv_dir / f"lettre_{safe_name}_{timestamp}.pdf"
+            result = _pdf_conv.html_to_pdf(letter_html, str(pdf_path))
+            if not result:
+                return JSONResponse(
+                    {"error": "Conversion PDF indisponible (WeasyPrint non installe)"},
+                    status_code=500,
+                )
+            return {
+                "format": "pdf",
+                "download_url": f"/static/cvs/{pdf_path.name}",
+            }
+        except Exception as e:
+            return JSONResponse(
+                {"error": f"Erreur export PDF: {safe_error_message(e)}"}, status_code=500
+            )
+
+    return {"format": "html", "letter_html": letter_html}
 
 
 # === E-LEARNING ADAPTATIF ===
@@ -7204,6 +7283,8 @@ def _run_course_generator(
     duration,
     document_content=None,
     mode="free",
+    interview_type="",
+    consultant_id=0,
 ):
     """Background job pour generer un cours"""
     try:
@@ -7211,6 +7292,16 @@ def _run_course_generator(
 
         def progress(step, detail):
             jobs[job_id]["steps"].append({"step": step, "detail": detail})
+
+        # Charger le profil consultant si fourni
+        consultant_profile = None
+        if consultant_id and int(consultant_id) > 0:
+            try:
+                from utils.consultant_db import ConsultantDatabase
+                cdb = ConsultantDatabase()
+                consultant_profile = cdb.get_consultant(int(consultant_id))
+            except Exception as e:
+                print(f"Erreur chargement consultant {consultant_id}: {e}")
 
         if document_content:
             result = agent.generate_course_from_document(
@@ -7229,6 +7320,8 @@ def _run_course_generator(
                 duration_hours=duration,
                 progress_callback=progress,
                 mode=mode,
+                interview_type=interview_type,
+                consultant_profile=consultant_profile,
             )
 
         if "error" in result:
@@ -7257,11 +7350,15 @@ async def api_elearning_generate_course(
     duration_hours: int = Form(3),
     document_content: str = Form(""),
     mode: str = Form("free"),
+    interview_type: str = Form(""),
+    consultant_id: int = Form(0),
+    auto_duration: str = Form("false"),
 ):
     """Lance la generation d'un cours (depuis sujet ou document)"""
     topic = sanitize_text_input(topic, max_length=1000)
     target_audience = sanitize_text_input(target_audience)
     document_content = sanitize_text_input(document_content, max_length=50000)
+    interview_type = sanitize_text_input(interview_type)
 
     if not topic and not document_content:
         return JSONResponse(
@@ -7275,6 +7372,14 @@ async def api_elearning_generate_course(
     valid_modes = ("free", "interview", "certification", "training")
     if mode not in valid_modes:
         mode = "free"
+
+    valid_interview_types = ("rh", "technique", "cas", "fit", "")
+    if interview_type not in valid_interview_types:
+        interview_type = ""
+
+    # Durée auto : passer 0 à l'agent pour qu'il la détermine lui-même
+    if auto_duration.lower() in ("true", "1", "on"):
+        duration_hours = 0
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {"status": "running", "steps": []}
@@ -7291,6 +7396,8 @@ async def api_elearning_generate_course(
             duration_hours,
             document_content or None,
             mode,
+            interview_type,
+            consultant_id,
         ),
         daemon=True,
     )
@@ -8003,6 +8110,7 @@ async def api_elearning_interview_chat(request: Request):
     role = str(body.get("role", ""))[:200]
     interviewer_name = str(body.get("interviewer_name", ""))[:200]
     interviewer_linkedin = str(body.get("interviewer_linkedin", ""))[:500]
+    interview_type = str(body.get("interview_type", ""))[:20]
 
     try:
         agent = ElearningAgent()
@@ -8012,6 +8120,7 @@ async def api_elearning_interview_chat(request: Request):
             role=role,
             interviewer_name=interviewer_name,
             interviewer_linkedin=interviewer_linkedin,
+            interview_type=interview_type,
         )
     except Exception as e:
         return JSONResponse({"error": f"Erreur entretien : {str(e)}"}, status_code=500)
@@ -8029,7 +8138,8 @@ async def api_elearning_interview_analyze(request: Request):
       {
         "messages": [{"role": "user"|"assistant", "content": "..."}],
         "topic": "Python",
-        "role": "Data Engineer"
+        "role": "Data Engineer",
+        "interview_type": "rh|technique|cas|fit"
       }
 
     Retourne {overall_score, grade, strengths, improvements, detailed_feedback, ...}
@@ -8047,6 +8157,7 @@ async def api_elearning_interview_analyze(request: Request):
     role = str(body.get("role", ""))[:200]
     interviewer_name = str(body.get("interviewer_name", ""))[:200]
     interviewer_linkedin = str(body.get("interviewer_linkedin", ""))[:500]
+    interview_type = str(body.get("interview_type", ""))[:20]
 
     try:
         agent = ElearningAgent()
@@ -8056,6 +8167,7 @@ async def api_elearning_interview_analyze(request: Request):
             role=role,
             interviewer_name=interviewer_name,
             interviewer_linkedin=interviewer_linkedin,
+            interview_type=interview_type,
         )
     except Exception as e:
         return JSONResponse({"error": f"Erreur analyse : {str(e)}"}, status_code=500)
