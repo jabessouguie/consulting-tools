@@ -75,6 +75,9 @@ cache/
 # Temporary sandbox files
 temp/
 
+# Rôles internes (documentation organisationnelle)
+roles/
+
 # SSL certificates and private keys
 *.pem
 *.key
