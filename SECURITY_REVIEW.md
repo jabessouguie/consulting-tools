@@ -257,6 +257,31 @@ self.consultant_info = ConsultantConfig.get()
    - Bloque les requêtes POST/PUT/DELETE de sources non autorisées ✅
    - Pas besoin de tokens dans les templates (plus simple) ✅
 
+### Phase 5 : Intelligent Proposal & Privacy Hardening - TERMINÉE ✅
+
+10. ✅ **Anonymisation PII robuste** - FAIT
+    - Module `utils/anonymizer.py` amélioré avec regex spécifiques (FR) ✅
+    - Intégration dans `LLMClient` avec mode privacy global ✅
+    - `ProposalGeneratorAgent` (adapt_cvs, generate_slides) maintenant protégé par défaut ✅
+    - Tests unitaires automatisés (`tests/test_anonymizer.py`) ✅
+
+11. ✅ **Intégration matching sémantique sécurisé** - FAIT
+    - `TenderScoutAgent` utilise les capacités de matching pour scorer les opportunités ✅
+    - Protection des données consultant lors de l'analyse via l'anonymiseur ✅
+    - Affichage sécurisé du score dans le frontend (tenderscout.html) ✅
+
+---
+
+## 🎯 CRITÈRES DE SUCCÈS (MAJ Phase 5)
+
+### Sécurité
+- [x] PII masqués avant envoi aux LLMs (Proposals, CVs, Tenders) ✅
+- [x] Logs sécurisés sans données personnelles ✅
+- [x] Audit de sécurité automatisé (`utils/security_audit.py`) passé avec succès ✅
+
+---
+   - Pas besoin de tokens dans les templates (plus simple) ✅
+
 5. ✅ **Sanitization des inputs** - FAIT (Phase 1)
    - Module `utils/validation.py` créé ✅
    - Fonction `sanitize_input()` ✅
