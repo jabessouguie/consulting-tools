@@ -781,15 +781,19 @@
                 </div>
                 <div class="el-form-group" id="gen-audience-group">
                     <label>Public cible</label>
-                    <select id="gen-audience" class="el-select">
+                    <select id="gen-audience" class="el-select" onchange="toggleCustomAudience(this)">
                         <option value="Debutants sans experience">Debutants</option>
                         <option value="Professionnels en reconversion">Reconversion</option>
                         <option value="Etudiants niveau universitaire">Etudiants</option>
                         <option value="Professionnels techniques">Professionnels tech</option>
                         <option value="Managers et decideurs">Managers</option>
+                        <option value="custom">Public cible personnalisé...</option>
                     </select>
+                    <input type="text" id="gen-audience-custom" class="el-input"
+                        style="display:none; margin-top:0.5rem;" placeholder="Précisez le public cible...">
                     <div id="consultant-select-group" style="display:none; margin-top:0.5rem;">
-                        <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:400; cursor:pointer; margin-bottom:0.4rem;">
+                        <label
+                            style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:400; cursor:pointer; margin-bottom:0.4rem;">
                             <input type="checkbox" id="gen-use-consultant" onchange="toggleConsultantSelect()">
                             Personnaliser pour un consultant du Skills Market
                         </label>
@@ -798,19 +802,25 @@
                         </select>
                     </div>
                 </div>
-                <div id="interview-type-group" style="display:none; grid-column: 1 / -1; background:#f8fafc; padding:0.75rem 1rem; border-radius:10px; border:1px solid #e5e7eb;">
-                    <label style="font-size:0.85rem; font-weight:600; margin-bottom:0.5rem; display:block;">Type d'entretien</label>
+                <div id="interview-type-group"
+                    style="display:none; grid-column: 1 / -1; background:#f8fafc; padding:0.75rem 1rem; border-radius:10px; border:1px solid #e5e7eb;">
+                    <label style="font-size:0.85rem; font-weight:600; margin-bottom:0.5rem; display:block;">Type
+                        d'entretien</label>
                     <div class="radio-group">
-                        <label><input type="radio" name="interview-type" value="rh" checked><span>Entretien RH</span></label>
-                        <label><input type="radio" name="interview-type" value="technique"><span>Entretien technique</span></label>
+                        <label><input type="radio" name="interview-type" value="rh" checked><span>Entretien
+                                RH</span></label>
+                        <label><input type="radio" name="interview-type" value="technique"><span>Entretien
+                                technique</span></label>
                         <label><input type="radio" name="interview-type" value="cas"><span>Etude de cas</span></label>
-                        <label><input type="radio" name="interview-type" value="fit"><span>Entretien de fit</span></label>
+                        <label><input type="radio" name="interview-type" value="fit"><span>Entretien de
+                                fit</span></label>
                     </div>
                 </div>
                 <div class="el-form-group">
                     <label style="display:flex; align-items:center; justify-content:space-between;">
                         <span>Duree (heures)</span>
-                        <label style="font-size:0.8rem; font-weight:400; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
+                        <label
+                            style="font-size:0.8rem; font-weight:400; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
                             <input type="checkbox" id="gen-auto-duration" onchange="toggleAutoDuration()">
                             L'IA choisit
                         </label>
@@ -1196,6 +1206,17 @@
             }
         }
 
+        // Handle custom audience visibility when switching modes
+        const audienceSel = document.getElementById('gen-audience');
+        const customAudienceInput = document.getElementById('gen-audience-custom');
+        if (mode === 'certification') {
+            customAudienceInput.style.display = 'none';
+        } else {
+            if (audienceSel.value === 'custom') {
+                customAudienceInput.style.display = '';
+            }
+        }
+
         // Show interviewer fields + interview type + consultant selector if in interview mode
         const interviewerGroup = document.getElementById('interviewer-group');
         const interviewTypeGroup = document.getElementById('interview-type-group');
@@ -1292,6 +1313,16 @@
         document.getElementById('gen-file-clear').style.display = 'none';
     }
 
+    function toggleCustomAudience(selectElement) {
+        const customInput = document.getElementById('gen-audience-custom');
+        if (selectElement.value === 'custom') {
+            customInput.style.display = '';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+        }
+    }
+
     // ==================
     // COURSE GENERATION
     // ==================
@@ -1300,7 +1331,11 @@
         const topic = document.getElementById('gen-topic').value.trim();
         if (!topic && !elDocumentContent) return alert('Veuillez entrer un sujet ou importer un document');
 
-        const audience = document.getElementById('gen-audience').value;
+        let audience = document.getElementById('gen-audience').value;
+        if (audience === 'custom') {
+            audience = document.getElementById('gen-audience-custom').value.trim();
+            if (!audience) return alert('Veuillez preciser le public cible personnalisé');
+        }
         const duration = document.getElementById('gen-duration').value;
         const difficulty = document.querySelector('input[name="gen-difficulty"]:checked').value;
 

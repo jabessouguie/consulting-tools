@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup
 
+from agents.skills_market import SkillsMarketAgent
 from utils.llm_client import LLMClient
 
 
@@ -35,6 +36,7 @@ _ANALYSIS_SCHEMA: Dict[str, Any] = {
     "risques": ["string — risque identifié"],
     "atouts": ["string — atout / point fort"],
     "recommandation": "string — recommandation finale",
+    "score": "integer — score de pertinence par rapport au profil du consultant (0-100)",
 }
 
 _ANALYSIS_SYSTEM_PROMPT = (
@@ -70,6 +72,7 @@ class TenderScoutAgent:
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.llm = LLMClient(api_key=api_key, model=model, provider="gemini")
+        self.skills_market = SkillsMarketAgent()
 
     # ------------------------------------------------------------------
     # Scraping BOAMP
@@ -299,7 +302,8 @@ class TenderScoutAgent:
             f"Date de publication : {tender.get('date_publication', 'N/A')}\n"
             f"Date limite : {tender.get('date_limite', 'N/A')}\n"
             f"Description : {tender.get('description', 'N/A')}\n\n"
-            "Analyse cet appel d'offres et fournis ta recommandation."
+            "Analyse cet appel d'offres et fournis ta recommandation. "
+            "Évalue également la pertinence par rapport au profil de notre cabinet (score)."
         )
 
         try:
