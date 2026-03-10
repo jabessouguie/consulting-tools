@@ -324,7 +324,9 @@ IMPORTANT:
 - Mets en avant les technologies et methodologies mentionnees dans l'appel d'offre
 - Maximum 5 experiences et 6 competences par CV"""
 
-        response = self.llm_client.generate(prompt=prompt, temperature=0.5, max_tokens=3000)
+        response = self.llm_client.generate(
+            prompt=prompt, temperature=0.5, max_tokens=3000, anonymize=True
+        )
 
         # Parser le JSON
         try:
@@ -414,8 +416,9 @@ Tu generes une proposition commerciale structuree en slides PowerPoint.
 IMPORTANT: Genere du contenu concret et professionnel, sans majuscules inutiles ni emojis."""
 
         # Resumer les informations pour le contexte
-        context_summary = """Client: {tender_analysis.get('client_name', 'N/A')}
+        context_summary = f"""Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
+Match Score: {tender_analysis.get('score', 'N/A')}/100
 Objectifs: {', '.join(tender_analysis.get('objectives', [])[:4])}
 Mots-cles: {', '.join(tender_analysis.get('keywords', [])[:6])}
 Exigences techniques: {', '.join(tender_analysis.get('requirements', {}).get('technical', [])[:3])}"""
@@ -464,7 +467,7 @@ REGLES DE DESIGN:
 Exemple de structure VISUELLE (pas de slides section, debut direct par diagramme):
 
 [
-  {{"type":"cover","client":"{tender_analysis.get('client_name', '')}","project":"{tender_analysis.get('project_title', '')}","date":"{datetime.now().strftime('%d/%m/%Y')}"}},
+  {{"type":"cover","client":f"{tender_analysis.get('client_name', '')}","project":f"{tender_analysis.get('project_title', '')}","date":f"{datetime.now().strftime('%d/%m/%Y')}","match_score":f"{tender_analysis.get('score', '')}"}},
   {{"type":"diagram","title":"Contexte du projet","diagram_type":"pyramid","elements":["Vision strategique","Objectifs metier","Actions prioritaires"],"description":"Pyramide des enjeux"}},
   {{"type":"content","title":"Nos objectifs","bullets":["Objectif 1 (court)","Objectif 2 (court)","Objectif 3 (court)"]}},
   {{"type":"diagram","title":"Notre demarche","diagram_type":"flow","elements":["Cadrage","Conception","Pilote","Deploiement"],"description":"Methodologie en 4 phases"}},
@@ -486,7 +489,11 @@ IMPORTANT - STRUCTURE VISUELLE:
 - Chaque concept = 1 diagramme si possible"""
 
         response = self.llm_client.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=0.6, max_tokens=8000
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.6,
+            max_tokens=8000,
+            anonymize=True,
         )
 
         # Parser le JSON
