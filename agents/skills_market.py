@@ -658,5 +658,82 @@ REGLES STRICTES :
 
         letter_html = response.strip()
         letter_html = re.sub(r"^```(?:html)?\s*", "", letter_html)
+        letter_html = re.sub(r"^```(?:html)?\s*", "", letter_html)
         letter_html = re.sub(r"\s*```$", "", letter_html)
         return letter_html.strip()
+
+    def match_consultants_to_mission(
+        self,
+        mission_description: str,
+        consultants: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Match consultants to a mission description using semantic analysis.
+
+        Args:
+            mission_description: Description of the mission or tender.
+            consultants: List of consultant profiles.
+
+        Returns:
+            List of matches with scores and justifications.
+        """
+        if not consultants or not mission_description:
+            return []
+
+        # Prepare consultant summaries for context
+        summaries = []
+        for c in consultants:
+            skills_tech = [s.get("name", s) if isinstance(s, dict) else s for s in c.get("skills_technical", [])]
+            skills_sector = [s.get("name", s) if isinstance(s, dict) else s for s in c.get("skills_sector", [])]
+            
+            summary = (
+                f"ID: {c.get('id')} | {c.get('name')} | {c.get('title')}\n"
+                f"Tech Skills: {', '.join(skills_tech[:10])}\n"
+                f"Sector Skills: {', '.join(skills_sector[:5])}"
+            )
+            summaries.append(summary)
+
+        prompt = f"""Analyse le besoin client suivant et selectionne les consultants les plus pertinents.
+
+BESOIN CLIENT:
+{mission_description}
+
+CONSULTANTS DISPONIBLES:
+{chr(10).join(summaries)}
+
+Retourne un JSON avec cette structure:
+{{
+    "matches": [
+        {{
+            "consultant_id": "ID du consultant",
+            "matching_score": 0-100,
+            "justification": "Explique pourquoi ce consultant est pertinent pour cette mission spécifique (2-3 phrases)",
+            "relevant_skills": ["competence1", "competence2"]
+        }}
+    ]
+}}
+
+REGLES:
+- Ordonne les résultats par score décroissant.
+- Ne retourne que les profils ayant un score > 40.
+- Limite à 5 résultats maximum.
+- Retourne UNIQUEMENT le JSON."""
+
+        system_prompt = (
+            "Tu es un expert en staffing stratégique."
+            " Ton rôle est de trouver l'adéquation parfaite entre un consultant et une mission complexe."
+        )
+
+        try:
+            response = self.llm.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+            )
+            result = self._parse_json_response(response)
+            if result and "matches" in result:
+                return result["matches"]
+        except Exception as e:
+            print(f"Erreur semantic matching: {e}")
+
+        return []

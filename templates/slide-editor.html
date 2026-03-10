@@ -409,7 +409,7 @@
                         <label for="ai-file"
                             class="w-full bg-gray-800 border border-gray-700 border-dashed rounded-lg px-3 py-2 text-xs text-gray-400 hover:border-wv-corail hover:text-gray-300 transition text-left flex items-center gap-2 cursor-pointer">
                             <input id="ai-file" type="file" accept=".txt,.md,.pdf,.docx,.doc,.pptx,.html"
-                                onchange="handleFileUpload(this)" class="sr-only">
+                                onchange="handleFileUpload(this)" class="sr-only" multiple>
                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -1152,55 +1152,69 @@
         let uploadedImages = [];
 
         async function handleFileUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
+            const files = Array.from(input.files);
+            if (files.length === 0) return;
 
-            const ext = file.name.split('.').pop().toLowerCase();
             const fileInfo = document.getElementById('file-info');
             const fileInfoText = document.getElementById('file-info-text');
             const fileLabel = document.getElementById('file-label');
+
+            uploadedDocumentText = '';
             uploadedImages = [];
 
-            // For text files, read client-side
-            if (['txt', 'md'].includes(ext)) {
-                const text = await file.text();
-                uploadedDocumentText = text;
-                fileLabel.textContent = file.name;
-                fileInfoText.textContent = `${file.name} (${(text.length / 1000).toFixed(1)}k car.)`;
-                fileInfo.classList.remove('hidden');
-                return;
+            fileLabel.textContent = `Traitement de ${files.length} fichier(s)...`;
+            let totalLength = 0;
+            let fileNames = [];
+            let imagesCount = 0;
+
+            for (const file of files) {
+                const ext = file.name.split('.').pop().toLowerCase();
+
+                if (['txt', 'md'].includes(ext)) {
+                    const text = await file.text();
+                    uploadedDocumentText += text + "\n\n";
+                    totalLength += text.length;
+                    fileNames.push(file.name);
+                } else {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const resp = await fetch('/api/slide-editor/parse-document', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (resp.status === 401) {
+                            alert('Session expiree. Reconnectez-vous.');
+                            window.location.href = '/login';
+                            return;
+                        }
+                        const data = await resp.json();
+                        if (data.error || data.detail) {
+                            alert('Erreur avec ' + file.name + ': ' + (data.error || data.detail));
+                            continue;
+                        }
+                        uploadedDocumentText += data.text + "\n\n";
+                        if (data.images) {
+                            uploadedImages = uploadedImages.concat(data.images);
+                            imagesCount += data.image_count || data.images.length;
+                        }
+                        totalLength += data.length || data.text.length;
+                        fileNames.push(file.name);
+                    } catch (e) {
+                        console.error('File parse error for ' + file.name + ':', e);
+                        alert('Erreur lors du parsing de ' + file.name + ': ' + e.message);
+                    }
+                }
             }
 
-            // For PDF/DOCX/PPTX/HTML, upload to server for parsing
-            fileLabel.textContent = 'Extraction en cours...';
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                const resp = await fetch('/api/slide-editor/parse-document', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (resp.status === 401) {
-                    alert('Session expiree. Reconnectez-vous.');
-                    window.location.href = '/login';
-                    return;
-                }
-                const data = await resp.json();
-                if (data.error || data.detail) {
-                    alert('Erreur: ' + (data.error || data.detail));
-                    fileLabel.textContent = 'Importer .txt .md .pdf .docx .pptx .html';
-                    return;
-                }
-                uploadedDocumentText = data.text;
-                uploadedImages = data.images || [];
-                const imgInfo = data.image_count ? ` + ${data.image_count} images` : '';
-                fileLabel.textContent = file.name;
-                fileInfoText.textContent = `${data.filename} (${(data.length / 1000).toFixed(1)}k car.${imgInfo})`;
+            if (fileNames.length > 0) {
+                const imgInfo = imagesCount > 0 ? ` + ${imagesCount} images` : '';
+                fileLabel.textContent = fileNames.length > 1 ? `${fileNames.length} fichiers importés` : fileNames[0];
+                fileInfoText.textContent = `${fileNames.length > 2 ? fileNames.slice(0, 2).join(', ') + '...' : fileNames.join(', ')} (${(totalLength / 1000).toFixed(1)}k car.${imgInfo})`;
                 fileInfo.classList.remove('hidden');
-            } catch (e) {
-                console.error('File parse error:', e);
-                alert('Erreur lors du parsing du fichier: ' + e.message);
+            } else {
                 fileLabel.textContent = 'Importer .txt .md .pdf .docx .pptx .html';
+                fileInfo.classList.add('hidden');
             }
         }
 
