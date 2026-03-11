@@ -31,7 +31,12 @@
                 <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                 <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             </select>
-            <a href="/logout" class="nav-logout" title="Deconnexion">Deconnexion</a>
+            <div class="nav-user">
+                {% if request.state and request.state.user %}
+                <span class="nav-username">{{ request.state.user }}</span>
+                {% endif %}
+                <a href="/logout" class="nav-logout" title="Deconnexion">Deconnexion</a>
+            </div>
         </div>
     </div>
 </nav>

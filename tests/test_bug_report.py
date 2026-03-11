@@ -119,11 +119,22 @@ class TestBugReportTemplate:
     """Tests for bug report UI elements in base.html"""
 
     def _read_template(self):
-        template_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates", "base.html"
+        """Return combined content of base.html and its component includes."""
+        templates_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates"
         )
-        with open(template_path, "r", encoding="utf-8") as f:
-            return f.read()
+        parts = []
+        for rel_path in [
+            "base.html",
+            "_components/navbar.html",
+            "_components/footer.html",
+            "_components/bug_report_modal.html",
+        ]:
+            path = os.path.join(templates_dir, rel_path)
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    parts.append(f.read())
+        return "\n".join(parts)
 
     def test_bug_report_button_exists(self):
         """Test that bug report button is in the footer"""

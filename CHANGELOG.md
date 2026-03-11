@@ -1,5 +1,35 @@
 # Changelog - Consulting Tools Agents
 
+## [2026-03-11] - Phase 6 : Authentification activée
+
+### ✅ Sécurisation de l'accès (Phase 6)
+
+**Fonctionnalité :** Toutes les routes de l'application sont désormais protégées par authentification.
+
+**Comportement :**
+- Accès sans login → redirection automatique vers `/login` (pages HTML) ou réponse `401` (API)
+- Login via `/login` avec les credentials définis dans `.env` (`AUTH_USERNAME` / `AUTH_PASSWORD`)
+- Logout via `/logout` (lien dans la navbar)
+- Routes publiques : `/login`, `/static`, `/auth/`, `/favicon.ico`
+- Nom de l'utilisateur connecté affiché dans la navbar
+
+**Changements techniques :**
+- `app.py` : activation de `AuthMiddleware` + `request.state.user` pour templates
+- `templates/_components/navbar.html` : affichage du username connecté
+- `tests/conftest.py` : fixture `mock_auth_for_tests` (autouse) pour les tests d'intégration
+- `tests/test_auth_middleware.py` : 14 nouveaux tests de middleware (public paths, auth, login/logout)
+- `tests/test_bug_report.py` : correction lecture template après refactoring composants (Phase 5)
+- `.env.example` : documentation des variables d'authentification
+
+**Configuration requise** (dans `.env`) :
+```
+AUTH_USERNAME=admin
+AUTH_PASSWORD=votre_mot_de_passe
+SESSION_SECRET=<python3 -c "import secrets; print(secrets.token_urlsafe(32))">
+```
+
+---
+
 ## [2026-02-12] - Nouvelles fonctionnalités
 
 ### ✅ 1. Agent de Commentaires LinkedIn
