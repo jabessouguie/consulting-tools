@@ -176,20 +176,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Routes publiques (pas besoin d'auth)
-        public_paths = ["/login", "/static"]
+        public_paths = ["/login", "/static", "/auth/", "/favicon.ico"]
 
         # Si la route est publique, passer
         if any(request.url.path.startswith(path) for path in public_paths):
             return await call_next(request)
 
         # Vérifier l'authentification
-        if not get_current_user(request):
+        user = get_current_user(request)
+        if not user:
             # Si c'est une requête API, renvoyer 401
             if request.url.path.startswith("/api/"):
                 return JSONResponse({"detail": "Non authentifié"}, status_code=401)
             # Sinon, rediriger vers /login
             return RedirectResponse(url="/login", status_code=302)
 
+        # Stocker l'utilisateur dans request.state pour les templates
+        request.state.user = user
         return await call_next(request)
 
 
@@ -197,7 +200,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # L'ordre d'ajout est inversé : le dernier ajouté s'exécute en premier
 # Protection CSRF (origin checking)
 app.add_middleware(CSRFProtectionMiddleware)
-# app.add_middleware(AuthMiddleware)  # DESACTIVE - Pas de login requis
+app.add_middleware(AuthMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=get_session_secret())  # S'exécute en premier
 
 # Security utilities moved to routers/shared.py
