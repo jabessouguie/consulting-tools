@@ -34,6 +34,12 @@ except Exception:
     CONSULTANT_NAME = "Consultant"
     COMPANY_NAME = "Consulting Tools"
 
+def send_sse(event: str, data: dict) -> str:
+    """Formate un message SSE (Server-Sent Events)"""
+    import json
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
 def safe_error_message(error: Exception, context: str = "") -> str:
     from utils.validation import sanitize_error_message
     error_msg = str(error)
