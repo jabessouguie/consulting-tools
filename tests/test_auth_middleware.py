@@ -36,7 +36,8 @@ class TestAuthMiddlewarePublicPaths:
 
     def test_login_page_is_public(self, sync_client):
         """GET /login accessible without auth."""
-        with patch("app.get_current_user", return_value=None):
+        with patch("app.get_current_user", return_value=None), \
+             patch("routers.auth.get_current_user", return_value=None):
             resp = sync_client.get("/login")
         assert resp.status_code == 200
 
@@ -111,7 +112,8 @@ class TestLoginLogoutFlow:
 
     def test_login_page_shows_form_when_not_logged_in(self, sync_client):
         """GET /login returns login form when not authenticated."""
-        with patch("app.get_current_user", return_value=None):
+        with patch("app.get_current_user", return_value=None), \
+             patch("routers.auth.get_current_user", return_value=None):
             resp = sync_client.get("/login")
         assert resp.status_code == 200
         assert "Se connecter" in resp.text
@@ -119,7 +121,7 @@ class TestLoginLogoutFlow:
     def test_login_post_with_wrong_credentials_returns_401(self, sync_client):
         """POST /login with wrong credentials → 401."""
         with patch("app.get_current_user", return_value=None):
-            with patch("app.authenticate_user", return_value=False):
+            with patch("routers.auth.authenticate_user", return_value=False):
                 resp = sync_client.post(
                     "/login",
                     data={"username": "bad", "password": "wrong"},
@@ -130,7 +132,7 @@ class TestLoginLogoutFlow:
     def test_login_post_with_correct_credentials_returns_success(self, sync_client):
         """POST /login with correct credentials → success JSON."""
         with patch("app.get_current_user", return_value=None):
-            with patch("app.authenticate_user", return_value=True):
+            with patch("routers.auth.authenticate_user", return_value=True):
                 resp = sync_client.post(
                     "/login",
                     data={"username": "admin", "password": "correct"},

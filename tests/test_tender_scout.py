@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 with (
     patch("utils.llm_client.LLMClient.__init__", return_value=None),
     patch("agents.tender_scout_agent.LLMClient"),
-    patch("app.get_consultant_info", return_value={"name": "Test Consultant"}),
+    patch("routers.shared.get_consultant_info", return_value={"name": "Test Consultant"}),
 ):
     from app import app
 
@@ -690,7 +690,7 @@ class TestTenderScoutEndpoints:
         assert "error_msg" in resp.text
 
     def test_stream_done(self):
-        from app import jobs
+        from routers.shared import jobs
 
         job_id = "ts_test1"
         jobs[job_id] = {
@@ -708,7 +708,7 @@ class TestTenderScoutEndpoints:
             del jobs[job_id]
 
     def test_stream_error(self):
-        from app import jobs
+        from routers.shared import jobs
 
         job_id = "ts_test_err"
         jobs[job_id] = {
