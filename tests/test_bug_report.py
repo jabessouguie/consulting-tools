@@ -28,7 +28,7 @@ class TestBugReportAPI:
     @pytest.fixture
     def bug_reports_file(self, tmp_path):
         """Use a temp file for bug reports"""
-        import app as app_module
+        import routers.document_editor as app_module
 
         original = app_module.BUG_REPORTS_FILE
         app_module.BUG_REPORTS_FILE = tmp_path / "bug_reports.json"

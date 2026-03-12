@@ -17,5 +17,6 @@ def mock_auth_for_tests():
     The inner patch takes precedence over this autouse fixture.
     """
     with patch("app.get_current_user", return_value="test_admin"), \
-         patch("routers.meeting_capture.get_current_user", return_value="test_admin"):
+         patch("routers.meeting_capture.get_current_user", return_value="test_admin"), \
+         patch("routers.tenderscout.get_current_user", return_value="test_admin"):
         yield
