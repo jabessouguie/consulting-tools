@@ -569,7 +569,8 @@ class TestMeetingCaptureStream:
         assert "error_msg" in resp.text
 
     def test_stream_done_job(self):
-        from app import app, jobs
+        from app import app
+        from routers.shared import jobs
         job_id = "test_done"
         jobs[job_id] = {
             "type": "meeting-capture",
@@ -588,7 +589,8 @@ class TestMeetingCaptureStream:
         jobs.pop(job_id, None)
 
     def test_stream_error_job(self):
-        from app import app, jobs
+        from app import app
+        from routers.shared import jobs
         job_id = "test_err"
         jobs[job_id] = {
             "type": "meeting-capture",

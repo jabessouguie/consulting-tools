@@ -18,6 +18,7 @@ from routers.shared import (
     safe_error_message
 )
 from agents.skills_market import SkillsMarketAgent
+from utils.auth import get_current_user
 from utils.validation import sanitize_text_input
 
 router = APIRouter()
@@ -519,3 +520,37 @@ async def api_skills_market_cover_letter(request: Request, consultant_id: int):
         except Exception as e:
             return JSONResponse({"error": f"Erreur export PDF: {safe_error_message(e)}"}, status_code=500)
     return {"format": "html", "letter_html": letter_html}
+
+
+@router.post("/api/skills-market/search")
+@limiter.limit("20/minute")
+async def api_skills_market_search(request: Request):
+    """Recherche de consultants en langage naturel (NLSearch via LLM)"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"detail": "Non authentifié"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"detail": "JSON invalide"}, status_code=400)
+    query = sanitize_text_input(body.get("query", ""), max_length=500)
+    if not query:
+        return JSONResponse({"detail": "query requis"}, status_code=400)
+    consultants = skills_market_db.get_all_consultants()
+    agent = SkillsMarketAgent()
+    try:
+        nl_results = agent.natural_language_search(query, consultants)
+    except Exception as e:
+        return JSONResponse({"detail": safe_error_message(e)}, status_code=500)
+    # Enrich each result with full consultant data
+    consultant_map = {c["id"]: c for c in consultants if "id" in c}
+    results = []
+    for item in nl_results:
+        cid = item.get("id")
+        consultant = consultant_map.get(cid, {})
+        results.append({
+            **consultant,
+            "score": item.get("score"),
+            "explanation": item.get("explanation"),
+        })
+    return JSONResponse({"results": results})
