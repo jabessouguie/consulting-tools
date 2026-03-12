@@ -98,6 +98,8 @@ from routers.slide_editor import router as slide_editor_router
 from routers.document_editor import router as document_editor_router
 from routers.elearning import router as elearning_router
 from routers.tenderscout import router as tenderscout_router
+from routers.settings import router as settings_router
+from routers.microsoft import router as microsoft_router
 
 # Charger l'environnement
 BASE_DIR = Path(__file__).parent
@@ -142,6 +144,8 @@ app.include_router(slide_editor_router)
 app.include_router(document_editor_router)
 app.include_router(elearning_router)
 app.include_router(tenderscout_router)
+app.include_router(settings_router)
+app.include_router(microsoft_router)
 
 
 # === CSRF PROTECTION MIDDLEWARE ===

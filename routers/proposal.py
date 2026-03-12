@@ -1486,3 +1486,27 @@ Société: {COMPANY_NAME}
 
         traceback.print_exc()
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)
+
+
+@router.post("/api/proposal/export-word")
+async def export_proposal_word(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON invalide"}, status_code=400)
+    content = body.get("content", "").strip()
+    if not content:
+        return JSONResponse({"error": "content requis"}, status_code=400)
+    title = body.get("title", "Proposition")
+    import tempfile as _tempfile
+    tmp_path = _tempfile.mktemp(suffix=".docx")
+    try:
+        from utils.word_exporter import export_to_word
+        out = export_to_word({"sections": [{"heading": "", "body": content}]}, tmp_path, title=title)
+        return FileResponse(
+            out or tmp_path,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename="proposition.docx",
+        )
+    except Exception as exc:
+        return JSONResponse({"error": safe_error_message(exc)}, status_code=500)

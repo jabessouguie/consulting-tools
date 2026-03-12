@@ -72,7 +72,7 @@ def check_env_file() -> Dict[str, any]:
         results["issues"].append("ANTHROPIC_API_KEY non configurée")
         print(f"  {YELLOW}⚠{RESET}  ANTHROPIC_API_KEY utilise encore la valeur par défaut")
 
-    if "consultingtools2026" in env_content:
+    if "consultingtools2026" in env_content.lower().replace(" ", ""):
         results["issues"].append("Mot de passe par défaut utilisé")
         print(f"  {YELLOW}⚠{RESET}  AUTH_PASSWORD utilise le mot de passe par défaut")
 
