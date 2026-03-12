@@ -44,6 +44,8 @@ from routers.tenderscout import router as tenderscout_router
 from routers.settings import router as settings_router
 from routers.microsoft import router as microsoft_router
 from routers.analytics import router as analytics_router
+from routers.presentation_script import router as presentation_script_router
+from routers.doc_to_presentation import router as doc_to_presentation_router
 
 # Charger l'environnement
 BASE_DIR = Path(__file__).parent
@@ -89,6 +91,8 @@ app.include_router(tenderscout_router)
 app.include_router(settings_router)
 app.include_router(microsoft_router)
 app.include_router(analytics_router)
+app.include_router(presentation_script_router)
+app.include_router(doc_to_presentation_router)
 
 
 # === CSRF PROTECTION MIDDLEWARE ===
