@@ -250,3 +250,44 @@ async def api_meeting_capture_gmail_draft(request: Request):
         return JSONResponse({"detail": str(exc)}, status_code=500)
     except Exception as exc:
         return JSONResponse({"detail": safe_error_message(exc)}, status_code=500)
+
+
+@router.post("/api/meeting-capture/export-word")
+async def export_meeting_word(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON invalide"}, status_code=400)
+    minutes = body.get("minutes", "").strip()
+    if not minutes:
+        return JSONResponse({"error": "minutes requis"}, status_code=400)
+    title = body.get("title", "Compte Rendu")
+    # Parse markdown ## sections
+    sections = []
+    current_heading = ""
+    current_lines: list = []
+    for line in minutes.splitlines():
+        if line.startswith("## "):
+            if current_lines or current_heading:
+                sections.append({"heading": current_heading, "body": "\n".join(current_lines).strip()})
+            current_heading = line[3:].strip()
+            current_lines = []
+        else:
+            current_lines.append(line)
+    if current_lines or current_heading:
+        sections.append({"heading": current_heading, "body": "\n".join(current_lines).strip()})
+    if not sections:
+        sections = [{"heading": "", "body": minutes}]
+    import tempfile as _tempfile
+    tmp_path = _tempfile.mktemp(suffix=".docx")
+    try:
+        from utils.word_exporter import export_to_word
+        out = export_to_word({"sections": sections}, tmp_path, title=title)
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            out or tmp_path,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename="compte_rendu.docx",
+        )
+    except Exception as exc:
+        return JSONResponse({"error": safe_error_message(exc)}, status_code=500)
