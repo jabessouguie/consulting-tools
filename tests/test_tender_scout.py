@@ -602,13 +602,13 @@ class TestTenderScoutEndpoints:
     # ── Page HTML ─────────────────────────────────────────────
 
     def test_page_route(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.get("/tenderscout")
         assert resp.status_code == 200
         assert "TenderScout" in resp.text
 
     def test_page_route_redirects_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.get("/tenderscout", follow_redirects=False)
         assert resp.status_code in (302, 307)
 
@@ -616,8 +616,8 @@ class TestTenderScoutEndpoints:
 
     def test_scan_ok(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app._run_tender_scout"),
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout._run_tender_scout"),
         ):
             resp = client.post(
                 "/api/tenderscout/scan",
@@ -628,7 +628,7 @@ class TestTenderScoutEndpoints:
         assert "job_id" in resp.json()
 
     def test_scan_empty_keywords(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": [], "sources": ["boamp"]},
@@ -637,7 +637,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_scan_whitespace_keywords_only(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["  ", ""], "sources": ["boamp"]},
@@ -646,7 +646,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_scan_invalid_source(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["test"], "sources": ["invalid_source"]},
@@ -656,7 +656,7 @@ class TestTenderScoutEndpoints:
         assert "invalides" in resp.json()["detail"]
 
     def test_scan_missing_sources(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["test"]},
@@ -665,7 +665,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_scan_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["data"], "sources": ["boamp"]},
@@ -674,7 +674,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 401
 
     def test_scan_invalid_json(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 content=b"not json",
@@ -729,8 +729,8 @@ class TestTenderScoutEndpoints:
 
     def test_list_tenders(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
         ):
             MockDB.return_value.get_tenders.return_value = [dict(TENDER_DATA)]
             resp = client.get("/api/tenderscout/tenders")
@@ -742,8 +742,8 @@ class TestTenderScoutEndpoints:
 
     def test_list_tenders_with_filters(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
         ):
             MockDB.return_value.get_tenders.return_value = []
             resp = client.get(
@@ -756,7 +756,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 200
 
     def test_list_tenders_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.get("/api/tenderscout/tenders")
         assert resp.status_code == 401
 
@@ -767,9 +767,9 @@ class TestTenderScoutEndpoints:
         fake_xlsx.write_bytes(b"PK")  # Fake zip header
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.datetime") as mock_dt,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.datetime") as mock_dt,
         ):
             mock_dt.now.return_value.strftime.return_value = "20240301_120000"
             MockDB.return_value.export_to_excel.side_effect = lambda p: Path(p).write_bytes(b"PK")
@@ -778,7 +778,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 200
 
     def test_export_excel_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.get("/api/tenderscout/export")
         assert resp.status_code == 401
 
@@ -789,9 +789,9 @@ class TestTenderScoutEndpoints:
         mock_draft = {"id": "draft_abc123", "message_id": "msg_xyz"}
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             go_tender = {**TENDER_DATA, "decision": "GO", "score": 80, "analyse": None}
             MockDB.return_value.get_tenders.return_value = [go_tender]
@@ -816,9 +816,9 @@ class TestTenderScoutEndpoints:
         mock_draft = {"id": "draft_empty", "message_id": "msg_empty"}
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             MockDB.return_value.get_tenders.return_value = []
             MockGmail.return_value.authenticate.return_value = mock_service
@@ -833,7 +833,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 200
 
     def test_notify_missing_to(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/notify",
                 json={"credentials_path": "/tmp/creds.json"},
@@ -842,7 +842,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_notify_missing_credentials(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/notify",
                 json={"to": "user@example.com"},
@@ -854,9 +854,9 @@ class TestTenderScoutEndpoints:
         from agents.meeting_capture_agent import DraftCreationError
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             MockDB.return_value.get_tenders.return_value = []
             MockGmail.return_value.authenticate.return_value = MagicMock()
@@ -874,9 +874,9 @@ class TestTenderScoutEndpoints:
 
     def test_notify_unexpected_error(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             MockDB.return_value.get_tenders.return_value = []
             MockGmail.return_value.authenticate.side_effect = Exception("Unexpected")
@@ -890,7 +890,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 500
 
     def test_notify_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.post(
                 "/api/tenderscout/notify",
                 json={"to": "user@example.com", "credentials_path": "/tmp/creds.json"},
@@ -899,7 +899,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 401
 
     def test_notify_invalid_json(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/notify",
                 content=b"bad json",
