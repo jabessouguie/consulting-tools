@@ -18,9 +18,9 @@
 
 ## Baseline tests
 
-**1578 passing, 66 pre-existing failures** — ne pas régresser.
+**1587 passing, 57 pre-existing failures** — ne pas régresser.
 
-Les 66 failures sont des problèmes connus (routes 404 dans test_settings + test_microsoft_api, openpyxl manquant dans test_tender_scout). Tentes de les corriger.
+Les 57 failures sont des problèmes connus (routes 404 dans test_settings + test_microsoft_api, openpyxl manquant dans test_tender_scout, route /api/skills-market/search absente du router).
 
 ## Architecture — règles impératives
 
@@ -56,6 +56,9 @@ Les 66 failures sont des problèmes connus (routes 404 dans test_settings + test
 
 - `utils/__init__.py` et `agents/__init__.py` ré-exportent tout — une erreur de syntaxe dans n'importe quel module casse tous les tests
 - `static/photos/` est créé au démarrage (upload de photos)
-- Skills Market DB : patcher `routers.shared.skills_market_db` (plus `app.skills_market_db`)
+- Skills Market DB : patcher `routers.skills_market.skills_market_db` (plus `app.skills_market_db`)
 - Meeting Capture : patcher `routers.meeting_capture.MeetingGmailClient` (plus `app.MeetingGmailClient`)
 - LinkedIn : patcher `routers.linkedin.LinkedInClient` et `routers.linkedin.has_linkedin_access_token`
+- TenderScout : patcher `routers.tenderscout.get_current_user`, `routers.tenderscout.TenderDatabase`, `routers.tenderscout.MeetingGmailClient`
+- E-learning DB : patcher `routers.elearning.elearning_db` (plus `app.elearning_db`)
+- Document editor : patcher `routers.document_editor.BUG_REPORTS_FILE` (plus `app.BUG_REPORTS_FILE`)
