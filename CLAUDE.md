@@ -20,7 +20,7 @@
 
 **1578 passing, 66 pre-existing failures** — ne pas régresser.
 
-Les 66 failures sont des problèmes connus (routes 404 dans test_settings + test_microsoft_api, openpyxl manquant dans test_tender_scout). Ne pas tenter de les corriger.
+Les 66 failures sont des problèmes connus (routes 404 dans test_settings + test_microsoft_api, openpyxl manquant dans test_tender_scout). Tentes de les corriger.
 
 ## Architecture — règles impératives
 
@@ -50,7 +50,7 @@ Les 66 failures sont des problèmes connus (routes 404 dans test_settings + test
 
 - Branches : `feature/phase<N><lettre>-<description>` (ex: `feature/phase7b-routers-groupB`)
 - PRs ciblent `dev` (pas `main`)
-- Commits : message clair + `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`
+- Commits : message clair
 
 ## Gotchas
 

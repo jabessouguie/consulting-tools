@@ -129,7 +129,7 @@ class TestSessionInit:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_session_init(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/session/init",
                 json={"session_identifier": "new-session"},
@@ -142,7 +142,7 @@ class TestSessionInit:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_session_init_existing(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/session/init",
                 json={"session_identifier": "test-session-123"},
@@ -157,7 +157,7 @@ class TestCoursesCRUD:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_list_courses(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.get(
                 "/api/elearning/courses",
                 headers=HEADERS,
@@ -171,7 +171,7 @@ class TestCoursesCRUD:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_get_course(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.get(
                 "/api/elearning/course/1",
                 headers=HEADERS,
@@ -185,7 +185,7 @@ class TestCoursesCRUD:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_get_course_not_found(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.get(
                 "/api/elearning/course/999",
                 headers=HEADERS,
@@ -195,7 +195,7 @@ class TestCoursesCRUD:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_delete_course(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.delete(
                 "/api/elearning/course/1",
                 headers=HEADERS,
@@ -206,7 +206,7 @@ class TestCoursesCRUD:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_delete_course_not_found(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.delete(
                 "/api/elearning/course/999",
                 headers=HEADERS,
@@ -218,7 +218,7 @@ class TestQuizEndpoints:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_list_quizzes(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.get(
                 "/api/elearning/quizzes/1",
                 headers=HEADERS,
@@ -231,7 +231,7 @@ class TestQuizEndpoints:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_quiz_start(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/quiz/start",
                 data={
@@ -251,7 +251,7 @@ class TestQuizEndpoints:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_quiz_start_not_found(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/quiz/start",
                 data={
@@ -266,7 +266,7 @@ class TestQuizEndpoints:
     @pytest.mark.asyncio
     async def test_quiz_answer_flow(self, client, elearning_db):
         """Test full quiz answer flow"""
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             # Start quiz
             start_resp = await client.post(
                 "/api/elearning/quiz/start",
@@ -281,7 +281,7 @@ class TestQuizEndpoints:
             q = data["first_question"]
 
             # Submit answer (mock the agent for open-ended)
-            with patch("app.ElearningAgent") as mock_agent_cls:
+            with patch("routers.elearning.ElearningAgent") as mock_agent_cls:
                 mock_agent = MagicMock()
                 mock_agent.evaluate_answer.return_value = {
                     "is_correct": True,
@@ -310,7 +310,7 @@ class TestQuizEndpoints:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_quiz_results(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             # Start and complete a quiz
             start_resp = await client.post(
                 "/api/elearning/quiz/start",
@@ -336,7 +336,7 @@ class TestLearningPathEndpoints:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_get_learning_path_not_found(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.get(
                 "/api/elearning/learning-path" "/test-session-123/1",
                 headers=HEADERS,
@@ -358,7 +358,7 @@ class TestLearningPathEndpoints:
             }
         )
 
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.get(
                 "/api/elearning/learning-path" "/test-session-123/1",
                 headers=HEADERS,
@@ -384,7 +384,7 @@ class TestLearningPathEndpoints:
         course = elearning_db.get_course(1)
         module_id = course["modules"][0]["id"]
 
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/learning-path" "/update-progress",
                 data={
@@ -401,7 +401,7 @@ class TestLearningPathEndpoints:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_update_progress_invalid_mastery(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/learning-path" "/update-progress",
                 data={
@@ -419,7 +419,7 @@ class TestCourseGeneration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_generate_invalid_difficulty(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/course/generate",
                 data={
@@ -435,7 +435,7 @@ class TestCourseGeneration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_generate_returns_job_id(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/course/generate",
                 data={
@@ -453,7 +453,7 @@ class TestCourseGeneration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_generate_from_document(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/course/generate",
                 data={
@@ -471,7 +471,7 @@ class TestCourseGeneration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_generate_no_topic_no_document(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db), patch("app.limiter.enabled", False):
+        with patch("routers.elearning.elearning_db", elearning_db), patch("routers.shared.limiter.enabled", False):
             response = await client.post(
                 "/api/elearning/course/generate",
                 data={
@@ -489,7 +489,7 @@ class TestCourseGeneration:
         import io
 
         txt_content = b"# Formation Python\nContenu du cours"
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/course/upload-document",
                 files={
@@ -507,7 +507,7 @@ class TestCourseGeneration:
     async def test_upload_document_unsupported(self, client, elearning_db):
         import io
 
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/course/upload-document",
                 files={
@@ -520,7 +520,7 @@ class TestCourseGeneration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_quiz_generate_invalid_difficulty(self, client, elearning_db):
-        with patch("app.elearning_db", elearning_db):
+        with patch("routers.elearning.elearning_db", elearning_db):
             response = await client.post(
                 "/api/elearning/quiz/generate",
                 data={

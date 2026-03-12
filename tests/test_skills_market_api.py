@@ -126,7 +126,7 @@ class TestConsultantsList:
     @pytest.mark.asyncio
     async def test_list_consultants(self, client, populated_db):
         """Liste des consultants"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/consultants",
                 headers={"origin": "http://test"},
@@ -140,7 +140,7 @@ class TestConsultantsList:
     @pytest.mark.asyncio
     async def test_list_filter_technical(self, client, populated_db):
         """Filtre par competence technique"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/consultants?technical=Python",
                 headers={"origin": "http://test"},
@@ -154,7 +154,7 @@ class TestConsultantsList:
     @pytest.mark.asyncio
     async def test_list_filter_sector(self, client, populated_db):
         """Filtre par expertise sectorielle"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/consultants?sector=Assurance",
                 headers={"origin": "http://test"},
@@ -168,7 +168,7 @@ class TestConsultantsList:
     @pytest.mark.asyncio
     async def test_list_filter_no_match(self, client, populated_db):
         """Filtre sans resultats"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/consultants" "?technical=Blockchain",
                 headers={"origin": "http://test"},
@@ -185,7 +185,7 @@ class TestConsultantDetail:
     @pytest.mark.asyncio
     async def test_get_consultant(self, client, populated_db):
         """Recuperation d'un consultant"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/consultants/1",
                 headers={"origin": "http://test"},
@@ -201,7 +201,7 @@ class TestConsultantDetail:
     @pytest.mark.asyncio
     async def test_get_nonexistent(self, client, populated_db):
         """Consultant inexistant retourne 404"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/consultants/999",
                 headers={"origin": "http://test"},
@@ -216,7 +216,7 @@ class TestSkillsList:
     @pytest.mark.asyncio
     async def test_get_skills(self, client, populated_db):
         """Liste des competences groupees"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.get(
                 "/api/skills-market/skills",
                 headers={"origin": "http://test"},
@@ -236,7 +236,7 @@ class TestAddMission:
     @pytest.mark.asyncio
     async def test_add_mission(self, client, populated_db):
         """Ajout d'une mission"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/consultants/1/missions",
                 json={
@@ -259,7 +259,7 @@ class TestAddMission:
     @pytest.mark.asyncio
     async def test_add_mission_no_client(self, client, populated_db):
         """Ajout de mission sans client retourne 400"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/consultants/1/missions",
                 json={"context_and_challenges": "Test"},
@@ -275,7 +275,7 @@ class TestUpdateInterests:
     @pytest.mark.asyncio
     async def test_update_interests(self, client, populated_db):
         """Mise a jour des centres d'interet"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.put(
                 "/api/skills-market/consultants/1/interests",
                 json={"interests": ["Blockchain", "Piano"]},
@@ -292,7 +292,7 @@ class TestUpdateInterests:
     @pytest.mark.asyncio
     async def test_update_interests_invalid(self, client, populated_db):
         """Interets invalides retourne 400"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.put(
                 "/api/skills-market/consultants/1/interests",
                 json={"interests": "not a list"},
@@ -308,7 +308,7 @@ class TestNLSearch:
     @pytest.mark.asyncio
     async def test_search_empty_query(self, client, populated_db):
         """Requete vide retourne 400"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/search",
                 json={"query": ""},
@@ -328,8 +328,8 @@ class TestNLSearch:
             }
         ]
 
-        with patch("app.skills_market_db", populated_db), patch(
-            "app.SkillsMarketAgent"
+        with patch("routers.skills_market.skills_market_db", populated_db), patch(
+            "routers.skills_market.SkillsMarketAgent"
         ) as mock_agent_cls:
             mock_agent = MagicMock()
             mock_agent.natural_language_search.return_value = mock_results
@@ -368,7 +368,7 @@ class TestUploadCV:
     @pytest.mark.asyncio
     async def test_upload_pdf_returns_job(self, client, populated_db):
         """Upload PDF lance un job"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/upload",
                 files={
@@ -391,7 +391,7 @@ class TestUploadCV:
         html_content = (
             b"<html><body><h1>Jean Test</h1>" b"<p>Consultant Senior Python</p></body></html>"
         )
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/upload",
                 files={
@@ -411,7 +411,7 @@ class TestUploadCV:
     @pytest.mark.asyncio
     async def test_upload_pptx_returns_job(self, client, populated_db):
         """Upload PPTX lance un job"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/upload",
                 files={
@@ -435,7 +435,7 @@ class TestCertifications:
     @pytest.mark.asyncio
     async def test_add_certification(self, client, populated_db):
         """Ajout d'une certification"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/consultants/1" "/certifications",
                 json={
@@ -453,7 +453,7 @@ class TestCertifications:
     @pytest.mark.asyncio
     async def test_add_certification_no_name(self, client, populated_db):
         """Certification sans nom retourne 400"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.post(
                 "/api/skills-market/consultants/1" "/certifications",
                 json={"organization": "Test"},
@@ -469,7 +469,7 @@ class TestDisinterests:
     @pytest.mark.asyncio
     async def test_update_disinterests(self, client, populated_db):
         """Mise a jour des desinterets"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.put(
                 "/api/skills-market/consultants/1" "/disinterests",
                 json={"disinterests": ["Admin", "Compta"]},
@@ -485,7 +485,7 @@ class TestDisinterests:
     @pytest.mark.asyncio
     async def test_update_disinterests_invalid(self, client, populated_db):
         """Desinterets invalides retourne 400"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.put(
                 "/api/skills-market/consultants/1" "/disinterests",
                 json={"disinterests": "not a list"},
@@ -501,7 +501,7 @@ class TestDeleteConsultant:
     @pytest.mark.asyncio
     async def test_delete_consultant(self, client, populated_db):
         """Suppression d'un consultant"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.delete(
                 "/api/skills-market/consultants/1",
                 headers={"origin": "http://test"},
@@ -512,7 +512,7 @@ class TestDeleteConsultant:
     @pytest.mark.asyncio
     async def test_delete_nonexistent(self, client, populated_db):
         """Suppression consultant inexistant"""
-        with patch("app.skills_market_db", populated_db):
+        with patch("routers.skills_market.skills_market_db", populated_db):
             response = await client.delete(
                 "/api/skills-market/consultants/999",
                 headers={"origin": "http://test"},
