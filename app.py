@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from utils.auth import get_current_user, get_session_secret
+from utils.observability import ObservabilityMiddleware
 
 from routers.shared import limiter, load_settings, templates
 from routers.auth import router as auth_router
@@ -42,6 +43,9 @@ from routers.elearning import router as elearning_router
 from routers.tenderscout import router as tenderscout_router
 from routers.settings import router as settings_router
 from routers.microsoft import router as microsoft_router
+from routers.analytics import router as analytics_router
+from routers.presentation_script import router as presentation_script_router
+from routers.doc_to_presentation import router as doc_to_presentation_router
 
 # Charger l'environnement
 BASE_DIR = Path(__file__).parent
@@ -86,6 +90,9 @@ app.include_router(elearning_router)
 app.include_router(tenderscout_router)
 app.include_router(settings_router)
 app.include_router(microsoft_router)
+app.include_router(analytics_router)
+app.include_router(presentation_script_router)
+app.include_router(doc_to_presentation_router)
 
 
 # === CSRF PROTECTION MIDDLEWARE ===
@@ -167,6 +174,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 app.add_middleware(CSRFProtectionMiddleware)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=get_session_secret())
+app.add_middleware(ObservabilityMiddleware)  # outermost — mesure latence totale
 
 # Initialiser les settings au démarrage
 load_settings()
