@@ -260,13 +260,16 @@ async def api_tenderscout_list(
     request: Request,
     source: Optional[str] = None,
     decision: Optional[str] = None,
+    min_cv_match: Optional[int] = None,
 ):
     """Liste les appels d'offres avec filtres optionnels"""
     user = get_current_user(request)
     if not user:
         return JSONResponse({"detail": "Non authentifié"}, status_code=401)
     db = TenderDatabase()
-    return JSONResponse(db.get_tenders(source=source, decision=decision))
+    return JSONResponse(
+        db.get_tenders(source=source, decision=decision, min_cv_match=min_cv_match)
+    )
 
 
 @router.get("/api/tenderscout/export")
