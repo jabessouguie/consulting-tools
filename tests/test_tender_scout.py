@@ -672,6 +672,41 @@ class TestTenderDatabase:
         assert len(go_rows) == 1
         assert len(nogo_rows) == 1
 
+    def test_update_analysis_stores_cv_match_score(self):
+        """update_analysis() stocke cv_pertinence dans cv_match_score."""
+        self._db.save_tenders([dict(TENDER_DATA)])
+        analysis = {**GEMINI_ANALYSIS, "cv_pertinence": 75}
+        self._db.update_analysis(TENDER_DATA["reference"], analysis)
+
+        rows = self._db.get_tenders()
+        assert rows[0]["cv_match_score"] == 75
+
+    def test_get_tenders_filter_min_cv_match(self):
+        """Filtre min_cv_match → retourne uniquement les AOs avec cv_match_score >= seuil."""
+        # AO avec cv_match_score = 80
+        self._db.save_tenders([dict(TENDER_DATA)])
+        self._db.update_analysis(TENDER_DATA["reference"], {**GEMINI_ANALYSIS, "cv_pertinence": 80})
+
+        # AO avec cv_match_score = 30
+        low = {**TENDER_DATA, "reference": "BOAMP-LOW"}
+        self._db.save_tenders([low])
+        self._db.update_analysis("BOAMP-LOW", {**GEMINI_ANALYSIS, "cv_pertinence": 30})
+
+        high_match = self._db.get_tenders(min_cv_match=70)
+        all_tenders = self._db.get_tenders()
+
+        assert len(all_tenders) == 2
+        assert len(high_match) == 1
+        assert high_match[0]["reference"] == TENDER_DATA["reference"]
+
+    def test_get_tenders_filter_min_cv_match_zero(self):
+        """min_cv_match=0 retourne les AOs avec cv_match_score >= 0 (tous analysés)."""
+        self._db.save_tenders([dict(TENDER_DATA)])
+        self._db.update_analysis(TENDER_DATA["reference"], {**GEMINI_ANALYSIS, "cv_pertinence": 0})
+
+        rows = self._db.get_tenders(min_cv_match=0)
+        assert len(rows) == 1
+
     def test_get_unanalyzed_references(self):
         self._db.save_tenders([dict(TENDER_DATA)])
         unanalyzed = self._db.get_unanalyzed_references([TENDER_DATA["reference"]])
@@ -898,7 +933,7 @@ class TestTenderScoutEndpoints:
                 "/api/tenderscout/tenders?source=boamp&decision=GO"
             )
             MockDB.return_value.get_tenders.assert_called_once_with(
-                source="boamp", decision="GO"
+                source="boamp", decision="GO", min_cv_match=None
             )
 
         assert resp.status_code == 200

@@ -63,6 +63,15 @@ class TenderDatabase:
 
             conn.commit()
 
+            # Migration : ajout de cv_match_score (idempotent)
+            try:
+                cursor.execute(
+                    "ALTER TABLE tenders ADD COLUMN cv_match_score INTEGER"
+                )
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # Colonne déjà existante
+
     def save_tenders(self, tenders: List[Dict[str, Any]]) -> int:
         """Sauvegarde les appels d'offres (ignore les doublons via reference UNIQUE).
 
@@ -120,12 +129,13 @@ class TenderDatabase:
             cursor.execute(
                 """
                 UPDATE tenders
-                SET decision = ?, score = ?, analyse = ?
+                SET decision = ?, score = ?, cv_match_score = ?, analyse = ?
                 WHERE reference = ?
                 """,
                 (
                     analysis.get("decision"),
                     analysis.get("score"),
+                    analysis.get("cv_pertinence"),
                     json.dumps(analysis, ensure_ascii=False),
                     reference,
                 ),
@@ -136,6 +146,7 @@ class TenderDatabase:
         self,
         source: Optional[str] = None,
         decision: Optional[str] = None,
+        min_cv_match: Optional[int] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """Récupère les AOs avec filtres optionnels.
@@ -143,6 +154,7 @@ class TenderDatabase:
         Args:
             source: Filtrer par source ('boamp' | 'francemarches').
             decision: Filtrer par décision ('GO' | 'NO-GO' | 'A_ETUDIER').
+            min_cv_match: Score minimum de pertinence CV (0-100).
             limit: Nombre maximum d'AOs retournés.
 
         Returns:
@@ -162,6 +174,10 @@ class TenderDatabase:
             if decision:
                 query += " AND decision = ?"
                 params.append(decision)
+
+            if min_cv_match is not None:
+                query += " AND cv_match_score >= ?"
+                params.append(min_cv_match)
 
             query += " ORDER BY scraped_at DESC LIMIT ?"
             params.append(limit)
@@ -226,6 +242,10 @@ class TenderDatabase:
                     "Date limite": row.get("date_limite", ""),
                     "Décision": row.get("decision", ""),
                     "Score": row.get("score", ""),
+                    "Match CV": row.get("cv_match_score", ""),
+                    "Compétences correspondantes": ", ".join(
+                        analyse.get("competences_correspondantes", [])
+                    ),
                     "Résumé": analyse.get("resume", ""),
                     "Budget estimé": analyse.get("budget_estime", ""),
                     "Recommandation": analyse.get("recommandation", ""),
