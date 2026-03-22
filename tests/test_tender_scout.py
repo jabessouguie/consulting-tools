@@ -105,6 +105,7 @@ class TestTenderScoutAgent:
 
             self.agent = TenderScoutAgent.__new__(TenderScoutAgent)
             self.agent.llm = MagicMock()
+            self.agent.consultant_profile = None
 
     # ── scrape_boamp ─────────────────────────────────────────
 
@@ -423,6 +424,153 @@ class TestTenderScoutAgent:
         assert len(tenders) == 1
         assert tenders[0]["titre"] == "Sans titre"
 
+    # ── CV matching ──────────────────────────────────────────
+
+    def test_analyze_tender_with_profile_returns_cv_fields(self):
+        """Avec consultant_profile, le résultat contient cv_pertinence et les listes."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["cv_pertinence"] = 87
+        analysis["competences_correspondantes"] = ["Python", "Data Engineering"]
+        analysis["manques"] = ["SAP"]
+        self.agent.consultant_profile = {
+            "skills_technical": [{"name": "Python"}, {"name": "Data Engineering"}],
+            "skills_sector": [{"name": "Finance"}],
+            "missions": [],
+            "interests": [],
+            "certifications": [],
+        }
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 87
+        assert result["competences_correspondantes"] == ["Python", "Data Engineering"]
+        assert result["manques"] == ["SAP"]
+
+    def test_analyze_tender_cv_pertinence_defaults_to_zero_when_absent(self):
+        """Sans cv_pertinence dans la réponse LLM → 0 par défaut."""
+        analysis = dict(GEMINI_ANALYSIS)
+        # pas de cv_pertinence dans la réponse
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 0
+
+    def test_analyze_tender_cv_pertinence_invalid_defaults_to_zero(self):
+        """cv_pertinence non-numérique → 0."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["cv_pertinence"] = "élevé"
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 0
+
+    def test_analyze_tender_non_list_fields_normalized(self):
+        """competences_correspondantes/manques non-listes → listes vides."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["competences_correspondantes"] = "Python"
+        analysis["manques"] = None
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["competences_correspondantes"] == []
+        assert result["manques"] == []
+
+    def test_init_accepts_consultant_profile(self):
+        """Le constructeur accepte consultant_profile et le stocke."""
+        profile = {"skills_technical": [{"name": "Python"}]}
+        with patch("agents.tender_scout_agent.LLMClient"):
+            with patch("agents.tender_scout_agent.SkillsMarketAgent"):
+                from agents.tender_scout_agent import TenderScoutAgent
+
+                agent = TenderScoutAgent(consultant_profile=profile)
+
+        assert agent.consultant_profile is profile
+
+    def test_init_consultant_profile_defaults_to_none(self):
+        """Sans argument, consultant_profile est None."""
+        with patch("agents.tender_scout_agent.LLMClient"):
+            with patch("agents.tender_scout_agent.SkillsMarketAgent"):
+                from agents.tender_scout_agent import TenderScoutAgent
+
+                agent = TenderScoutAgent()
+
+        assert agent.consultant_profile is None
+
+
+# ============================================================
+# TestBuildConsultantContext
+# ============================================================
+
+
+class TestBuildConsultantContext:
+    """Tests pour build_consultant_context() et _format_profile_for_prompt()."""
+
+    def test_returns_none_when_no_consultants(self):
+        """DB vide (in-memory) → None."""
+        from agents.tender_scout_agent import build_consultant_context
+
+        result = build_consultant_context(db_path=":memory:")
+
+        assert result is None
+
+    def test_returns_none_on_exception(self):
+        """Chemin DB invalide → exception attrapée, retourne None."""
+        from agents.tender_scout_agent import build_consultant_context
+
+        result = build_consultant_context(db_path="/nonexistent/path/db.sqlite")
+
+        assert result is None
+
+    def test_format_profile_for_prompt_with_full_profile(self):
+        """Profil complet → toutes les sections présentes dans le texte."""
+        from agents.tender_scout_agent import _format_profile_for_prompt
+
+        profile = {
+            "skills_technical": [{"name": "Python"}, {"name": "FastAPI"}],
+            "skills_sector": [{"name": "Finance"}, {"name": "Assurance"}],
+            "missions": [
+                {
+                    "client_name": "BNP Paribas",
+                    "deliverables": "Refonte du système de reporting",
+                }
+            ],
+            "interests": [{"name": "IA"}, {"name": "Cloud"}],
+            "certifications": [{"name": "AWS Solutions Architect"}],
+        }
+
+        result = _format_profile_for_prompt(profile)
+
+        assert "PROFIL DU CONSULTANT" in result
+        assert "Python" in result
+        assert "FastAPI" in result
+        assert "Finance" in result
+        assert "BNP Paribas" in result
+        assert "IA" in result
+        assert "AWS Solutions Architect" in result
+
+    def test_format_profile_for_prompt_empty_profile(self):
+        """Profil sans données → uniquement l'en-tête."""
+        from agents.tender_scout_agent import _format_profile_for_prompt
+
+        profile = {
+            "skills_technical": [],
+            "skills_sector": [],
+            "missions": [],
+            "interests": [],
+            "certifications": [],
+        }
+
+        result = _format_profile_for_prompt(profile)
+
+        assert "PROFIL DU CONSULTANT" in result
+        # Pas de sections vides ajoutées
+        assert "Compétences" not in result
+        assert "Missions" not in result
+
 
 # ============================================================
 # TestTenderDatabase
@@ -523,6 +671,41 @@ class TestTenderDatabase:
 
         assert len(go_rows) == 1
         assert len(nogo_rows) == 1
+
+    def test_update_analysis_stores_cv_match_score(self):
+        """update_analysis() stocke cv_pertinence dans cv_match_score."""
+        self._db.save_tenders([dict(TENDER_DATA)])
+        analysis = {**GEMINI_ANALYSIS, "cv_pertinence": 75}
+        self._db.update_analysis(TENDER_DATA["reference"], analysis)
+
+        rows = self._db.get_tenders()
+        assert rows[0]["cv_match_score"] == 75
+
+    def test_get_tenders_filter_min_cv_match(self):
+        """Filtre min_cv_match → retourne uniquement les AOs avec cv_match_score >= seuil."""
+        # AO avec cv_match_score = 80
+        self._db.save_tenders([dict(TENDER_DATA)])
+        self._db.update_analysis(TENDER_DATA["reference"], {**GEMINI_ANALYSIS, "cv_pertinence": 80})
+
+        # AO avec cv_match_score = 30
+        low = {**TENDER_DATA, "reference": "BOAMP-LOW"}
+        self._db.save_tenders([low])
+        self._db.update_analysis("BOAMP-LOW", {**GEMINI_ANALYSIS, "cv_pertinence": 30})
+
+        high_match = self._db.get_tenders(min_cv_match=70)
+        all_tenders = self._db.get_tenders()
+
+        assert len(all_tenders) == 2
+        assert len(high_match) == 1
+        assert high_match[0]["reference"] == TENDER_DATA["reference"]
+
+    def test_get_tenders_filter_min_cv_match_zero(self):
+        """min_cv_match=0 retourne les AOs avec cv_match_score >= 0 (tous analysés)."""
+        self._db.save_tenders([dict(TENDER_DATA)])
+        self._db.update_analysis(TENDER_DATA["reference"], {**GEMINI_ANALYSIS, "cv_pertinence": 0})
+
+        rows = self._db.get_tenders(min_cv_match=0)
+        assert len(rows) == 1
 
     def test_get_unanalyzed_references(self):
         self._db.save_tenders([dict(TENDER_DATA)])
@@ -750,7 +933,7 @@ class TestTenderScoutEndpoints:
                 "/api/tenderscout/tenders?source=boamp&decision=GO"
             )
             MockDB.return_value.get_tenders.assert_called_once_with(
-                source="boamp", decision="GO"
+                source="boamp", decision="GO", min_cv_match=None
             )
 
         assert resp.status_code == 200

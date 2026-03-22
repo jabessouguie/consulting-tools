@@ -10,7 +10,12 @@ from typing import Optional
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, HTMLResponse, RedirectResponse
 
-from agents.tender_scout_agent import AnalysisError, ScrapingError, TenderScoutAgent
+from agents.tender_scout_agent import (
+    AnalysisError,
+    ScrapingError,
+    TenderScoutAgent,
+    build_consultant_context,
+)
 from agents.meeting_capture_agent import DraftCreationError, MeetingGmailClient
 from utils.tender_db import TenderDatabase
 from utils.validation import sanitize_text_input
@@ -113,7 +118,8 @@ def _run_tender_scout(job_id: str, keywords: list, sources: list):
     """Exécute le scan TenderScout en arrière-plan"""
     job = jobs[job_id]
     db = TenderDatabase()
-    agent = TenderScoutAgent()
+    consultant_profile = build_consultant_context()
+    agent = TenderScoutAgent(consultant_profile=consultant_profile)
     all_tenders = []
 
     try:
@@ -254,13 +260,16 @@ async def api_tenderscout_list(
     request: Request,
     source: Optional[str] = None,
     decision: Optional[str] = None,
+    min_cv_match: Optional[int] = None,
 ):
     """Liste les appels d'offres avec filtres optionnels"""
     user = get_current_user(request)
     if not user:
         return JSONResponse({"detail": "Non authentifié"}, status_code=401)
     db = TenderDatabase()
-    return JSONResponse(db.get_tenders(source=source, decision=decision))
+    return JSONResponse(
+        db.get_tenders(source=source, decision=decision, min_cv_match=min_cv_match)
+    )
 
 
 @router.get("/api/tenderscout/export")

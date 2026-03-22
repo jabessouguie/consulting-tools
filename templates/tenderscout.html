@@ -83,6 +83,14 @@
                 <option value="boamp">BOAMP</option>
                 <option value="francemarches">Francemarches</option>
             </select>
+            <!-- Filtre match CV -->
+            <select id="filter-cv-match" onchange="loadTenders()"
+                style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #444; background: #1a1a2e; color: #e0e0e0; font-size: 0.85rem;"
+                title="Filtrer par pertinence CV">
+                <option value="">Tout match CV</option>
+                <option value="40">Match CV ≥ 40</option>
+                <option value="70">Match CV ≥ 70</option>
+            </select>
             <!-- Actions -->
             <button onclick="exportExcel()" class="btn btn-secondary"
                 style="font-size: 0.85rem; padding: 0.35rem 0.8rem;">
@@ -110,6 +118,7 @@
                     </th>
                     <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Décision</th>
                     <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;">Score</th>
+                    <th style="padding: 0.6rem 0.8rem; color: var(--gris-moyen, #888); font-weight: 500;" title="Pertinence par rapport à votre profil CV">Match CV</th>
                 </tr>
             </thead>
             <tbody id="tenders-tbody"></tbody>
@@ -371,9 +380,11 @@
     // ── Chargement des résultats ──────────────────────────────────────────
     async function loadTenders() {
         const source = document.getElementById('filter-source').value;
+        const cvMatch = document.getElementById('filter-cv-match').value;
         const params = new URLSearchParams();
         if (source) params.set('source', source);
         if (currentDecisionFilter) params.set('decision', currentDecisionFilter);
+        if (cvMatch) params.set('min_cv_match', cvMatch);
 
         try {
             const resp = await fetch(`/api/tenderscout/tenders?${params}`);
@@ -409,6 +420,7 @@
             <td style="padding: 0.6rem 0.8rem; color: #aaa; font-size: 0.82rem;">${escHtml(t.date_limite || '—')}</td>
             <td style="padding: 0.6rem 0.8rem;">${decisionBadge(t.decision)}</td>
             <td style="padding: 0.6rem 0.8rem; font-weight: 600; color: ${scoreColor(t.score)};">${t.score !== null && t.score !== undefined ? t.score : '—'}</td>
+            <td style="padding: 0.6rem 0.8rem;">${cvMatchBadge(t.cv_match_score)}</td>
         `;
             tbody.appendChild(tr);
         });
@@ -420,12 +432,14 @@
         const nogo = tenders.filter(t => t.decision === 'NO-GO').length;
         const etudier = tenders.filter(t => t.decision === 'A_ETUDIER').length;
         const pending = tenders.filter(t => !t.decision).length;
+        const highMatch = tenders.filter(t => t.cv_match_score !== null && t.cv_match_score !== undefined && t.cv_match_score >= 70).length;
         bar.innerHTML = `
         <span class="stat-chip" style="background:#0d1e3b; color:#64b5f6;">${tenders.length} total</span>
         <span class="stat-chip badge-go">${go} GO</span>
         <span class="stat-chip badge-etudier">${etudier} À étudier</span>
         <span class="stat-chip badge-nogo">${nogo} NO-GO</span>
         ${pending ? `<span class="stat-chip badge-pending">${pending} en attente</span>` : ''}
+        ${highMatch ? `<span class="stat-chip" style="background:#0d3b1e; color:#4caf50;">🎯 ${highMatch} match CV ≥ 70</span>` : ''}
     `;
     }
 
@@ -461,6 +475,7 @@
             ['Date limite', escHtml(tender.date_limite || '—')],
             ['Décision', decisionBadge(tender.decision)],
             ['Score', tender.score !== null && tender.score !== undefined ? `<strong style="font-size:1.1rem;">${tender.score}/100</strong>` : '—'],
+            ['Match CV', tender.cv_match_score !== null && tender.cv_match_score !== undefined ? cvMatchBadge(tender.cv_match_score) + ` <span style="font-size:0.9rem;">${tender.cv_match_score}/100</span>` : '—'],
             ['Résumé', escHtml(analyse.resume || tender.description || '—')],
             ['Budget estimé', escHtml(analyse.budget_estime || '—')],
             ['Échéance', escHtml(analyse.echeance || tender.date_limite || '—')],
@@ -473,6 +488,8 @@
         });
 
         const listFields = [
+            ['Compétences correspondantes', analyse.competences_correspondantes],
+            ['Compétences manquantes', analyse.manques],
             ['Critères de notation', analyse.criteres_notation],
             ['Atouts', analyse.atouts],
             ['Risques', analyse.risques],
@@ -572,6 +589,13 @@
         if (score >= 70) return '#4caf50';
         if (score >= 40) return '#ffd54f';
         return '#e57373';
+    }
+
+    function cvMatchBadge(score) {
+        if (score === null || score === undefined) return '<span style="color:#444;">—</span>';
+        const color = score >= 70 ? '#4caf50' : score >= 40 ? '#ffd54f' : '#e57373';
+        const bg = score >= 70 ? '#0d3b1e' : score >= 40 ? '#2a2d0d' : '#3b0d0d';
+        return `<span style="display:inline-block;padding:0.15rem 0.45rem;border-radius:4px;font-size:0.78rem;font-weight:600;background:${bg};color:${color};">${score}</span>`;
     }
 
     function showError(msg) {
