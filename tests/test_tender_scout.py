@@ -105,6 +105,7 @@ class TestTenderScoutAgent:
 
             self.agent = TenderScoutAgent.__new__(TenderScoutAgent)
             self.agent.llm = MagicMock()
+            self.agent.consultant_profile = None
 
     # ── scrape_boamp ─────────────────────────────────────────
 
@@ -422,6 +423,153 @@ class TestTenderScoutAgent:
 
         assert len(tenders) == 1
         assert tenders[0]["titre"] == "Sans titre"
+
+    # ── CV matching ──────────────────────────────────────────
+
+    def test_analyze_tender_with_profile_returns_cv_fields(self):
+        """Avec consultant_profile, le résultat contient cv_pertinence et les listes."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["cv_pertinence"] = 87
+        analysis["competences_correspondantes"] = ["Python", "Data Engineering"]
+        analysis["manques"] = ["SAP"]
+        self.agent.consultant_profile = {
+            "skills_technical": [{"name": "Python"}, {"name": "Data Engineering"}],
+            "skills_sector": [{"name": "Finance"}],
+            "missions": [],
+            "interests": [],
+            "certifications": [],
+        }
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 87
+        assert result["competences_correspondantes"] == ["Python", "Data Engineering"]
+        assert result["manques"] == ["SAP"]
+
+    def test_analyze_tender_cv_pertinence_defaults_to_zero_when_absent(self):
+        """Sans cv_pertinence dans la réponse LLM → 0 par défaut."""
+        analysis = dict(GEMINI_ANALYSIS)
+        # pas de cv_pertinence dans la réponse
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 0
+
+    def test_analyze_tender_cv_pertinence_invalid_defaults_to_zero(self):
+        """cv_pertinence non-numérique → 0."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["cv_pertinence"] = "élevé"
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 0
+
+    def test_analyze_tender_non_list_fields_normalized(self):
+        """competences_correspondantes/manques non-listes → listes vides."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["competences_correspondantes"] = "Python"
+        analysis["manques"] = None
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["competences_correspondantes"] == []
+        assert result["manques"] == []
+
+    def test_init_accepts_consultant_profile(self):
+        """Le constructeur accepte consultant_profile et le stocke."""
+        profile = {"skills_technical": [{"name": "Python"}]}
+        with patch("agents.tender_scout_agent.LLMClient"):
+            with patch("agents.tender_scout_agent.SkillsMarketAgent"):
+                from agents.tender_scout_agent import TenderScoutAgent
+
+                agent = TenderScoutAgent(consultant_profile=profile)
+
+        assert agent.consultant_profile is profile
+
+    def test_init_consultant_profile_defaults_to_none(self):
+        """Sans argument, consultant_profile est None."""
+        with patch("agents.tender_scout_agent.LLMClient"):
+            with patch("agents.tender_scout_agent.SkillsMarketAgent"):
+                from agents.tender_scout_agent import TenderScoutAgent
+
+                agent = TenderScoutAgent()
+
+        assert agent.consultant_profile is None
+
+
+# ============================================================
+# TestBuildConsultantContext
+# ============================================================
+
+
+class TestBuildConsultantContext:
+    """Tests pour build_consultant_context() et _format_profile_for_prompt()."""
+
+    def test_returns_none_when_no_consultants(self):
+        """DB vide (in-memory) → None."""
+        from agents.tender_scout_agent import build_consultant_context
+
+        result = build_consultant_context(db_path=":memory:")
+
+        assert result is None
+
+    def test_returns_none_on_exception(self):
+        """Chemin DB invalide → exception attrapée, retourne None."""
+        from agents.tender_scout_agent import build_consultant_context
+
+        result = build_consultant_context(db_path="/nonexistent/path/db.sqlite")
+
+        assert result is None
+
+    def test_format_profile_for_prompt_with_full_profile(self):
+        """Profil complet → toutes les sections présentes dans le texte."""
+        from agents.tender_scout_agent import _format_profile_for_prompt
+
+        profile = {
+            "skills_technical": [{"name": "Python"}, {"name": "FastAPI"}],
+            "skills_sector": [{"name": "Finance"}, {"name": "Assurance"}],
+            "missions": [
+                {
+                    "client_name": "BNP Paribas",
+                    "deliverables": "Refonte du système de reporting",
+                }
+            ],
+            "interests": [{"name": "IA"}, {"name": "Cloud"}],
+            "certifications": [{"name": "AWS Solutions Architect"}],
+        }
+
+        result = _format_profile_for_prompt(profile)
+
+        assert "PROFIL DU CONSULTANT" in result
+        assert "Python" in result
+        assert "FastAPI" in result
+        assert "Finance" in result
+        assert "BNP Paribas" in result
+        assert "IA" in result
+        assert "AWS Solutions Architect" in result
+
+    def test_format_profile_for_prompt_empty_profile(self):
+        """Profil sans données → uniquement l'en-tête."""
+        from agents.tender_scout_agent import _format_profile_for_prompt
+
+        profile = {
+            "skills_technical": [],
+            "skills_sector": [],
+            "missions": [],
+            "interests": [],
+            "certifications": [],
+        }
+
+        result = _format_profile_for_prompt(profile)
+
+        assert "PROFIL DU CONSULTANT" in result
+        # Pas de sections vides ajoutées
+        assert "Compétences" not in result
+        assert "Missions" not in result
 
 
 # ============================================================
