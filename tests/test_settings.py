@@ -259,7 +259,7 @@ class TestThemeImport:
 
     def test_import_theme_pptx_returns_theme(self):
         from io import BytesIO
-        with patch("app.ThemeManager.import_from_pptx", return_value={"primary_color": "#AABBCC"}):
+        with patch("utils.theme_manager.ThemeManager.import_from_pptx", return_value={"primary_color": "#AABBCC"}):
             response = client.post(
                 "/api/settings/theme-import",
                 files={"file": ("template.pptx", BytesIO(b"fake pptx content"), "application/octet-stream")},
@@ -269,7 +269,7 @@ class TestThemeImport:
 
     def test_import_theme_pdf_returns_theme(self):
         from io import BytesIO
-        with patch("app.ThemeManager.import_from_pdf", return_value={"primary_color": "#DDEEFF"}):
+        with patch("utils.theme_manager.ThemeManager.import_from_pdf", return_value={"primary_color": "#DDEEFF"}):
             response = client.post(
                 "/api/settings/theme-import",
                 files={"file": ("doc.pdf", BytesIO(b"fake pdf content"), "application/pdf")},
@@ -279,7 +279,7 @@ class TestThemeImport:
 
     def test_import_theme_returns_422_when_empty_extraction(self):
         from io import BytesIO
-        with patch("app.ThemeManager.import_from_pptx", return_value={}):
+        with patch("utils.theme_manager.ThemeManager.import_from_pptx", return_value={}):
             response = client.post(
                 "/api/settings/theme-import",
                 files={"file": ("empty.pptx", BytesIO(b"fake"), "application/octet-stream")},
@@ -310,7 +310,7 @@ class TestThemeCss:
         assert "--title-font:" in css
 
     def test_theme_css_reflects_custom_color(self):
-        with patch("app.ThemeManager.get_css_vars", return_value={
+        with patch("utils.theme_manager.ThemeManager.get_css_vars", return_value={
             "primary_color": "#CAFEDE",
             "secondary_color": "#FFFFFF",
             "background_color": "#000000",

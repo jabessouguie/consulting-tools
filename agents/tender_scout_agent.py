@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup
 
+from agents.skills_market import SkillsMarketAgent
 from utils.llm_client import LLMClient
 
 
@@ -27,7 +28,10 @@ VALID_SOURCES = {"boamp", "francemarches"}
 
 _ANALYSIS_SCHEMA: Dict[str, Any] = {
     "decision": "GO | NO-GO | A_ETUDIER",
-    "score": "integer entre 0 et 100",
+    "score": "integer — score de pertinence générale de l'AO (0-100)",
+    "cv_pertinence": "integer — adéquation entre l'AO et le profil consultant (0-100, 0 si profil absent)",
+    "competences_correspondantes": ["string — compétence du profil qui correspond à cet AO"],
+    "manques": ["string — compétence requise par l'AO absente du profil"],
     "resume": "string — résumé de l'appel d'offres",
     "budget_estime": "string — budget estimé ou 'Non précisé'",
     "echeance": "string — date limite de remise des offres",
@@ -37,10 +41,18 @@ _ANALYSIS_SCHEMA: Dict[str, Any] = {
     "recommandation": "string — recommandation finale",
 }
 
-_ANALYSIS_SYSTEM_PROMPT = (
+_ANALYSIS_SYSTEM_PROMPT_BASE = (
     "Tu es un expert en réponse aux appels d'offres publics pour une société de conseil. "
-    "Analyse l'appel d'offres fourni et détermine si notre société doit répondre (GO), "
+    "Analyse l'appel d'offres fourni et détermine si notre consultant doit répondre (GO), "
     "ne pas répondre (NO-GO) ou étudier davantage (A_ETUDIER). "
+    "Sois précis, concis et orienté business."
+)
+
+_ANALYSIS_SYSTEM_PROMPT_WITH_PROFILE = (
+    "Tu es un expert en réponse aux appels d'offres publics pour une société de conseil. "
+    "Analyse l'appel d'offres fourni et détermine si notre consultant doit répondre (GO), "
+    "ne pas répondre (NO-GO) ou étudier davantage (A_ETUDIER). "
+    "Tiens compte du profil consultant fourni pour évaluer l'adéquation (cv_pertinence). "
     "Sois précis, concis et orienté business."
 )
 
@@ -61,6 +73,63 @@ class AnalysisError(Exception):
 
 
 # ---------------------------------------------------------------------------
+# Helpers profil consultant
+# ---------------------------------------------------------------------------
+
+
+def build_consultant_context(db_path: Optional[str] = None) -> Optional[dict]:
+    """Charge le profil du premier consultant depuis ConsultantDatabase.
+
+    Args:
+        db_path: Chemin vers la DB. Utilise le chemin par défaut si None.
+
+    Returns:
+        Dict profil consultant ou None si aucun profil ou en cas d'erreur.
+    """
+    try:
+        from utils.consultant_db import ConsultantDatabase
+
+        db = ConsultantDatabase(db_path)
+        consultants = db.get_all_consultants()
+        if not consultants:
+            return None
+        return db.get_consultant(consultants[0]["id"])
+    except Exception:
+        return None
+
+
+def _format_profile_for_prompt(profile: dict) -> str:
+    """Formate le profil consultant pour injection dans le prompt LLM."""
+    lines = ["PROFIL DU CONSULTANT :"]
+
+    tech_skills = [s["name"] for s in profile.get("skills_technical", [])[:15]]
+    if tech_skills:
+        lines.append(f"- Compétences techniques : {', '.join(tech_skills)}")
+
+    sector_skills = [s["name"] for s in profile.get("skills_sector", [])[:10]]
+    if sector_skills:
+        lines.append(f"- Secteurs d'expertise : {', '.join(sector_skills)}")
+
+    missions = profile.get("missions", [])[:3]
+    if missions:
+        lines.append("- Missions récentes :")
+        for m in missions:
+            client = m.get("client_name", "")
+            deliverables = (m.get("deliverables", "") or "")[:100]
+            lines.append(f"  • {client} — {deliverables}")
+
+    interests = [i["name"] for i in profile.get("interests", [])[:5]]
+    if interests:
+        lines.append(f"- Centres d'intérêt : {', '.join(interests)}")
+
+    certs = [c["name"] for c in profile.get("certifications", [])[:5]]
+    if certs:
+        lines.append(f"- Certifications : {', '.join(certs)}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # TenderScoutAgent
 # ---------------------------------------------------------------------------
 
@@ -68,8 +137,15 @@ class AnalysisError(Exception):
 class TenderScoutAgent:
     """Scrape BOAMP et Francemarches, analyse les AOs avec Gemini."""
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        consultant_profile: Optional[dict] = None,
+    ):
         self.llm = LLMClient(api_key=api_key, model=model, provider="gemini")
+        self.skills_market = SkillsMarketAgent()
+        self.consultant_profile = consultant_profile
 
     # ------------------------------------------------------------------
     # Scraping BOAMP
@@ -281,16 +357,27 @@ class TenderScoutAgent:
     def analyze_tender(self, tender: dict) -> dict:
         """Analyse un appel d'offres avec Gemini et retourne une décision structurée.
 
+        Si self.consultant_profile est défini, enrichit le prompt avec le profil
+        pour calculer cv_pertinence, competences_correspondantes et manques.
+
         Args:
             tender: Dict avec au moins titre, description, acheteur, date_limite.
 
         Returns:
-            Dict avec decision, score, resume, budget_estime, echeance,
-            criteres_notation, risques, atouts, recommandation.
+            Dict avec decision, score, cv_pertinence, competences_correspondantes,
+            manques, resume, budget_estime, echeance, criteres_notation, risques,
+            atouts, recommandation.
 
         Raises:
             AnalysisError: Si LLMClient échoue ou retourne un résultat vide/invalide.
         """
+        if self.consultant_profile:
+            profile_section = "\n\n" + _format_profile_for_prompt(self.consultant_profile)
+            system_prompt = _ANALYSIS_SYSTEM_PROMPT_WITH_PROFILE
+        else:
+            profile_section = ""
+            system_prompt = _ANALYSIS_SYSTEM_PROMPT_BASE
+
         prompt = (
             f"Appel d'offres à analyser :\n\n"
             f"Titre : {tender.get('titre', 'N/A')}\n"
@@ -298,15 +385,17 @@ class TenderScoutAgent:
             f"Source : {tender.get('source', 'N/A')}\n"
             f"Date de publication : {tender.get('date_publication', 'N/A')}\n"
             f"Date limite : {tender.get('date_limite', 'N/A')}\n"
-            f"Description : {tender.get('description', 'N/A')}\n\n"
-            "Analyse cet appel d'offres et fournis ta recommandation."
+            f"Description : {tender.get('description', 'N/A')}"
+            f"{profile_section}\n\n"
+            "Analyse cet appel d'offres et fournis ta recommandation. "
+            "Évalue la pertinence par rapport au profil consultant si fourni (cv_pertinence)."
         )
 
         try:
             result = self.llm.extract_structured_data(
                 prompt=prompt,
                 output_schema=_ANALYSIS_SCHEMA,
-                system_prompt=_ANALYSIS_SYSTEM_PROMPT,
+                system_prompt=system_prompt,
             )
         except Exception as exc:
             raise AnalysisError(
@@ -329,5 +418,16 @@ class TenderScoutAgent:
             result["score"] = int(result.get("score", 0))
         except (ValueError, TypeError):
             result["score"] = 0
+
+        # Normaliser cv_pertinence
+        try:
+            result["cv_pertinence"] = int(result.get("cv_pertinence", 0))
+        except (ValueError, TypeError):
+            result["cv_pertinence"] = 0
+
+        # Assurer les champs listes
+        for field in ("competences_correspondantes", "manques"):
+            if not isinstance(result.get(field), list):
+                result[field] = []
 
         return result

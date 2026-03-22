@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Script de Présentation — Consulting Tools{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🎬 Script de Présentation</h1>
+    <p class="page-subtitle">Générez un script oral structuré à partir de votre fichier PPTX</p>
+</div>
+
+<div class="ps-container">
+
+    <!-- FORM -->
+    <div class="ps-card" id="form-section">
+        <h2>📁 Votre présentation</h2>
+        <form id="script-form">
+            <div class="field-group">
+                <label for="pptx-file">Fichier PPTX <span class="required">*</span></label>
+                <div class="file-drop-zone" id="drop-zone">
+                    <input type="file" id="pptx-file" name="pptx_file" accept=".pptx" required class="file-input">
+                    <div class="drop-label">
+                        <span class="drop-icon">📊</span>
+                        <span>Glissez votre PPTX ici ou <strong>cliquez pour sélectionner</strong></span>
+                        <span class="drop-hint" id="file-name-display">Formats : .pptx uniquement</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label for="context">Contexte de la présentation <span class="optional">(optionnel)</span></label>
+                <textarea id="context" name="context" rows="3"
+                    placeholder="Ex : Présentation pour des décideurs financiers sur notre offre de transformation digitale. Durée : 20 min."
+                    class="field-textarea"></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary" id="submit-btn">
+                Générer le script
+            </button>
+        </form>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="ps-card" id="progress-section" style="display:none;">
+        <h2>⚙️ Génération en cours…</h2>
+        <div class="progress-steps" id="progress-steps">
+            <div class="progress-step" id="step-extract">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Extraction des slides</span>
+            </div>
+            <div class="progress-step" id="step-generate">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Génération du script IA</span>
+            </div>
+        </div>
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <!-- RESULT -->
+    <div id="result-section" style="display:none;">
+        <div class="ps-card result-meta">
+            <div class="meta-grid" id="result-meta-grid"></div>
+            <div class="result-actions">
+                <button class="btn-secondary" onclick="copyScript()">📋 Copier le script</button>
+                <button class="btn-secondary" onclick="downloadScript()">⬇️ Télécharger en .md</button>
+                <button class="btn-outline" onclick="resetForm()">🔄 Nouveau script</button>
+            </div>
+        </div>
+        <div class="ps-card">
+            <h2>📝 Script de présentation</h2>
+            <div id="script-output" class="script-content"></div>
+        </div>
+    </div>
+
+    <!-- ERROR -->
+    <div class="ps-card error-card" id="error-section" style="display:none;">
+        <p id="error-msg"></p>
+        <button class="btn-outline" onclick="resetForm()">Réessayer</button>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.ps-container { max-width: 900px; margin: 0 auto; padding: 0 1rem 3rem; }
+.ps-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.ps-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--noir-profond, #111); }
+.field-group { margin-bottom: 1.25rem; }
+.field-group label { display: block; font-size: .875rem; font-weight: 500; margin-bottom: .5rem; color: #374151; }
+.required { color: #ef4444; }
+.optional { color: #9ca3af; font-weight: 400; }
+.file-drop-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+}
+.file-drop-zone:hover, .file-drop-zone.drag-over { border-color: var(--corail, #FF6B58); background: #fff5f4; }
+.file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-label { display: flex; flex-direction: column; gap: .5rem; pointer-events: none; }
+.drop-icon { font-size: 2rem; }
+.drop-hint { font-size: .8rem; color: #9ca3af; }
+.field-textarea {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: .75rem; font-size: .875rem; resize: vertical; font-family: inherit;
+    transition: border-color .2s;
+}
+.field-textarea:focus { outline: none; border-color: var(--corail, #FF6B58); }
+.btn-primary {
+    background: var(--corail, #FF6B58); color: #fff; border: none; border-radius: 8px;
+    padding: .75rem 1.5rem; font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: opacity .2s; width: 100%;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-secondary, .btn-outline {
+    border-radius: 8px; padding: .6rem 1.2rem; font-size: .875rem; font-weight: 500;
+    cursor: pointer; transition: .2s;
+}
+.btn-secondary { background: var(--corail, #FF6B58); color: #fff; border: none; }
+.btn-secondary:hover { opacity: .88; }
+.btn-outline { background: transparent; border: 1px solid #d1d5db; color: #374151; }
+.btn-outline:hover { border-color: var(--corail, #FF6B58); color: var(--corail, #FF6B58); }
+.progress-steps { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.progress-step {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .5rem .875rem; border-radius: 99px;
+    background: #f3f4f6; font-size: .875rem; color: #6b7280;
+    transition: .3s;
+}
+.progress-step.active { background: #fff5f4; color: var(--corail, #FF6B58); border: 1px solid #fecaca; }
+.progress-step.done { background: #d1fae5; color: #065f46; }
+.progress-bar-track { height: 6px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--corail, #FF6B58); border-radius: 99px; transition: width .4s; }
+.meta-grid { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.meta-item { font-size: .875rem; color: #374151; }
+.meta-item strong { color: var(--corail, #FF6B58); font-size: 1.1rem; }
+.result-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.result-meta { background: #fafafa; }
+.script-content {
+    font-family: 'Inter', sans-serif; font-size: .875rem; line-height: 1.7;
+    white-space: pre-wrap; color: #374151;
+    max-height: 70vh; overflow-y: auto; padding: 1rem;
+    background: #fafafa; border-radius: 8px;
+}
+.error-card { background: #fff5f5; border-color: #fecaca; color: #991b1b; }
+.error-card p { margin-bottom: 1rem; }
+</style>
+
+<script>
+let currentScript = '';
+
+// File drag & drop
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('pptx-file');
+const fileNameDisplay = document.getElementById('file-name-display');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) {
+        fileInput.files = e.dataTransfer.files;
+        fileNameDisplay.textContent = e.dataTransfer.files[0].name;
+    }
+});
+fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) fileNameDisplay.textContent = fileInput.files[0].name;
+});
+
+document.getElementById('script-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Démarrage…';
+
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('progress-section').style.display = 'block';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('pptx_file', file);
+    fd.append('context', document.getElementById('context').value);
+
+    try {
+        const res = await fetch('/api/presentation-script/generate', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        listenToStream(data.job_id);
+    } catch (err) {
+        showError(err.message || 'Erreur inconnue');
+        btn.disabled = false;
+        btn.textContent = 'Générer le script';
+    }
+});
+
+function listenToStream(jobId) {
+    const es = new EventSource(`/api/presentation-script/stream/${jobId}`);
+
+    es.addEventListener('step', e => {
+        const step = JSON.parse(e.data);
+        updateStep(step);
+    });
+
+    es.addEventListener('result', e => {
+        es.close();
+        const result = JSON.parse(e.data);
+        showResult(result);
+    });
+
+    es.addEventListener('error_msg', e => {
+        es.close();
+        const d = JSON.parse(e.data);
+        showError(d.message || 'Erreur de génération');
+    });
+
+    es.onerror = () => {
+        es.close();
+        showError('Connexion perdue. Veuillez réessayer.');
+    };
+}
+
+function updateStep(step) {
+    const el = document.getElementById(`step-${step.step}`);
+    if (el) {
+        el.classList.remove('active', 'done');
+        el.classList.add(step.status === 'done' ? 'done' : 'active');
+        el.querySelector('.step-icon').textContent = step.status === 'done' ? '✅' : '⚙️';
+    }
+    document.getElementById('progress-bar').style.width = (step.progress || 0) + '%';
+}
+
+function showResult(result) {
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('result-section').style.display = 'block';
+
+    currentScript = result.markdown || '';
+
+    document.getElementById('result-meta-grid').innerHTML = `
+        <div class="meta-item">Slides : <strong>${result.num_slides || 0}</strong></div>
+        <div class="meta-item">Durée estimée : <strong>${result.estimated_duration || '—'}</strong></div>
+    `;
+
+    document.getElementById('script-output').textContent = currentScript;
+}
+
+function showError(msg) {
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'block';
+    document.getElementById('error-msg').textContent = '⚠️ ' + msg;
+}
+
+function copyScript() {
+    navigator.clipboard.writeText(currentScript).then(() => alert('Script copié !'));
+}
+
+function downloadScript() {
+    const blob = new Blob([currentScript], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'script-presentation.md';
+    a.click();
+}
+
+function resetForm() {
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+    document.getElementById('script-form').reset();
+    fileNameDisplay.textContent = 'Formats : .pptx uniquement';
+    currentScript = '';
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-btn').textContent = 'Générer le script';
+    // Reset steps
+    ['extract', 'generate'].forEach(s => {
+        const el = document.getElementById(`step-${s}`);
+        if (el) { el.classList.remove('active', 'done'); el.querySelector('.step-icon').textContent = '⏳'; }
+    });
+    document.getElementById('progress-bar').style.width = '0%';
+}
+</script>
+{% endblock %}

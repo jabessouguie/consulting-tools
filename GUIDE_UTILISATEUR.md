@@ -112,6 +112,13 @@ Crée des propositions commerciales professionnelles avec slides PowerPoint.
    - **📥 .pptx** : Présentation PowerPoint
    - **📄 .pdf** : Version PDF
 
+**Nouveau : Intelligence de matching** 🧠
+- Chaque appel d'offre est maintenant **score de 0 à 100** par rapport à votre profil consultant.
+- Le score est visible directement dans le tableau des résultats.
+- Les propositions générées incluent automatiquement ce score dans le résumé exécutif.
+
+**Nouveau : Protection de la vie privée (PII)** 🔒
+- Vos données sensibles (email, téléphone, adresse) sont automatiquement masquées dans les CVs et propositions avant d'être envoyées aux serveurs d'IA.
 **Sections disponibles** :
 - 📊 **Contexte** : Enjeux et objectifs
 - 🎯 **Approche** : Vision et méthodologie

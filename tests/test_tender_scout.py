@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 with (
     patch("utils.llm_client.LLMClient.__init__", return_value=None),
     patch("agents.tender_scout_agent.LLMClient"),
-    patch("app.get_consultant_info", return_value={"name": "Test Consultant"}),
+    patch("routers.shared.get_consultant_info", return_value={"name": "Test Consultant"}),
 ):
     from app import app
 
@@ -105,6 +105,7 @@ class TestTenderScoutAgent:
 
             self.agent = TenderScoutAgent.__new__(TenderScoutAgent)
             self.agent.llm = MagicMock()
+            self.agent.consultant_profile = None
 
     # ── scrape_boamp ─────────────────────────────────────────
 
@@ -423,6 +424,153 @@ class TestTenderScoutAgent:
         assert len(tenders) == 1
         assert tenders[0]["titre"] == "Sans titre"
 
+    # ── CV matching ──────────────────────────────────────────
+
+    def test_analyze_tender_with_profile_returns_cv_fields(self):
+        """Avec consultant_profile, le résultat contient cv_pertinence et les listes."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["cv_pertinence"] = 87
+        analysis["competences_correspondantes"] = ["Python", "Data Engineering"]
+        analysis["manques"] = ["SAP"]
+        self.agent.consultant_profile = {
+            "skills_technical": [{"name": "Python"}, {"name": "Data Engineering"}],
+            "skills_sector": [{"name": "Finance"}],
+            "missions": [],
+            "interests": [],
+            "certifications": [],
+        }
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 87
+        assert result["competences_correspondantes"] == ["Python", "Data Engineering"]
+        assert result["manques"] == ["SAP"]
+
+    def test_analyze_tender_cv_pertinence_defaults_to_zero_when_absent(self):
+        """Sans cv_pertinence dans la réponse LLM → 0 par défaut."""
+        analysis = dict(GEMINI_ANALYSIS)
+        # pas de cv_pertinence dans la réponse
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 0
+
+    def test_analyze_tender_cv_pertinence_invalid_defaults_to_zero(self):
+        """cv_pertinence non-numérique → 0."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["cv_pertinence"] = "élevé"
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["cv_pertinence"] == 0
+
+    def test_analyze_tender_non_list_fields_normalized(self):
+        """competences_correspondantes/manques non-listes → listes vides."""
+        analysis = dict(GEMINI_ANALYSIS)
+        analysis["competences_correspondantes"] = "Python"
+        analysis["manques"] = None
+        self.agent.llm.extract_structured_data.return_value = analysis
+
+        result = self.agent.analyze_tender(TENDER_DATA)
+
+        assert result["competences_correspondantes"] == []
+        assert result["manques"] == []
+
+    def test_init_accepts_consultant_profile(self):
+        """Le constructeur accepte consultant_profile et le stocke."""
+        profile = {"skills_technical": [{"name": "Python"}]}
+        with patch("agents.tender_scout_agent.LLMClient"):
+            with patch("agents.tender_scout_agent.SkillsMarketAgent"):
+                from agents.tender_scout_agent import TenderScoutAgent
+
+                agent = TenderScoutAgent(consultant_profile=profile)
+
+        assert agent.consultant_profile is profile
+
+    def test_init_consultant_profile_defaults_to_none(self):
+        """Sans argument, consultant_profile est None."""
+        with patch("agents.tender_scout_agent.LLMClient"):
+            with patch("agents.tender_scout_agent.SkillsMarketAgent"):
+                from agents.tender_scout_agent import TenderScoutAgent
+
+                agent = TenderScoutAgent()
+
+        assert agent.consultant_profile is None
+
+
+# ============================================================
+# TestBuildConsultantContext
+# ============================================================
+
+
+class TestBuildConsultantContext:
+    """Tests pour build_consultant_context() et _format_profile_for_prompt()."""
+
+    def test_returns_none_when_no_consultants(self):
+        """DB vide (in-memory) → None."""
+        from agents.tender_scout_agent import build_consultant_context
+
+        result = build_consultant_context(db_path=":memory:")
+
+        assert result is None
+
+    def test_returns_none_on_exception(self):
+        """Chemin DB invalide → exception attrapée, retourne None."""
+        from agents.tender_scout_agent import build_consultant_context
+
+        result = build_consultant_context(db_path="/nonexistent/path/db.sqlite")
+
+        assert result is None
+
+    def test_format_profile_for_prompt_with_full_profile(self):
+        """Profil complet → toutes les sections présentes dans le texte."""
+        from agents.tender_scout_agent import _format_profile_for_prompt
+
+        profile = {
+            "skills_technical": [{"name": "Python"}, {"name": "FastAPI"}],
+            "skills_sector": [{"name": "Finance"}, {"name": "Assurance"}],
+            "missions": [
+                {
+                    "client_name": "BNP Paribas",
+                    "deliverables": "Refonte du système de reporting",
+                }
+            ],
+            "interests": [{"name": "IA"}, {"name": "Cloud"}],
+            "certifications": [{"name": "AWS Solutions Architect"}],
+        }
+
+        result = _format_profile_for_prompt(profile)
+
+        assert "PROFIL DU CONSULTANT" in result
+        assert "Python" in result
+        assert "FastAPI" in result
+        assert "Finance" in result
+        assert "BNP Paribas" in result
+        assert "IA" in result
+        assert "AWS Solutions Architect" in result
+
+    def test_format_profile_for_prompt_empty_profile(self):
+        """Profil sans données → uniquement l'en-tête."""
+        from agents.tender_scout_agent import _format_profile_for_prompt
+
+        profile = {
+            "skills_technical": [],
+            "skills_sector": [],
+            "missions": [],
+            "interests": [],
+            "certifications": [],
+        }
+
+        result = _format_profile_for_prompt(profile)
+
+        assert "PROFIL DU CONSULTANT" in result
+        # Pas de sections vides ajoutées
+        assert "Compétences" not in result
+        assert "Missions" not in result
+
 
 # ============================================================
 # TestTenderDatabase
@@ -524,6 +672,41 @@ class TestTenderDatabase:
         assert len(go_rows) == 1
         assert len(nogo_rows) == 1
 
+    def test_update_analysis_stores_cv_match_score(self):
+        """update_analysis() stocke cv_pertinence dans cv_match_score."""
+        self._db.save_tenders([dict(TENDER_DATA)])
+        analysis = {**GEMINI_ANALYSIS, "cv_pertinence": 75}
+        self._db.update_analysis(TENDER_DATA["reference"], analysis)
+
+        rows = self._db.get_tenders()
+        assert rows[0]["cv_match_score"] == 75
+
+    def test_get_tenders_filter_min_cv_match(self):
+        """Filtre min_cv_match → retourne uniquement les AOs avec cv_match_score >= seuil."""
+        # AO avec cv_match_score = 80
+        self._db.save_tenders([dict(TENDER_DATA)])
+        self._db.update_analysis(TENDER_DATA["reference"], {**GEMINI_ANALYSIS, "cv_pertinence": 80})
+
+        # AO avec cv_match_score = 30
+        low = {**TENDER_DATA, "reference": "BOAMP-LOW"}
+        self._db.save_tenders([low])
+        self._db.update_analysis("BOAMP-LOW", {**GEMINI_ANALYSIS, "cv_pertinence": 30})
+
+        high_match = self._db.get_tenders(min_cv_match=70)
+        all_tenders = self._db.get_tenders()
+
+        assert len(all_tenders) == 2
+        assert len(high_match) == 1
+        assert high_match[0]["reference"] == TENDER_DATA["reference"]
+
+    def test_get_tenders_filter_min_cv_match_zero(self):
+        """min_cv_match=0 retourne les AOs avec cv_match_score >= 0 (tous analysés)."""
+        self._db.save_tenders([dict(TENDER_DATA)])
+        self._db.update_analysis(TENDER_DATA["reference"], {**GEMINI_ANALYSIS, "cv_pertinence": 0})
+
+        rows = self._db.get_tenders(min_cv_match=0)
+        assert len(rows) == 1
+
     def test_get_unanalyzed_references(self):
         self._db.save_tenders([dict(TENDER_DATA)])
         unanalyzed = self._db.get_unanalyzed_references([TENDER_DATA["reference"]])
@@ -602,13 +785,13 @@ class TestTenderScoutEndpoints:
     # ── Page HTML ─────────────────────────────────────────────
 
     def test_page_route(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.get("/tenderscout")
         assert resp.status_code == 200
         assert "TenderScout" in resp.text
 
     def test_page_route_redirects_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.get("/tenderscout", follow_redirects=False)
         assert resp.status_code in (302, 307)
 
@@ -616,8 +799,8 @@ class TestTenderScoutEndpoints:
 
     def test_scan_ok(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app._run_tender_scout"),
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout._run_tender_scout"),
         ):
             resp = client.post(
                 "/api/tenderscout/scan",
@@ -628,7 +811,7 @@ class TestTenderScoutEndpoints:
         assert "job_id" in resp.json()
 
     def test_scan_empty_keywords(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": [], "sources": ["boamp"]},
@@ -637,7 +820,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_scan_whitespace_keywords_only(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["  ", ""], "sources": ["boamp"]},
@@ -646,7 +829,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_scan_invalid_source(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["test"], "sources": ["invalid_source"]},
@@ -656,7 +839,7 @@ class TestTenderScoutEndpoints:
         assert "invalides" in resp.json()["detail"]
 
     def test_scan_missing_sources(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["test"]},
@@ -665,7 +848,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_scan_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.post(
                 "/api/tenderscout/scan",
                 json={"keywords": ["data"], "sources": ["boamp"]},
@@ -674,7 +857,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 401
 
     def test_scan_invalid_json(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/scan",
                 content=b"not json",
@@ -690,7 +873,7 @@ class TestTenderScoutEndpoints:
         assert "error_msg" in resp.text
 
     def test_stream_done(self):
-        from app import jobs
+        from routers.shared import jobs
 
         job_id = "ts_test1"
         jobs[job_id] = {
@@ -708,7 +891,7 @@ class TestTenderScoutEndpoints:
             del jobs[job_id]
 
     def test_stream_error(self):
-        from app import jobs
+        from routers.shared import jobs
 
         job_id = "ts_test_err"
         jobs[job_id] = {
@@ -729,8 +912,8 @@ class TestTenderScoutEndpoints:
 
     def test_list_tenders(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
         ):
             MockDB.return_value.get_tenders.return_value = [dict(TENDER_DATA)]
             resp = client.get("/api/tenderscout/tenders")
@@ -742,21 +925,21 @@ class TestTenderScoutEndpoints:
 
     def test_list_tenders_with_filters(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
         ):
             MockDB.return_value.get_tenders.return_value = []
             resp = client.get(
                 "/api/tenderscout/tenders?source=boamp&decision=GO"
             )
             MockDB.return_value.get_tenders.assert_called_once_with(
-                source="boamp", decision="GO"
+                source="boamp", decision="GO", min_cv_match=None
             )
 
         assert resp.status_code == 200
 
     def test_list_tenders_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.get("/api/tenderscout/tenders")
         assert resp.status_code == 401
 
@@ -767,9 +950,9 @@ class TestTenderScoutEndpoints:
         fake_xlsx.write_bytes(b"PK")  # Fake zip header
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.datetime") as mock_dt,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.datetime") as mock_dt,
         ):
             mock_dt.now.return_value.strftime.return_value = "20240301_120000"
             MockDB.return_value.export_to_excel.side_effect = lambda p: Path(p).write_bytes(b"PK")
@@ -778,7 +961,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 200
 
     def test_export_excel_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.get("/api/tenderscout/export")
         assert resp.status_code == 401
 
@@ -789,9 +972,9 @@ class TestTenderScoutEndpoints:
         mock_draft = {"id": "draft_abc123", "message_id": "msg_xyz"}
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             go_tender = {**TENDER_DATA, "decision": "GO", "score": 80, "analyse": None}
             MockDB.return_value.get_tenders.return_value = [go_tender]
@@ -816,9 +999,9 @@ class TestTenderScoutEndpoints:
         mock_draft = {"id": "draft_empty", "message_id": "msg_empty"}
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             MockDB.return_value.get_tenders.return_value = []
             MockGmail.return_value.authenticate.return_value = mock_service
@@ -833,7 +1016,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 200
 
     def test_notify_missing_to(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/notify",
                 json={"credentials_path": "/tmp/creds.json"},
@@ -842,7 +1025,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 400
 
     def test_notify_missing_credentials(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/notify",
                 json={"to": "user@example.com"},
@@ -854,9 +1037,9 @@ class TestTenderScoutEndpoints:
         from agents.meeting_capture_agent import DraftCreationError
 
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             MockDB.return_value.get_tenders.return_value = []
             MockGmail.return_value.authenticate.return_value = MagicMock()
@@ -874,9 +1057,9 @@ class TestTenderScoutEndpoints:
 
     def test_notify_unexpected_error(self):
         with (
-            patch("app.get_current_user", return_value=MOCK_USER),
-            patch("app.TenderDatabase") as MockDB,
-            patch("app.MeetingGmailClient") as MockGmail,
+            patch("routers.tenderscout.get_current_user", return_value=MOCK_USER),
+            patch("routers.tenderscout.TenderDatabase") as MockDB,
+            patch("routers.tenderscout.MeetingGmailClient") as MockGmail,
         ):
             MockDB.return_value.get_tenders.return_value = []
             MockGmail.return_value.authenticate.side_effect = Exception("Unexpected")
@@ -890,7 +1073,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 500
 
     def test_notify_unauthenticated(self):
-        with patch("app.get_current_user", return_value=None):
+        with patch("routers.tenderscout.get_current_user", return_value=None):
             resp = client.post(
                 "/api/tenderscout/notify",
                 json={"to": "user@example.com", "credentials_path": "/tmp/creds.json"},
@@ -899,7 +1082,7 @@ class TestTenderScoutEndpoints:
         assert resp.status_code == 401
 
     def test_notify_invalid_json(self):
-        with patch("app.get_current_user", return_value=MOCK_USER):
+        with patch("routers.tenderscout.get_current_user", return_value=MOCK_USER):
             resp = client.post(
                 "/api/tenderscout/notify",
                 content=b"bad json",
