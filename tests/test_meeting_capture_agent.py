@@ -569,7 +569,8 @@ class TestMeetingCaptureStream:
         assert "error_msg" in resp.text
 
     def test_stream_done_job(self):
-        from app import app, jobs
+        from app import app
+        from routers.shared import jobs
         job_id = "test_done"
         jobs[job_id] = {
             "type": "meeting-capture",
@@ -588,7 +589,8 @@ class TestMeetingCaptureStream:
         jobs.pop(job_id, None)
 
     def test_stream_error_job(self):
-        from app import app, jobs
+        from app import app
+        from routers.shared import jobs
         job_id = "test_err"
         jobs[job_id] = {
             "type": "meeting-capture",
@@ -616,8 +618,8 @@ class TestMeetingCaptureGmailDraft:
 
     def test_gmail_draft_ok(self):
         from app import app
-        with patch("app.MeetingGmailClient.authenticate", return_value=MagicMock()), \
-             patch("app.MeetingGmailClient.create_draft",
+        with patch("routers.meeting_capture.MeetingGmailClient.authenticate", return_value=MagicMock()), \
+             patch("routers.meeting_capture.MeetingGmailClient.create_draft",
                    return_value={"id": "d123", "message_id": "m456"}):
             with TestClient(app) as c:
                 resp = c.post(
@@ -635,7 +637,7 @@ class TestMeetingCaptureGmailDraft:
 
     def test_gmail_draft_error(self):
         from app import app
-        with patch("app.MeetingGmailClient.authenticate",
+        with patch("routers.meeting_capture.MeetingGmailClient.authenticate",
                    side_effect=DraftCreationError("service error")):
             with TestClient(app) as c:
                 resp = c.post(

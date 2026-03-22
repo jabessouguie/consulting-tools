@@ -11,6 +11,7 @@ import google.generativeai as genai
 from anthropic import Anthropic, RateLimitError
 from dotenv import load_dotenv
 from openai import OpenAI
+from utils.anonymizer import anonymizer
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -83,6 +84,7 @@ class LLMClient:
             print(f"  [Claude] {self.model}")
 
         self.max_tokens = max_tokens
+        self.privacy_mode = os.getenv("PRIVACY_MODE", "false").lower() == "true"
 
     def _retry_with_backoff(self, func, *args, max_retries=5, **kwargs):
         """
@@ -123,11 +125,20 @@ class LLMClient:
             prompt: Le prompt utilisateur
             system_prompt: Le prompt système (optionnel)
             temperature: Température de génération
-            **kwargs: Arguments supplémentaires
+            **kwargs: Arguments supplémentaires (anonymize: bool)
 
         Returns:
             La réponse générée
         """
+        # La priorité est donnée à l'argument explicite 'anonymize'
+        should_anonymize = kwargs.get("anonymize", self.privacy_mode)
+        
+        if should_anonymize:
+            print(f"  [Privacy] Anonymisation du prompt active (Provider: {self.provider})")
+            prompt = anonymizer.mask(prompt)
+            if system_prompt:
+                system_prompt = anonymizer.mask(system_prompt)
+
         if self.provider == "gemini":
             return self._generate_gemini(prompt, system_prompt, temperature, **kwargs)
         elif self.provider == "openai":
@@ -196,6 +207,14 @@ class LLMClient:
         self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1.0, **kwargs
     ):
         """Yields text chunks as they arrive from the LLM"""
+        should_anonymize = kwargs.get("anonymize", self.privacy_mode)
+        
+        if should_anonymize:
+            print(f"  [Privacy] Anonymisation du stream active (Provider: {self.provider})")
+            prompt = anonymizer.mask(prompt)
+            if system_prompt:
+                system_prompt = anonymizer.mask(system_prompt)
+
         if self.provider == "gemini":
             yield from self._stream_gemini(prompt, system_prompt, temperature, **kwargs)
         elif self.provider == "openai":

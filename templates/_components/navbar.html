@@ -1,0 +1,43 @@
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/" class="nav-brand">
+            <span class="brand-w">Consulting Tools</span>
+            <span class="brand-tag">Agents IA</span>
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link {% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/slide-editor" class="nav-link {% if active == 'slide-editor' %}active{% endif %}">Slide Editor</a>
+            <a href="/document-editor"
+                class="nav-link {% if active == 'document-editor' %}active{% endif %}">Documents</a>
+            <a href="/veille" class="nav-link {% if active == 'veille' %}active{% endif %}">Veille Tech</a>
+            <a href="/dataset" class="nav-link {% if active == 'dataset' %}active{% endif %}">Analyse Data</a>
+            <a href="/elearning" class="nav-link {% if active == 'elearning' %}active{% endif %}">E-learning</a>
+            <a href="/skills-market" class="nav-link {% if active == 'skills-market' %}active{% endif %}">Skills
+                Market</a>
+            <a href="/meeting-capture" class="nav-link {% if active == 'meeting-capture' %}active{% endif %}">Meeting
+                Capture</a>
+            <a href="/tenderscout" class="nav-link {% if active == 'tenderscout' %}active{% endif %}">TenderScout</a>
+            <a href="/analytics" class="nav-link {% if active == 'analytics' %}active{% endif %}">Analytics</a>
+        </div>
+        <div class="nav-actions">
+            <select id="model-selector" class="model-selector" onchange="changeGeminiModel(this.value)"
+                title="Modele Gemini">
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview 🔥</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview ⚡</option>
+                <option value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
+                <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.0-flash" selected>Gemini 2.0 Flash</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+            </select>
+            <div class="nav-user">
+                {% if request.state and request.state.user %}
+                <span class="nav-username">{{ request.state.user }}</span>
+                {% endif %}
+                <a href="/logout" class="nav-logout" title="Deconnexion">Deconnexion</a>
+            </div>
+        </div>
+    </div>
+</nav>

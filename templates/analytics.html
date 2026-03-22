@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — Consulting Tools{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 Analytics & Observabilité</h1>
+    <p class="page-subtitle">Métriques temps réel — Système, IA &amp; Adoption produit</p>
+</div>
+
+<div class="analytics-container">
+
+    <!-- KPI CARDS -->
+    <section class="kpi-section">
+        <div class="kpi-grid">
+            <div class="kpi-card" id="kpi-requests">
+                <div class="kpi-icon">🌐</div>
+                <div class="kpi-value" id="val-requests">—</div>
+                <div class="kpi-label">Requêtes totales</div>
+            </div>
+            <div class="kpi-card" id="kpi-latency">
+                <div class="kpi-icon">⚡</div>
+                <div class="kpi-value" id="val-latency">—</div>
+                <div class="kpi-label">Latence moyenne</div>
+            </div>
+            <div class="kpi-card" id="kpi-errors">
+                <div class="kpi-icon">🔴</div>
+                <div class="kpi-value" id="val-errors">—</div>
+                <div class="kpi-label">Taux d'erreur</div>
+            </div>
+            <div class="kpi-card" id="kpi-tokens">
+                <div class="kpi-icon">🤖</div>
+                <div class="kpi-value" id="val-tokens">—</div>
+                <div class="kpi-label">Tokens IA consommés</div>
+            </div>
+            <div class="kpi-card" id="kpi-cost">
+                <div class="kpi-icon">💰</div>
+                <div class="kpi-value" id="val-cost">—</div>
+                <div class="kpi-label">Coût API total</div>
+            </div>
+            <div class="kpi-card" id="kpi-users">
+                <div class="kpi-icon">👥</div>
+                <div class="kpi-value" id="val-users">—</div>
+                <div class="kpi-label">Utilisateurs actifs (30j)</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES + LLM -->
+    <section class="analytics-grid">
+
+        <!-- Top features produit -->
+        <div class="analytics-card">
+            <h2>🎯 Features les plus utilisées</h2>
+            <div id="top-features-list" class="feature-list">
+                <div class="loading-msg">Chargement…</div>
+            </div>
+        </div>
+
+        <!-- Coût IA par feature -->
+        <div class="analytics-card">
+            <h2>🤖 Coût IA par feature</h2>
+            <div id="llm-by-feature" class="feature-list">
+                <div class="loading-msg">Chargement…</div>
+            </div>
+        </div>
+
+        <!-- Modèles utilisés -->
+        <div class="analytics-card">
+            <h2>🧠 Modèles IA utilisés</h2>
+            <div id="llm-by-model" class="feature-list">
+                <div class="loading-msg">Chargement…</div>
+            </div>
+        </div>
+
+        <!-- Top endpoints HTTP -->
+        <div class="analytics-card">
+            <h2>📡 Endpoints les plus appelés</h2>
+            <div id="top-endpoints" class="feature-list">
+                <div class="loading-msg">Chargement…</div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- RECENT LLM CALLS -->
+    <section class="analytics-card full-width">
+        <h2>📋 Derniers appels LLM</h2>
+        <div class="table-wrapper">
+            <table class="analytics-table" id="recent-llm">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Feature</th>
+                        <th>Modèle</th>
+                        <th>Tokens</th>
+                        <th>Coût ($)</th>
+                        <th>Latence</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-llm-body">
+                    <tr><td colspan="7" class="loading-msg">Chargement…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- NO DATA STATE -->
+    <div id="no-data-banner" class="no-data-banner" style="display:none;">
+        <p>📭 Pas encore de données collectées. Les métriques apparaîtront après quelques utilisations de l'application.</p>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.analytics-container { max-width: 1400px; margin: 0 auto; padding: 0 1rem 3rem; }
+.kpi-section { margin-bottom: 2rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.kpi-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    transition: box-shadow .2s;
+}
+.kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+.kpi-icon { font-size: 1.8rem; margin-bottom: .5rem; }
+.kpi-value { font-size: 1.75rem; font-weight: 700; color: var(--corail, #FF6B58); font-family: 'Chakra Petch', sans-serif; }
+.kpi-label { font-size: .8rem; color: #6b7280; margin-top: .25rem; }
+.analytics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem; }
+.analytics-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+.analytics-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--noir-profond, #111); }
+.analytics-card.full-width { grid-column: 1 / -1; }
+.feature-list { display: flex; flex-direction: column; gap: .5rem; }
+.feature-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .5rem .75rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    font-size: .875rem;
+}
+.feature-row .name { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feature-row .val { color: var(--corail, #FF6B58); font-weight: 600; margin-left: .75rem; white-space: nowrap; }
+.bar-track { height: 4px; background: #e5e7eb; border-radius: 99px; margin-top: 3px; }
+.bar-fill { height: 100%; background: var(--corail, #FF6B58); border-radius: 99px; transition: width .5s; }
+.loading-msg { color: #9ca3af; font-size: .875rem; padding: .5rem 0; }
+.table-wrapper { overflow-x: auto; }
+.analytics-table { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+.analytics-table th { text-align: left; padding: .6rem .75rem; background: #f3f4f6; font-weight: 600; color: #374151; }
+.analytics-table td { padding: .55rem .75rem; border-bottom: 1px solid #f3f4f6; color: #374151; }
+.analytics-table tr:hover td { background: #fafafa; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: .75rem; font-weight: 500; }
+.badge.success { background: #d1fae5; color: #065f46; }
+.badge.error { background: #fee2e2; color: #991b1b; }
+.no-data-banner { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 1.5rem; text-align: center; color: #0369a1; margin-top: 1rem; }
+</style>
+
+<script>
+async function loadStats() {
+    try {
+        const r = await fetch('/api/analytics/stats');
+        const d = await r.json();
+        if (d.error) return;
+
+        const sys = d.system || {};
+        const ai = d.ai || {};
+        const prod = d.product || {};
+
+        document.getElementById('val-requests').textContent = (sys.total_requests || 0).toLocaleString();
+        document.getElementById('val-latency').textContent = sys.avg_latency ? sys.avg_latency + ' ms' : '—';
+        document.getElementById('val-errors').textContent = sys.error_rate != null ? sys.error_rate + '%' : '—';
+        document.getElementById('val-tokens').textContent = (ai.total_tokens || 0).toLocaleString();
+        document.getElementById('val-cost').textContent = ai.total_cost_usd != null ? '$' + ai.total_cost_usd.toFixed(4) : '—';
+        document.getElementById('val-users').textContent = (prod.active_users_30d || 0).toLocaleString();
+
+        // Top features
+        const features = prod.top_features || [];
+        const maxF = features[0]?.count || 1;
+        document.getElementById('top-features-list').innerHTML = features.length
+            ? features.map(f => `
+                <div class="feature-row">
+                    <div>
+                        <div class="name">${f.event_name}</div>
+                        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(f.count/maxF*100)}%"></div></div>
+                    </div>
+                    <span class="val">${f.count}</span>
+                </div>`).join('')
+            : '<div class="loading-msg">Aucune donnée</div>';
+
+        if (!sys.total_requests && !ai.total_tokens) {
+            document.getElementById('no-data-banner').style.display = 'block';
+        }
+    } catch(e) { console.warn('Stats error', e); }
+}
+
+async function loadLLM() {
+    try {
+        const r = await fetch('/api/analytics/llm');
+        const d = await r.json();
+        if (d.error) return;
+
+        // By feature
+        const byFeature = d.by_feature || [];
+        const maxCost = byFeature[0]?.cost_usd || 1;
+        document.getElementById('llm-by-feature').innerHTML = byFeature.length
+            ? byFeature.map(f => `
+                <div class="feature-row">
+                    <div>
+                        <div class="name">${f.feature}</div>
+                        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(f.cost_usd/maxCost*100)}%"></div></div>
+                    </div>
+                    <span class="val">$${(f.cost_usd||0).toFixed(4)}</span>
+                </div>`).join('')
+            : '<div class="loading-msg">Aucune donnée</div>';
+
+        // By model
+        const byModel = d.by_model || [];
+        document.getElementById('llm-by-model').innerHTML = byModel.length
+            ? byModel.map(m => `
+                <div class="feature-row">
+                    <div class="name">${m.model} <small style="color:#9ca3af">(${m.provider})</small></div>
+                    <span class="val">${m.calls} appels</span>
+                </div>`).join('')
+            : '<div class="loading-msg">Aucune donnée</div>';
+
+        // Recent calls
+        const recent = d.recent || [];
+        document.getElementById('recent-llm-body').innerHTML = recent.length
+            ? recent.map(r => `
+                <tr>
+                    <td>${r.timestamp?.split('T')[0] || '—'} ${r.timestamp?.split('T')[1]?.slice(0,5) || ''}</td>
+                    <td>${r.feature || '—'}</td>
+                    <td><code style="font-size:.75rem">${r.model || '—'}</code></td>
+                    <td>${(r.total_tokens||0).toLocaleString()}</td>
+                    <td>$${(r.cost_usd||0).toFixed(6)}</td>
+                    <td>${r.latency_ms ? Math.round(r.latency_ms) + ' ms' : '—'}</td>
+                    <td><span class="badge ${r.status==='success'?'success':'error'}">${r.status||'—'}</span></td>
+                </tr>`).join('')
+            : '<tr><td colspan="7" class="loading-msg">Aucun appel LLM enregistré</td></tr>';
+    } catch(e) { console.warn('LLM error', e); }
+}
+
+async function loadRequests() {
+    try {
+        const r = await fetch('/api/analytics/requests');
+        const d = await r.json();
+        if (d.error) return;
+
+        const endpoints = d.top_endpoints || [];
+        const maxHits = endpoints[0]?.hits || 1;
+        document.getElementById('top-endpoints').innerHTML = endpoints.length
+            ? endpoints.map(e => `
+                <div class="feature-row">
+                    <div>
+                        <div class="name" title="${e.endpoint}">${e.endpoint}</div>
+                        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(e.hits/maxHits*100)}%"></div></div>
+                    </div>
+                    <span class="val">${e.hits}</span>
+                </div>`).join('')
+            : '<div class="loading-msg">Aucune donnée</div>';
+    } catch(e) { console.warn('Requests error', e); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadLLM();
+    loadRequests();
+});
+</script>
+{% endblock %}

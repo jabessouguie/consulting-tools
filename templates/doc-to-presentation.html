@@ -1,93 +1,283 @@
 {% extends "base.html" %}
 
-{% block title %}Consulting Tools - Document vers Presentation{% endblock %}
+{% block title %}Doc → Présentation — Consulting Tools{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <div class="card-icon"></div>
-        <div>
-            <div class="card-title">Document vers Presentation</div>
-            <div class="card-subtitle">Convertissez vos documents en presentation PPTX professionnelle</div>
-        </div>
-    </div>
-
-    <form id="doc-presentation-form">
-        <div class="form-group">
-            <label class="form-label">Documents (Markdown, PDF ou DOCX)</label>
-            <div class="file-upload" id="doc-upload-zone">
-                <input type="file" id="doc-files" multiple accept=".md,.pdf,.docx,.txt" style="display:none">
-                <p>Cliquez ou glissez vos fichiers ici</p>
-                <small style="color: var(--gris-moyen);">Formats acceptes : .md, .pdf, .docx, .txt - Plusieurs fichiers possibles</small>
-            </div>
-            <div id="file-list" style="margin-top: 0.5rem;"></div>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">Public cible</label>
-            <input type="text" class="form-input" id="target-audience"
-                   placeholder="Ex: Comex, Equipe technique, Client final, Investisseurs..." required>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">Objectif de la presentation</label>
-            <textarea class="form-textarea" id="presentation-objective"
-                      placeholder="Ex: Convaincre d'investir dans une solution data, Former l'equipe sur les bonnes pratiques IA, Presenter les resultats du trimestre..."
-                      style="min-height: 100px;" required></textarea>
-        </div>
-
-        <button type="submit" class="btn btn-primary" id="generate-btn">
-            Generer la presentation
-        </button>
-    </form>
-
-    <div class="progress-container" id="progress">
-        <div class="progress-bar-wrapper">
-            <div class="progress-bar" id="progress-bar"></div>
-        </div>
-        <ul class="progress-steps">
-            <li class="progress-step pending" data-step="parse">
-                <span class="step-icon">1</span>
-                <span>Parsing des documents</span>
-            </li>
-            <li class="progress-step pending" data-step="structure">
-                <span class="step-icon">2</span>
-                <span>Structuration des slides</span>
-            </li>
-            <li class="progress-step pending" data-step="images">
-                <span class="step-icon">3</span>
-                <span>Generation des illustrations</span>
-            </li>
-            <li class="progress-step pending" data-step="pptx">
-                <span class="step-icon">4</span>
-                <span>Creation du PPTX</span>
-            </li>
-        </ul>
-    </div>
-
-    <div id="error-container"></div>
+<div class="page-header">
+    <h1>📄 Doc → Présentation</h1>
+    <p class="page-subtitle">Convertissez vos documents en une présentation PPTX structurée</p>
 </div>
 
-<div class="result-container" id="result">
-    <div class="card">
-        <div class="card-header">
-            <div>
-                <div class="card-title">Presentation generee</div>
-                <div class="card-subtitle"><span id="slide-count"></span> slides</div>
+<div class="dtp-container">
+
+    <!-- FORM -->
+    <div class="dtp-card" id="form-section">
+        <h2>📁 Vos documents source</h2>
+        <form id="dtp-form">
+            <div class="field-group">
+                <label>Documents <span class="required">*</span></label>
+                <div class="file-drop-zone" id="drop-zone">
+                    <input type="file" id="doc-files" name="files" accept=".md,.pdf,.docx,.txt"
+                        multiple required class="file-input">
+                    <div class="drop-label">
+                        <span class="drop-icon">📂</span>
+                        <span>Glissez vos fichiers ici ou <strong>cliquez pour sélectionner</strong></span>
+                        <span class="drop-hint" id="file-name-display">Formats : MD, PDF, DOCX, TXT (multi-sélection)</span>
+                    </div>
+                </div>
+                <div id="file-list" class="file-list"></div>
+            </div>
+
+            <div class="field-grid">
+                <div class="field-group">
+                    <label for="target-audience">Public cible <span class="required">*</span></label>
+                    <input type="text" id="target-audience" name="target_audience"
+                        placeholder="Ex : Dirigeants, DSI, équipe RH…"
+                        class="field-input" required>
+                </div>
+                <div class="field-group">
+                    <label for="objective">Objectif <span class="required">*</span></label>
+                    <input type="text" id="objective" name="objective"
+                        placeholder="Ex : Convaincre d'adopter notre solution cloud"
+                        class="field-input" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="submit-btn">
+                Générer la présentation
+            </button>
+        </form>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="dtp-card" id="progress-section" style="display:none;">
+        <h2>⚙️ Génération en cours…</h2>
+        <div class="progress-steps" id="progress-steps">
+            <div class="progress-step" id="step-parse">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Lecture des documents</span>
+            </div>
+            <div class="progress-step" id="step-structure">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Structuration IA</span>
+            </div>
+            <div class="progress-step" id="step-pptx">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Construction PPTX</span>
             </div>
         </div>
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+        </div>
+        <p class="progress-hint">La génération peut prendre 30 à 90 secondes selon la taille des documents.</p>
+    </div>
 
-        <div class="result-content" id="slides-preview"></div>
-
+    <!-- RESULT -->
+    <div class="dtp-card result-card" id="result-section" style="display:none;">
+        <h2>✅ Présentation générée !</h2>
+        <div class="result-meta" id="result-meta"></div>
         <div class="result-actions">
-            <a class="btn btn-primary" id="download-pptx" href="#" download>Telecharger PPTX</a>
+            <a id="download-link" href="#" class="btn-primary" download>
+                ⬇️ Télécharger le PPTX
+            </a>
+            <button class="btn-outline" onclick="resetForm()">🔄 Nouvelle présentation</button>
         </div>
     </div>
+
+    <!-- ERROR -->
+    <div class="dtp-card error-card" id="error-section" style="display:none;">
+        <p id="error-msg"></p>
+        <button class="btn-outline" onclick="resetForm()">Réessayer</button>
+    </div>
+
 </div>
 {% endblock %}
 
 {% block scripts %}
+<style>
+.dtp-container { max-width: 860px; margin: 0 auto; padding: 0 1rem 3rem; }
+.dtp-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.dtp-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--noir-profond, #111); }
+.field-group { margin-bottom: 1.25rem; }
+.field-group label { display: block; font-size: .875rem; font-weight: 500; margin-bottom: .5rem; color: #374151; }
+.required { color: #ef4444; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 600px) { .field-grid { grid-template-columns: 1fr; } }
+.file-drop-zone {
+    border: 2px dashed #d1d5db; border-radius: 10px; padding: 2rem;
+    text-align: center; cursor: pointer; transition: border-color .2s, background .2s; position: relative;
+}
+.file-drop-zone:hover, .file-drop-zone.drag-over { border-color: var(--corail, #FF6B58); background: #fff5f4; }
+.file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-label { display: flex; flex-direction: column; gap: .5rem; pointer-events: none; }
+.drop-icon { font-size: 2rem; }
+.drop-hint { font-size: .8rem; color: #9ca3af; }
+.file-list { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.file-tag {
+    display: flex; align-items: center; gap: .4rem;
+    background: #f3f4f6; border-radius: 99px;
+    padding: .25rem .75rem; font-size: .8rem; color: #374151;
+}
+.field-input {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: .625rem .875rem; font-size: .875rem; font-family: inherit;
+    transition: border-color .2s;
+}
+.field-input:focus { outline: none; border-color: var(--corail, #FF6B58); }
+.btn-primary {
+    display: inline-block; background: var(--corail, #FF6B58); color: #fff;
+    border: none; border-radius: 8px; padding: .75rem 1.5rem;
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: opacity .2s; text-decoration: none; text-align: center; width: 100%;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-outline {
+    background: transparent; border: 1px solid #d1d5db; color: #374151;
+    border-radius: 8px; padding: .6rem 1.2rem; font-size: .875rem; font-weight: 500;
+    cursor: pointer; transition: .2s;
+}
+.btn-outline:hover { border-color: var(--corail, #FF6B58); color: var(--corail, #FF6B58); }
+.progress-steps { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.progress-step {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .5rem .875rem; border-radius: 99px;
+    background: #f3f4f6; font-size: .875rem; color: #6b7280; transition: .3s;
+}
+.progress-step.active { background: #fff5f4; color: var(--corail, #FF6B58); border: 1px solid #fecaca; }
+.progress-step.done { background: #d1fae5; color: #065f46; }
+.progress-bar-track { height: 6px; background: #e5e7eb; border-radius: 99px; overflow: hidden; margin-bottom: .75rem; }
+.progress-bar-fill { height: 100%; background: var(--corail, #FF6B58); border-radius: 99px; transition: width .4s; }
+.progress-hint { font-size: .8rem; color: #9ca3af; }
+.result-card { background: #f0fdf4; border-color: #86efac; }
+.result-meta { font-size: .9rem; color: #374151; margin-bottom: 1.25rem; }
+.result-meta strong { color: var(--corail, #FF6B58); }
+.result-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.result-actions .btn-primary { width: auto; flex: 0 0 auto; }
+.error-card { background: #fff5f5; border-color: #fecaca; color: #991b1b; }
+.error-card p { margin-bottom: 1rem; }
+</style>
+
 <script>
-    initDocToPresentationPage();
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('doc-files');
+const fileList = document.getElementById('file-list');
+
+function renderFileList(files) {
+    fileList.innerHTML = Array.from(files).map(f =>
+        `<div class="file-tag">📄 ${f.name}</div>`
+    ).join('');
+}
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        renderFileList(fileInput.files);
+    }
+});
+fileInput.addEventListener('change', () => renderFileList(fileInput.files));
+
+document.getElementById('dtp-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const files = fileInput.files;
+    if (!files.length) return;
+
+    const audience = document.getElementById('target-audience').value.trim();
+    const objective = document.getElementById('objective').value.trim();
+    if (!audience || !objective) return;
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Démarrage…';
+
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('progress-section').style.display = 'block';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+
+    const fd = new FormData();
+    Array.from(files).forEach(f => fd.append('files', f));
+    fd.append('target_audience', audience);
+    fd.append('objective', objective);
+
+    try {
+        const res = await fetch('/api/doc-to-presentation/generate', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        listenToStream(data.job_id);
+    } catch (err) {
+        showError(err.message || 'Erreur inconnue');
+        btn.disabled = false;
+        btn.textContent = 'Générer la présentation';
+    }
+});
+
+function listenToStream(jobId) {
+    const es = new EventSource(`/api/doc-to-presentation/stream/${jobId}`);
+
+    es.addEventListener('step', e => updateStep(JSON.parse(e.data)));
+    es.addEventListener('result', e => { es.close(); showResult(JSON.parse(e.data)); });
+    es.addEventListener('error_msg', e => { es.close(); showError(JSON.parse(e.data).message || 'Erreur'); });
+    es.onerror = () => { es.close(); showError('Connexion perdue. Veuillez réessayer.'); };
+}
+
+function updateStep(step) {
+    const el = document.getElementById(`step-${step.step}`);
+    if (el) {
+        el.classList.remove('active', 'done');
+        el.classList.add(step.status === 'done' ? 'done' : 'active');
+        el.querySelector('.step-icon').textContent = step.status === 'done' ? '✅' : '⚙️';
+    }
+    document.getElementById('progress-bar').style.width = (step.progress || 0) + '%';
+}
+
+function showResult(result) {
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('result-section').style.display = 'block';
+
+    document.getElementById('result-meta').innerHTML =
+        `<strong>${result.slide_count || 0}</strong> slides générées · ` +
+        `Générée le ${result.generated_at ? result.generated_at.split('T')[0] : new Date().toLocaleDateString()}`;
+
+    const link = document.getElementById('download-link');
+    if (result.pptx_filename) {
+        link.href = `/api/doc-to-presentation/download/${encodeURIComponent(result.pptx_filename)}`;
+        link.style.display = 'inline-block';
+    } else {
+        link.style.display = 'none';
+    }
+}
+
+function showError(msg) {
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'block';
+    document.getElementById('error-msg').textContent = '⚠️ ' + msg;
+}
+
+function resetForm() {
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+    document.getElementById('dtp-form').reset();
+    fileList.innerHTML = '';
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-btn').textContent = 'Générer la présentation';
+    ['parse', 'structure', 'pptx'].forEach(s => {
+        const el = document.getElementById(`step-${s}`);
+        if (el) { el.classList.remove('active', 'done'); el.querySelector('.step-icon').textContent = '⏳'; }
+    });
+    document.getElementById('progress-bar').style.width = '0%';
+}
 </script>
 {% endblock %}

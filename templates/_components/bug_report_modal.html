@@ -1,0 +1,37 @@
+<!-- Bug Report Modal -->
+<div id="bug-report-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 520px;">
+        <h3>Signaler un bug</h3>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div>
+                <label
+                    style="font-size: 0.85rem; color: var(--gris-moyen, #888); display: block; margin-bottom: 0.3rem;">Description
+                    du probleme *</label>
+                <textarea id="bug-description" rows="4" placeholder="Decrivez le probleme rencontre..."
+                    style="width: 100%; padding: 0.6rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; resize: vertical;"></textarea>
+            </div>
+            <div>
+                <label
+                    style="font-size: 0.85rem; color: var(--gris-moyen, #888); display: block; margin-bottom: 0.3rem;">Severite</label>
+                <select id="bug-severity"
+                    style="width: 100%; padding: 0.6rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
+                    <option value="low">Faible - Mineur, contournable</option>
+                    <option value="medium" selected>Moyenne - Genante mais fonctionnel</option>
+                    <option value="high">Haute - Fonctionnalite cassee</option>
+                    <option value="critical">Critique - Application inutilisable</option>
+                </select>
+            </div>
+            <div>
+                <label
+                    style="font-size: 0.85rem; color: var(--gris-moyen, #888); display: block; margin-bottom: 0.3rem;">Capture
+                    d'ecran (optionnel)</label>
+                <input type="file" id="bug-screenshot" accept="image/*,video/*" style="font-size: 0.85rem;">
+            </div>
+            <p style="font-size: 0.75rem; color: #aaa; margin: 0;">Page: <span id="bug-page-url"></span></p>
+        </div>
+        <div class="modal-actions" style="margin-top: 1.5rem;">
+            <button onclick="closeBugReportModal()" class="btn btn-secondary">Annuler</button>
+            <button onclick="submitBugReport()" id="btn-submit-bug" class="btn btn-primary">Envoyer</button>
+        </div>
+    </div>
+</div>
