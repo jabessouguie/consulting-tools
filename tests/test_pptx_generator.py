@@ -943,6 +943,23 @@ class TestAddImageSlide:
         # add_paragraph is called for each bullet
         assert tb.text_frame.add_paragraph.called
 
+    def test_image_slide_exception_on_add_picture_is_swallowed(self, tmp_path):
+        # lines 457-458: except Exception as e: print(...) when add_picture raises
+        gen, mock_prs = self._make_gen(tmp_path)
+
+        img_file = tmp_path / "bad.png"
+        img_file.write_bytes(b"not a real png")
+
+        slide = MagicMock()
+        slide.placeholders = []
+        slide.shapes.add_picture.side_effect = Exception("Corrupt image")
+        slide.shapes.add_textbox.return_value = MagicMock()
+        mock_prs.slides.add_slide.return_value = slide
+
+        # Should not raise — exception is swallowed
+        gen.add_image_slide("T", str(img_file))
+        slide.shapes.add_picture.assert_called()
+
 
 # ---------------------------------------------------------------------------
 # ProposalPPTXGenerator.add_diagram_slide (flow)

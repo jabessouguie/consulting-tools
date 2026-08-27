@@ -1,5 +1,7 @@
 import json
 import os
+import time
+import uuid
 from pathlib import Path
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -12,7 +14,16 @@ from utils.tender_db import TenderDatabase
 BASE_DIR = Path(__file__).parent.parent
 
 # Shared Globals
+# Registre des jobs de fond. Purge par create_job() : sans cela le dict croit
+# indefiniment sur un serveur long-running, chaque entree gardant son resultat
+# complet en memoire.
 jobs = {}
+
+# Un job est purgeable au-dela de cette duree, quel que soit son statut : un job
+# encore "running" apres une heure est un thread mort.
+JOB_TTL_SECONDS = 3600
+# Plafond dur, pour le cas ou des jobs arriveraient plus vite que le TTL.
+MAX_JOBS = 200
 
 # Shared DB Instances (to be initialized in app.py or here)
 # We'll initialize them here to be shared across routers and app.py
@@ -82,6 +93,54 @@ def save_settings():
 
 
 load_settings()
+
+def prune_jobs() -> int:
+    """
+    Supprime les jobs expires. Retourne le nombre de jobs retires.
+
+    Un job sans `created_at` (cree par du code anterieur au registre horodate)
+    est considere comme datant de maintenant : il sera purge au tour suivant
+    plutot que d'etre supprime pendant qu'il tourne encore.
+    """
+    now = time.time()
+    expired = [
+        jid
+        for jid, job in jobs.items()
+        if now - job.setdefault("created_at", now) > JOB_TTL_SECONDS
+    ]
+    for jid in expired:
+        jobs.pop(jid, None)
+
+    # Plafond dur : on evince les plus anciens au-dela de MAX_JOBS.
+    if len(jobs) > MAX_JOBS:
+        oldest = sorted(jobs.items(), key=lambda kv: kv[1].get("created_at", 0))
+        for jid, _ in oldest[: len(jobs) - MAX_JOBS]:
+            jobs.pop(jid, None)
+            expired.append(jid)
+
+    return len(expired)
+
+
+def create_job(job_type: str, **extra) -> str:
+    """
+    Cree un job de fond et retourne son identifiant.
+
+    Centralise le boilerplate identique repete dans chaque router
+    (uuid tronque + dict de statut) et purge les jobs expires au passage.
+    """
+    prune_jobs()
+    job_id = str(uuid.uuid4())[:8]
+    jobs[job_id] = {
+        "type": job_type,
+        "status": "running",
+        "steps": [],
+        "result": None,
+        "error": None,
+        "created_at": time.time(),
+        **extra,
+    }
+    return job_id
+
 
 def send_sse(event: str, data: dict) -> str:
     """Formate un message SSE (Server-Sent Events)"""

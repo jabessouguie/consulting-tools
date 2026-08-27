@@ -400,8 +400,14 @@ class TestCheckHardcodedSecrets:
 
         assert result["status"] == "ok"
 
-    def test_skips_unreadable_files(self, tmp_path):
-        """If a file raises an exception it should be silently skipped."""
+    def test_unreadable_file_makes_result_inconclusive(self, tmp_path):
+        """
+        Un fichier illisible ne doit PAS donner un verdict "ok".
+
+        Un scanner de secrets qui n'a pas pu lire un fichier n'a rien prouve a
+        son sujet : renvoyer "ok" donnerait une fausse assurance de securite.
+        Le resultat doit signaler que l'analyse est non concluante.
+        """
         py_file = tmp_path / "unreadable.py"
         py_file.write_text("dummy\n")
 
@@ -420,7 +426,8 @@ class TestCheckHardcodedSecrets:
             with patch("builtins.open", side_effect=patched_open):
                 result = check_hardcoded_secrets()
 
-        assert result["status"] == "ok"
+        assert result["status"] == "error"
+        assert any("non analysés" in issue for issue in result["issues"])
 
     def test_does_not_duplicate_same_issue(self, tmp_path):
         """The same issue should not be reported twice for the same file."""

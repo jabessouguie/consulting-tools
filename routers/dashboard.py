@@ -76,6 +76,7 @@ async def get_model_settings():
 
 
 @router.post("/api/settings/model")
+@limiter.limit("10/minute")
 async def set_model_settings(request: Request):
     """Met a jour le modele Gemini selectionne"""
     import routers.shared as shared

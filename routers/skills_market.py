@@ -1,5 +1,4 @@
 import os
-import uuid
 import threading
 import json
 import asyncio
@@ -9,13 +8,14 @@ from fastapi import APIRouter, Request, File, UploadFile, Form
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from routers.shared import (
-    templates, 
-    limiter, 
-    jobs, 
-    skills_market_db, 
-    BASE_DIR, 
-    CONSULTANT_NAME, 
-    safe_error_message
+    BASE_DIR,
+    CONSULTANT_NAME,
+    create_job,
+    jobs,
+    limiter,
+    safe_error_message,
+    skills_market_db,
+    templates,
 )
 from agents.skills_market import SkillsMarketAgent
 from utils.auth import get_current_user
@@ -58,14 +58,7 @@ async def api_skills_market_import(request: Request):
             status_code=404,
         )
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "skills-import",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("skills-import")
 
     thread = threading.Thread(
         target=_run_skills_import,
@@ -145,14 +138,7 @@ async def api_skills_market_upload(
         tmp.write(content)
         tmp_path = tmp.name
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "skills-upload",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("skills-upload")
 
     thread = threading.Thread(
         target=_run_skills_upload,
@@ -302,7 +288,8 @@ async def api_skills_market_detail(consultant_id: int):
     return {"consultant": consultant}
 
 @router.delete("/api/skills-market/consultants/{consultant_id}")
-async def api_skills_market_delete(consultant_id: int):
+@limiter.limit("10/minute")
+async def api_skills_market_delete(request: Request, consultant_id: int):
     """Supprime un consultant"""
     deleted = skills_market_db.delete_consultant(consultant_id)
     if not deleted:

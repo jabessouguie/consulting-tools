@@ -204,6 +204,7 @@ async def api_proposal_stream(job_id: str):
 
 
 @router.post("/api/proposal/regenerate")
+@limiter.limit("3/minute")
 async def api_proposal_regenerate(request: Request):
     """Regenere la proposition avec le feedback utilisateur"""
     body = await request.json()
@@ -480,7 +481,7 @@ async def api_proposal_preview(
         except Exception as e:
             return JSONResponse(
                 {
-                    "error": f"Erreur lors de la génération de prévisualisation: {str(e)}",
+                    "error": safe_error_message(e, "Erreur lors de la génération de prévisualisation"),
                     "preview_images": [],
                 },
                 status_code=500,
@@ -567,7 +568,7 @@ SLIDES PRÉCÉDENTES:
         # Utiliser le LLM pour interpréter le feedback et générer des
         # instructions structurées
         interpretation = agent.llm_client.generate(
-            prompt="""L'utilisateur veut modifier la section "{section}" de sa proposition commerciale.
+            prompt=f"""L'utilisateur veut modifier la section "{section}" de sa proposition commerciale.
 
 {previous_context}
 
@@ -576,13 +577,13 @@ FEEDBACK UTILISATEUR (en langage naturel):
 
 Analyse ce feedback et génère des instructions STRUCTURÉES pour régénérer la section.
 Réponds en JSON avec ces champs:
-{
+{{
                 "changes_requested": ["Liste des modifications demandées"],
   "visual_changes": ["Modifications visuelles (diagrammes, mise en page)"],
   "content_changes": ["Modifications de contenu (texte, chiffres, structure)"],
   "tone_changes": "Changement de ton si demandé",
   "specific_instructions": "Instructions précises pour la régénération"
-}
+}}
 
 Exemples:
 - "Planning trop court" → ajouter des phases, augmenter les durées
@@ -941,7 +942,7 @@ Objectifs: {', '.join(tender_analysis.get('objectives', [])[:3])}
 
         # Regenerer le contenu markdown avec feedback
         revised_content = agent.llm_client.generate(
-            prompt="""Voici une proposition commerciale generee precedemment:
+            prompt=f"""Voici une proposition commerciale generee precedemment:
 
 {previous_content[:6000]}
 
@@ -954,7 +955,7 @@ Reecris la proposition en integrant les corrections demandees dans le feedback.
 Conserve la structure et le style professionnel. Ne modifie que ce qui est demande dans le feedback.
 Sois concret et precis. Evite les majuscules inutiles et les emojis.
 Fournis la proposition complete revisee.""",
-            system_prompt="""Tu es {agent.consultant_info['name']}, {agent.consultant_info['title']} chez {agent.consultant_info['company']}.
+            system_prompt=f"""Tu es {agent.consultant_info['name']}, {agent.consultant_info['title']} chez {agent.consultant_info['company']}.
 Tu corriges une proposition commerciale selon le retour du consultant.
 Reponds en francais de maniere professionnelle.""",
             temperature=0.6,
@@ -968,7 +969,7 @@ Reponds en francais de maniere professionnelle.""",
         revised_slides = None
         try:
             slides_response = agent.llm_client.generate(
-                prompt="""Genere une structure complete de slides PowerPoint pour cette proposition commerciale revisee.
+                prompt=f"""Genere une structure complete de slides PowerPoint pour cette proposition commerciale revisee.
 
 PROPOSITION REVISEE:
 {revised_content[:5000]}
@@ -1145,6 +1146,7 @@ async def api_download(path: str):
 
 
 @router.post("/api/convert-to-pdf")
+@limiter.limit("5/minute")
 async def api_convert_to_pdf(request: Request):
     """
     Convertit un fichier PPTX ou Markdown en PDF
@@ -1230,13 +1232,13 @@ async def proposal_canva_page(request: Request):
 
 
 @router.post("/api/proposal-canva/generate")
+@limiter.limit("3/minute")
 async def api_proposal_canva_generate(request: Request):
     """Génère des propositions en mode conversationnel avec Gemini"""
     try:
         data = await request.json()
         user_message = data.get("message", "")
         conversation_history = data.get("conversation_history", [])
-        data.get("current_proposal")
 
         if not user_message:
             return JSONResponse({"error": "Message manquant"}, status_code=400)
@@ -1247,7 +1249,7 @@ async def api_proposal_canva_generate(request: Request):
         llm = LLMClient(provider="gemini", model="gemini-3-flash-preview")
 
         # System prompt pour le mode conversationnel
-        system_prompt = """Tu es un assistant expert en propositions commerciales pour {COMPANY_NAME}.
+        system_prompt = """Tu es un assistant expert en propositions commerciales pour """ + COMPANY_NAME + """.
 Tu aides les consultants à créer des propositions professionnelles de manière conversationnelle.
 
 INSTRUCTIONS:
@@ -1282,7 +1284,7 @@ TYPES DE SLIDES DISPONIBLES:
 - closing: Slide de clôture
 
 Consultant: {CONSULTANT_NAME}
-Société: {COMPANY_NAME} """
+Société: """ + COMPANY_NAME + """ """
 
         # Construire les messages pour l'API
         messages = []
@@ -1360,13 +1362,13 @@ Société: {COMPANY_NAME} """
 
 
 @router.post("/api/proposal-canva/generate-section")
+@limiter.limit("3/minute")
 async def api_proposal_canva_generate_section(request: Request):
     """Génère une section spécifique de proposition (mode modulaire)"""
     try:
         data = await request.json()
         section = data.get("section", "")
         tender_text = data.get("tender_text", "")
-        data.get("current_proposal")
 
         if not section or not tender_text:
             return JSONResponse({"error": "Section et tender_text requis"}, status_code=400)
@@ -1393,7 +1395,7 @@ async def api_proposal_canva_generate_section(request: Request):
         )
 
         # System prompt
-        system_prompt = """Tu es un expert en propositions commerciales pour {COMPANY_NAME}.
+        system_prompt = """Tu es un expert en propositions commerciales pour """ + COMPANY_NAME + """.
 
 Génère des slides pour la section "{section}" basées sur cet appel d'offres :
 
@@ -1424,7 +1426,7 @@ TYPES DE SLIDES:
 - highlight: points clés (title, key_points, highlight_color)
 
 Consultant: {CONSULTANT_NAME}
-Société: {COMPANY_NAME}
+Société: """ + COMPANY_NAME + """
 """
 
         # Générer la réponse
@@ -1489,6 +1491,7 @@ Société: {COMPANY_NAME}
 
 
 @router.post("/api/proposal/export-word")
+@limiter.limit("5/minute")
 async def export_proposal_word(request: Request):
     try:
         body = await request.json()

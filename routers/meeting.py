@@ -3,7 +3,6 @@ import io
 import os
 import tempfile
 import threading
-import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -17,6 +16,7 @@ from routers.shared import (
     BASE_DIR,
     COMPANY_NAME,
     CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
     safe_error_message,
@@ -41,7 +41,8 @@ async def meeting_page(request: Request):
 
 
 @router.post("/api/meeting/generate")
-async def api_meeting_generate(
+@limiter.limit("3/minute")
+async def api_meeting_generate(request: Request, 
     transcript_text: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
 ):
@@ -64,14 +65,7 @@ async def api_meeting_generate(
     if len(text.strip()) < 30:
         return JSONResponse({"error": "Le transcript semble trop court."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "meeting",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("meeting")
 
     thread = threading.Thread(target=_run_meeting_summarizer, args=(job_id, text), daemon=True)
     thread.start()
@@ -163,6 +157,7 @@ async def api_meeting_stream(job_id: str):
 
 
 @router.post("/api/meeting/regenerate")
+@limiter.limit("3/minute")
 async def api_meeting_regenerate(request: Request):
     """Regenere le compte rendu avec feedback"""
     body = await request.json()
@@ -173,14 +168,7 @@ async def api_meeting_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "meeting",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("meeting")
 
     thread = threading.Thread(
         target=_run_meeting_feedback,
@@ -204,7 +192,7 @@ def _run_meeting_feedback(job_id: str, previous_minutes: str, previous_email: st
 
         # Regenerer le compte rendu
         revised_minutes = agent.llm_client.generate(
-            prompt="""Voici un compte rendu de reunion genere precedemment:
+            prompt=f"""Voici un compte rendu de reunion genere precedemment:
 
 {previous_minutes}
 
@@ -214,7 +202,7 @@ FEEDBACK DE L'UTILISATEUR:
 Reecris ce compte rendu en integrant les corrections demandees.
 Conserve la structure professionnelle (contexte, points abordes, decisions, plan d'actions, points en suspens, prochaines etapes).
 Ne modifie que ce qui est demande dans le feedback.""",
-            system_prompt="""Tu es {
+            system_prompt=f"""Tu es {
                 agent.consultant_info['name']}, {
                 agent.consultant_info['title']} chez {
                 agent.consultant_info['company']}.
@@ -228,7 +216,7 @@ Tu corriges un compte rendu de reunion selon le retour du consultant.""",
 
         # Regenerer le mail
         revised_email = agent.llm_client.generate(
-            prompt="""Voici un mail de partage de compte rendu genere precedemment:
+            prompt=f"""Voici un mail de partage de compte rendu genere precedemment:
 
 {previous_email}
 
@@ -238,7 +226,7 @@ FEEDBACK DE L'UTILISATEUR:
 Reecris ce mail en integrant les corrections demandees.
 Conserve le format professionnel (objet, resume executif, decisions cles, actions, signature).
 Ne modifie que ce qui est demande dans le feedback.""",
-            system_prompt="""Tu es {
+            system_prompt=f"""Tu es {
                 agent.consultant_info['name']}, {
                 agent.consultant_info['title']} chez {
                 agent.consultant_info['company']}.

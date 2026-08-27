@@ -689,3 +689,119 @@ class TestCascadeDelete:
         assert db.get_course(course_id) is None
         assert db.get_quizzes_for_course(course_id) == []
         assert db.get_learning_path(session["id"], course_id) is None
+
+
+# ---------------------------------------------------------------------------
+# Extra coverage: invalid JSON branches (lines 366-367, 391-392, 463-470,
+# 566-567, 609-610, 813-814, 938-939)
+# ---------------------------------------------------------------------------
+
+class TestElearningDbExtraCoverage:
+    """Covers except (json.JSONDecodeError, TypeError) branches and update_lesson_exercises."""
+
+    def test_get_course_invalid_learning_objectives_json(self, db, sample_course_data):
+        """lines 366-367: learning_objectives invalid JSON → []."""
+        import sqlite3
+        course_id = db.save_course(sample_course_data)
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE courses SET learning_objectives = ? WHERE id = ?",
+                         ("{{invalid json", course_id))
+            conn.commit()
+        course = db.get_course(course_id)
+        assert course["learning_objectives"] == []
+
+    def test_get_course_invalid_lesson_key_takeaways(self, db, sample_course_data):
+        """lines 391-392: key_takeaways invalid JSON → []."""
+        import sqlite3
+        course_id = db.save_course(sample_course_data)
+        # Get a lesson id
+        course = db.get_course(course_id)
+        lesson_id = course["modules"][0]["lessons"][0]["id"]
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE lessons SET key_takeaways = ? WHERE id = ?",
+                         ("{{invalid", lesson_id))
+            conn.commit()
+        course = db.get_course(course_id)
+        lesson = course["modules"][0]["lessons"][0]
+        assert lesson["key_takeaways"] == []
+
+    def test_update_lesson_exercises(self, db, sample_course_data):
+        """lines 463-470: update_lesson_exercises method."""
+        course_id = db.save_course(sample_course_data)
+        course = db.get_course(course_id)
+        lesson_id = course["modules"][0]["lessons"][0]["id"]
+        exercises = [{"question": "What is Python?", "solution": "A language"}]
+        result = db.update_lesson_exercises(lesson_id, exercises)
+        assert result is True
+
+    def test_get_quiz_invalid_options_json(self, db, sample_course_data, sample_quiz_data):
+        """lines 566-567: quiz question options invalid JSON → []."""
+        import sqlite3
+        course_id = db.save_course(sample_course_data)
+        sample_quiz_data["course_id"] = course_id
+        quiz_id = db.save_quiz(sample_quiz_data)
+        quiz = db.get_quiz(quiz_id)
+        q_id = quiz["questions"][0]["id"]
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE questions SET options = ? WHERE id = ?",
+                         ("{{bad json", q_id))
+            conn.commit()
+        quiz = db.get_quiz(quiz_id)
+        assert quiz["questions"][0]["options"] == []
+
+    def test_get_questions_by_difficulty_invalid_options(self, db, sample_course_data, sample_quiz_data):
+        """lines 609-610: get_questions_by_difficulty options invalid JSON → []."""
+        import sqlite3
+        course_id = db.save_course(sample_course_data)
+        sample_quiz_data["course_id"] = course_id
+        quiz_id = db.save_quiz(sample_quiz_data)
+        quiz = db.get_quiz(quiz_id)
+        q_id = quiz["questions"][0]["id"]
+        difficulty = quiz["questions"][0].get("difficulty_level", "medium")
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE questions SET options = ? WHERE id = ?",
+                         ("{{bad", q_id))
+            conn.commit()
+        questions = db.get_questions_by_difficulty(quiz_id, difficulty)
+        assert len(questions) >= 1
+        assert questions[0]["options"] == []
+
+    def test_get_attempt_results_invalid_options(self, db, sample_course_data, sample_quiz_data):
+        """lines 813-814: get_attempt_results answer options invalid JSON → []."""
+        import sqlite3
+        course_id = db.save_course(sample_course_data)
+        sample_quiz_data["course_id"] = course_id
+        quiz_id = db.save_quiz(sample_quiz_data)
+        quiz = db.get_quiz(quiz_id)
+        q_id = quiz["questions"][0]["id"]
+        session = db.init_session("student-x")
+        attempt_id = db.create_attempt(session["id"], quiz_id)
+        db.record_answer(attempt_id, q_id, "My answer", True)
+        # Corrupt options in quiz_questions
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE questions SET options = ? WHERE id = ?",
+                         ("{{invalid", q_id))
+            conn.commit()
+        results = db.get_attempt_results(attempt_id)
+        assert results["answers"][0]["options"] == []
+
+    def test_get_learning_path_invalid_json_fields(self, db, sample_course_data):
+        """lines 938-939: stated_goals, knowledge_gaps, recommendations invalid JSON → []."""
+        import sqlite3
+        course_id = db.save_course(sample_course_data)
+        session = db.init_session("student-y")
+        db.save_learning_path({
+            "session_id": session["id"],
+            "course_id": course_id,
+            "stated_goals": ["Learn Python"],
+            "knowledge_gaps": [],
+            "recommendations": [],
+        })
+        path = db.get_learning_path(session["id"], course_id)
+        path_id = path["id"]
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE learning_paths SET stated_goals = ? WHERE id = ?",
+                         ("{{invalid", path_id))
+            conn.commit()
+        path = db.get_learning_path(session["id"], course_id)
+        assert path["stated_goals"] == []

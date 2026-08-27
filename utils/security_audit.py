@@ -21,7 +21,6 @@ def check_env_file() -> Dict[str, any]:
 
     base_dir = Path(__file__).parent.parent
     env_file = base_dir / ".env"
-    base_dir / ".env.example"
 
     results = {"status": "ok", "issues": []}
 
@@ -145,6 +144,7 @@ def check_hardcoded_secrets() -> Dict[str, any]:
     excluded_dirs = {"security_audit.py", "venv", "__pycache__", "tests", ".venv"}
 
     issues_found = []
+    unscanned = []
 
     for py_file in py_files:
         # Exclure certains fichiers/dossiers
@@ -182,10 +182,21 @@ def check_hardcoded_secrets() -> Dict[str, any]:
                             issues_found.append(issue)
                             print(f"  {RED}✗{RESET} {issue}")
 
-        except Exception:
-            pass
+        except Exception as e:
+            # Un fichier non analysable ne doit PAS passer pour un fichier sain :
+            # sans cela le scanner conclut "aucun secret detecte" alors qu'il n'a
+            # rien pu lire.
+            unscanned.append(f"{py_file.name} ({type(e).__name__})")
+            print(f"  {RED}✗{RESET} Fichier non analysé : {py_file.name}")
 
-    if not issues_found:
+    if unscanned:
+        results["status"] = "error"
+        results["issues"].append(
+            f"{len(unscanned)} fichier(s) non analysés — résultat non concluant : "
+            + ", ".join(unscanned[:5])
+        )
+
+    if not issues_found and not unscanned:
         print(f"  {GREEN}✓{RESET} Aucun secret hardcodé détecté")
     else:
         results["status"] = "error"
@@ -289,5 +300,5 @@ def main():
         exit(0)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

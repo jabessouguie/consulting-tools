@@ -445,3 +445,72 @@ class TestNanoBananaGenerator:
         gen.model = None
         result = gen.generate_article_illustration("Article text about AI", "/tmp/out.png")
         assert result is None
+
+
+class TestImageLibrarySaveCatalog:
+    """Covers lines 408-411: _save_catalog method."""
+
+    def test_save_catalog_writes_file(self, tmp_path):
+        from utils.image_generator import ImageLibrary
+        lib = ImageLibrary.__new__(ImageLibrary)
+        lib.catalog_file = tmp_path / "catalog.json"
+        lib.catalog = {"categories": {"test": ["img1.png"]}, "images": []}
+        lib._save_catalog()
+        assert lib.catalog_file.exists()
+        import json
+        data = json.loads(lib.catalog_file.read_text())
+        assert "categories" in data
+
+
+class TestNanoBananaGenerateImageCoverage:
+    """Covers lines 571-583: candidate loop with image data and no-data path."""
+
+    def test_generate_image_with_candidate_inline_data(self, tmp_path):
+        # lines 571-580: candidate has inline_data → image saved and returned
+        from unittest.mock import MagicMock
+        from utils.image_generator import NanoBananaGenerator
+
+        output_path = str(tmp_path / "images" / "out.png")
+
+        gen = NanoBananaGenerator.__new__(NanoBananaGenerator)
+        part = MagicMock()
+        part.inline_data = MagicMock()
+        part.inline_data.data = b"\x89PNG fake"
+
+        candidate = MagicMock()
+        candidate.content = MagicMock()
+        candidate.content.parts = [part]
+        # hasattr check needs to work
+        del candidate.content.__dict__  # ensure hasattr works via MagicMock spec
+        candidate.content.__dict__["parts"] = [part]  # ensure hasattr returns True
+
+        mock_response = MagicMock()
+        mock_response.candidates = [candidate]
+        gen.model = MagicMock()
+        gen.model.generate_content.return_value = mock_response
+
+        result = gen.generate_image("a beautiful landscape", output_path)
+        assert result == output_path
+
+    def test_generate_image_no_inline_data_returns_none(self, tmp_path):
+        # line 582-583: no inline_data in parts → print + return None
+        from unittest.mock import MagicMock
+        from utils.image_generator import NanoBananaGenerator
+
+        output_path = str(tmp_path / "out.png")
+        gen = NanoBananaGenerator.__new__(NanoBananaGenerator)
+
+        part = MagicMock()
+        part.inline_data = None  # no inline data
+
+        candidate = MagicMock()
+        candidate.content = MagicMock(spec=["parts"])
+        candidate.content.parts = [part]
+
+        mock_response = MagicMock()
+        mock_response.candidates = [candidate]
+        gen.model = MagicMock()
+        gen.model.generate_content.return_value = mock_response
+
+        result = gen.generate_image("prompt", output_path)
+        assert result is None

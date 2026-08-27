@@ -1089,3 +1089,185 @@ class TestTenderScoutEndpoints:
                 headers={**CSRF_HEADERS, "Content-Type": "application/json"},
             )
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Extra coverage: build_consultant_context (lines 94-96) + to_str (207, 209, 216)
+# ---------------------------------------------------------------------------
+
+class TestBuildConsultantContextEmpty:
+    """Covers lines 94-96: when get_all_consultants() returns empty list or consultant found."""
+
+    def test_returns_none_when_no_consultants(self):
+        from agents.tender_scout_agent import build_consultant_context
+        mock_db = MagicMock()
+        mock_db.get_all_consultants.return_value = []
+        with patch("utils.consultant_db.ConsultantDatabase", return_value=mock_db):
+            result = build_consultant_context(":memory:")
+        assert result is None
+
+    def test_returns_consultant_when_found(self):
+        """Line 96: return db.get_consultant(consultants[0]['id'])"""
+        from agents.tender_scout_agent import build_consultant_context
+        mock_db = MagicMock()
+        mock_db.get_all_consultants.return_value = [{"id": 1, "name": "Test"}]
+        mock_db.get_consultant.return_value = {"id": 1, "name": "Test", "skills": []}
+        with patch("utils.consultant_db.ConsultantDatabase", return_value=mock_db):
+            result = build_consultant_context(":memory:")
+        assert result is not None
+        assert result["name"] == "Test"
+
+
+class TestScrapeBoampToStr:
+    """Covers lines 207 (val is None), 209 (val is list), 216 (donnees PA)."""
+
+    def setup_method(self):
+        with patch("agents.tender_scout_agent.LLMClient"):
+            from agents.tender_scout_agent import TenderScoutAgent
+            self.agent = TenderScoutAgent.__new__(TenderScoutAgent)
+            self.agent.llm = MagicMock()
+            self.agent.consultant_profile = None
+
+    def test_to_str_handles_none_val_via_boamp(self):
+        # line 207: if val is None: return "" — objet is None triggers to_str(None)
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "results": [
+                {
+                    "idweb": "XYZ001",
+                    "objet": None,
+                    "titre": None,
+                    "dateparution": None,
+                    "datelimitereponse": None,
+                }
+            ]
+        }
+        with patch("agents.tender_scout_agent.requests.get", return_value=mock_resp):
+            tenders = self.agent.scrape_boamp(["test"])
+        # Should not crash; titre defaults to "Sans titre"
+        assert len(tenders) == 1
+
+    def test_to_str_handles_list_val_via_boamp(self):
+        # line 208-209: if isinstance(val, list) — descripteur_libelle is a list
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "results": [
+                {
+                    "idweb": "LIST001",
+                    "objet": "Mission test",
+                    "descripteur_libelle": ["Conseil", "IA", "Data"],
+                    "dateparution": "2024-01-01",
+                }
+            ]
+        }
+        with patch("agents.tender_scout_agent.requests.get", return_value=mock_resp):
+            tenders = self.agent.scrape_boamp(["test"])
+        assert len(tenders) == 1
+        assert "Conseil" in tenders[0]["description"] or "IA" in tenders[0]["description"]
+
+    def test_to_str_fallback_donnees_pa_denomination(self):
+        # line 216: acheteur from donnees.PA.denomination when nomacheteur is empty
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "results": [
+                {
+                    "idweb": "PA001",
+                    "objet": "Mission conseil",
+                    "nomacheteur": "",
+                    "donnees": {"PA": {"denomination": "Agence Nationale"}},
+                    "dateparution": "2024-01-01",
+                }
+            ]
+        }
+        with patch("agents.tender_scout_agent.requests.get", return_value=mock_resp):
+            tenders = self.agent.scrape_boamp(["test"])
+        assert len(tenders) == 1
+        assert tenders[0]["acheteur"] == "Agence Nationale"
+
+
+class TestBuildConsultantContextException:
+    """Covers lines 96-98: except Exception in build_consultant_context."""
+
+    def test_returns_none_on_exception(self):
+        from agents.tender_scout_agent import build_consultant_context
+        with patch("utils.consultant_db.ConsultantDatabase", side_effect=RuntimeError("DB error")):
+            result = build_consultant_context(":memory:")
+        assert result is None
+
+
+class TestFormatProfileForPrompt:
+    """Covers lines 115-119, 123, 127: _format_profile_for_prompt with missions/interests/certs."""
+
+    def test_format_with_missions(self):
+        from agents.tender_scout_agent import _format_profile_for_prompt
+        profile = {
+            "name": "Alice",
+            "title": "Senior Consultant",
+            "company": "TestCo",
+            "missions": [
+                {"client_name": "Client A", "deliverables": "Report and roadmap"},
+                {"client_name": "Client B", "deliverables": ""},
+            ],
+            "interests": [],
+            "certifications": [],
+        }
+        result = _format_profile_for_prompt(profile)
+        assert "Client A" in result
+        assert "Client B" in result
+
+    def test_format_with_interests(self):
+        from agents.tender_scout_agent import _format_profile_for_prompt
+        profile = {
+            "name": "Bob",
+            "interests": [{"name": "AI"}, {"name": "Cloud"}, {"name": "Data"}],
+            "missions": [],
+            "certifications": [],
+        }
+        result = _format_profile_for_prompt(profile)
+        assert "AI" in result
+        assert "Cloud" in result
+
+    def test_format_with_certifications(self):
+        from agents.tender_scout_agent import _format_profile_for_prompt
+        profile = {
+            "name": "Carol",
+            "interests": [],
+            "missions": [],
+            "certifications": [{"name": "AWS Solutions Architect"}, {"name": "PMP"}],
+        }
+        result = _format_profile_for_prompt(profile)
+        assert "AWS Solutions Architect" in result
+
+
+class TestToStrNoneViaDonnees:
+    """Covers line 207: to_str returns '' when val is None (from donnees.PA.denomination)."""
+
+    def setup_method(self):
+        with patch("agents.tender_scout_agent.LLMClient"):
+            from agents.tender_scout_agent import TenderScoutAgent
+            self.agent = TenderScoutAgent.__new__(TenderScoutAgent)
+            self.agent.llm = MagicMock()
+            self.agent.consultant_profile = None
+
+    def test_to_str_none_from_missing_denomination(self):
+        # line 207: to_str(None) when donnees.PA exists but no denomination key
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "results": [
+                {
+                    "idweb": "NONE001",
+                    "objet": "Mission test",
+                    "nomacheteur": "",
+                    "donnees": {"PA": {}},  # PA exists but no denomination → to_str(None)
+                    "dateparution": "2024-01-01",
+                }
+            ]
+        }
+        with patch("agents.tender_scout_agent.requests.get", return_value=mock_resp):
+            tenders = self.agent.scrape_boamp(["test"])
+        assert len(tenders) == 1
+        assert tenders[0]["acheteur"] == ""

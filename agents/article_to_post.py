@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 # Path setup and environment loading
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_PATH not in sys.path:
+if BASE_PATH not in sys.path:  # pragma: no cover
     sys.path.append(BASE_PATH)
 
 load_dotenv(os.path.join(BASE_PATH, ".env"))
@@ -315,5 +315,5 @@ def main():
     print(f"\n🔗 {args.url}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

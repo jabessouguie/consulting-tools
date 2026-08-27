@@ -126,7 +126,11 @@ class TestGetConsultantInfo:
         assert isinstance(result, dict)
 
     def test_returns_name(self):
+        # Le .env reel peut deja definir CONSULTANT_NAME : le setdefault en tete
+        # de module n'aurait alors aucun effet. On fixe la valeur explicitement.
         from config.consultant import get_consultant_info
-        result = get_consultant_info()
-        assert "name" in result
-        assert result["name"] == "Test Consultant"
+
+        with patch.dict(os.environ, {"CONSULTANT_NAME": "Test Consultant"}, clear=False):
+            result = get_consultant_info()
+            assert "name" in result
+            assert result["name"] == "Test Consultant"

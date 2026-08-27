@@ -652,3 +652,105 @@ class TestDeleteConsultant:
     def test_delete_nonexistent(self, db):
         """Suppression d'un consultant inexistant"""
         assert db.delete_consultant(999) is False
+
+
+# ---------------------------------------------------------------------------
+# Extra coverage tests (lines 247-248, 259-260, 323-324, 548-549, 552, 832-840, 893-921)
+# ---------------------------------------------------------------------------
+
+class TestConsultantDbExtraCoverage:
+    """Covers remaining uncovered branches and methods."""
+
+    def test_string_skills_technical(self, db):
+        """lines 247-248: skills_technical item is a plain string (not dict)."""
+        data = {
+            "name": "Alice", "title": "Dev", "company": "Co",
+            "skills_technical": ["Python", "Java"],  # strings, not dicts
+            "skills_sector": [],
+            "missions": [],
+            "interests": [],
+        }
+        cid = db.save_consultant(data)
+        c = db.get_consultant(cid)
+        names = [s["name"] for s in c["skills_technical"]]
+        assert "Python" in names
+        assert "Java" in names
+
+    def test_string_skills_sector(self, db):
+        """lines 259-260: skills_sector item is a plain string (not dict)."""
+        data = {
+            "name": "Bob", "title": "Mgr", "company": "Co",
+            "skills_technical": [],
+            "skills_sector": ["Finance", "Energie"],  # strings, not dicts
+            "missions": [],
+            "interests": [],
+        }
+        cid = db.save_consultant(data)
+        c = db.get_consultant(cid)
+        names = [s["name"] for s in c["skills_sector"]]
+        assert "Finance" in names
+
+    def test_invalid_json_strengths(self, db, sample_consultant):
+        """lines 323-324: strengths field contains invalid JSON."""
+        import sqlite3
+        cid = db.save_consultant(sample_consultant)
+        # Corrupt the strengths field directly in the DB
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE consultants SET strengths = ? WHERE id = ?",
+                         ("not valid json{{", cid))
+            conn.commit()
+        c = db.get_consultant(cid)
+        assert c["strengths"] == []
+
+    def test_add_skill_string(self, db, sample_consultant):
+        """lines 548-549: add_skill called with a string (not dict)."""
+        cid = db.save_consultant(sample_consultant)
+        db.add_skill(cid, "Kubernetes", "technical")
+        c = db.get_consultant(cid)
+        names = [s["name"] for s in c["skills_technical"]]
+        assert "Kubernetes" in names
+
+    def test_add_skill_empty_string_returns_early(self, db, sample_consultant):
+        """line 552: if not s_name: return — empty string skill is skipped."""
+        cid = db.save_consultant(sample_consultant)
+        before = db.get_consultant(cid)
+        before_count = len(before["skills_technical"])
+        db.add_skill(cid, "", "technical")  # empty name → return early
+        after = db.get_consultant(cid)
+        assert len(after["skills_technical"]) == before_count
+
+    def test_update_photo_url(self, db, sample_consultant):
+        """lines 832-840: update_photo_url method."""
+        cid = db.save_consultant(sample_consultant)
+        result = db.update_photo_url(cid, "/static/photos/alice.jpg")
+        assert result is True
+        c = db.get_consultant(cid)
+        assert c["photo_url"] == "/static/photos/alice.jpg"
+
+    def test_update_photo_url_nonexistent(self, db):
+        """lines 832-840: returns False when consultant doesn't exist."""
+        result = db.update_photo_url(999, "/static/photos/ghost.jpg")
+        assert result is False
+
+    def test_update_consultant_info(self, db, sample_consultant):
+        """lines 893-921: update_consultant_info method."""
+        cid = db.save_consultant(sample_consultant)
+        result = db.update_consultant_info(cid, {"name": "Updated Name", "bio": "New bio"})
+        assert result is True
+        c = db.get_consultant(cid)
+        assert c["name"] == "Updated Name"
+        assert c["bio"] == "New bio"
+
+    def test_update_consultant_info_theme_dict(self, db, sample_consultant):
+        """lines 896-898: consultant_theme as dict is serialized to JSON."""
+        cid = db.save_consultant(sample_consultant)
+        theme = {"primary": "#123456", "accent": "#abcdef"}
+        result = db.update_consultant_info(cid, {"consultant_theme": theme})
+        assert result is True
+
+    def test_update_consultant_info_no_fields_returns_false(self, db, sample_consultant):
+        """line 908-909: only updated_at → returns False."""
+        cid = db.save_consultant(sample_consultant)
+        # Pass empty dict — no valid fields → only updated_at in fields dict
+        result = db.update_consultant_info(cid, {})
+        assert result is False

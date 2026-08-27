@@ -387,13 +387,16 @@ class TestApiVeilleDigest:
             "summary": "<p>Summary text</p>",
             "link": "https://test.com/1",
         }.get(key, default)
-        mock_entry.published_parsed = (2026, 2, 27, 12, 0, 0, 0, 0, 0)
+        # Date relative a maintenant : une date figee sortirait de la fenetre
+        # `days=30` des que le temps passe, et ferait echouer le test.
+        recent = (datetime.now() - timedelta(days=1)).timetuple()
+        mock_entry.published_parsed = recent
         mock_entry.__contains__ = lambda self, key: key in (
             "title",
             "summary",
             "link",
         )
-        type(mock_entry).published_parsed = property(lambda self: (2026, 2, 27, 12, 0, 0, 0, 0, 0))
+        type(mock_entry).published_parsed = property(lambda self: recent)
 
         mock_feed = MagicMock()
         mock_feed.entries = [mock_entry]
@@ -429,3 +432,193 @@ class TestApiVeilleDigest:
         # "machine" and "learning" should be top keywords
         keywords = [kw for kw, _ in trends["top_keywords"]]
         assert "machine" in keywords or "learning" in keywords
+
+
+class TestTechMonitorCollectAndDigest:
+    """Covers uncovered lines in tech_monitor.py."""
+
+    def _make_agent(self):
+        from unittest.mock import MagicMock, patch
+        with patch("agents.tech_monitor.LLMClient"), \
+             patch("agents.tech_monitor.ArticleDatabase"), \
+             patch("agents.tech_monitor.get_consultant_info", return_value={
+                 "name": "Test", "title": "Consultant", "company": "TestCo"
+             }):
+            from agents.tech_monitor import TechMonitorAgent
+            agent = TechMonitorAgent.__new__(TechMonitorAgent)
+            agent.llm_client = MagicMock()
+            agent.html_converter = MagicMock()
+            agent.html_converter.handle.side_effect = lambda x: x
+            agent.db = MagicMock()
+            agent.db.save_articles.return_value = 0
+            agent.consultant_info = {
+                "name": "Test", "title": "Consultant", "company": "TestCo"
+            }
+            agent.default_sources = []
+            return agent
+
+    def test_collect_articles_with_published_parsed(self):
+        """Lines 84, 101-102: collect with published_parsed entry."""
+        import time
+        from unittest.mock import MagicMock, patch
+        from datetime import datetime, timedelta
+
+        agent = self._make_agent()
+
+        # Build a mock feed entry with published_parsed (recent date)
+        recent = datetime.now() - timedelta(days=1)
+        time_tuple = recent.timetuple()[:6] + (0, 0, 0)  # 9-element tuple
+
+        mock_entry = MagicMock()
+        mock_entry.published_parsed = time_tuple
+        mock_entry.updated_parsed = None
+        mock_entry.get.side_effect = lambda k, d="": {"title": "Test Article", "summary": "<p>Summary</p>", "link": "https://example.com"}[k] if k in ("title", "summary", "link") else d
+
+        mock_feed = MagicMock()
+        mock_feed.entries = [mock_entry]
+        mock_feed.feed.get.return_value = "Test Source"
+
+        with patch("agents.tech_monitor.feedparser.parse", return_value=mock_feed), \
+             patch("agents.tech_monitor.BeautifulSoup", return_value=MagicMock(get_text=lambda: "Summary")):
+            articles = agent.collect_articles(sources=["https://test.com/feed"], days=7)
+
+        assert len(articles) >= 1
+
+    def test_collect_articles_filters_old_articles(self):
+        """Line 106: old articles are filtered out (continue)."""
+        import time
+        from unittest.mock import MagicMock, patch
+        from datetime import datetime, timedelta
+
+        agent = self._make_agent()
+
+        # Old date — more than 7 days ago
+        old_date = datetime.now() - timedelta(days=10)
+        time_tuple = old_date.timetuple()[:6] + (0, 0, 0)
+
+        mock_entry = MagicMock()
+        mock_entry.published_parsed = time_tuple
+        mock_entry.updated_parsed = None
+        mock_entry.get.side_effect = lambda k, d="": {"title": "Old", "summary": "", "link": ""}[k] if k in ("title","summary","link") else d
+
+        mock_feed = MagicMock()
+        mock_feed.entries = [mock_entry]
+        mock_feed.feed.get.return_value = "Old Source"
+
+        with patch("agents.tech_monitor.feedparser.parse", return_value=mock_feed):
+            articles = agent.collect_articles(sources=["https://test.com/feed"], days=7)
+
+        assert len(articles) == 0
+
+    def test_collect_articles_keyword_filter_no_match(self):
+        """Lines 114-116: keyword filter skips non-matching entries."""
+        import time
+        from unittest.mock import MagicMock, patch
+        from datetime import datetime, timedelta
+
+        agent = self._make_agent()
+
+        recent = datetime.now() - timedelta(days=1)
+        time_tuple = recent.timetuple()[:6] + (0, 0, 0)
+
+        mock_entry = MagicMock()
+        mock_entry.published_parsed = time_tuple
+        mock_entry.updated_parsed = None
+        mock_entry.get.side_effect = lambda k, d="": {"title": "Python Tips", "summary": "Learn Python", "link": "https://example.com"}[k] if k in ("title","summary","link") else d
+
+        mock_feed = MagicMock()
+        mock_feed.entries = [mock_entry]
+        mock_feed.feed.get.return_value = "Coding Blog"
+
+        with patch("agents.tech_monitor.feedparser.parse", return_value=mock_feed):
+            articles = agent.collect_articles(
+                sources=["https://test.com/feed"],
+                keywords=["GPT", "transformer"],
+                days=7
+            )
+
+        assert len(articles) == 0
+
+    def test_collect_articles_feedparser_error(self):
+        """Lines 128-135: feedparser.parse raises Exception, continues."""
+        from unittest.mock import MagicMock, patch
+
+        agent = self._make_agent()
+
+        with patch("agents.tech_monitor.feedparser.parse", side_effect=Exception("Connection refused")):
+            articles = agent.collect_articles(sources=["https://bad-url.com/feed"], days=7)
+
+        # Should not crash, returns empty list
+        assert articles == []
+
+    def test_generate_digest_weekly(self):
+        """Lines 192-270: generate_digest with weekly period."""
+        from unittest.mock import MagicMock, patch
+        from datetime import datetime
+
+        agent = self._make_agent()
+        agent.llm_client.generate.return_value = "# Digest\n\nContent here."
+
+        articles = [
+            {"title": "AI Article", "summary": "Summary of AI trends", "link": "https://example.com/1", "date": "2024-01-01T10:00:00", "source": "TechCrunch"},
+            {"title": "Data Article", "summary": "Summary of data", "link": "https://example.com/2", "date": "2024-01-02T10:00:00", "source": "KDNuggets"},
+        ]
+        trends = {"top_keywords": [("AI", 5), ("data", 3)], "num_articles": 2, "sources_count": 2}
+
+        result = agent.generate_digest(articles, trends, period="weekly")
+
+        assert result["content"] == "# Digest\n\nContent here."
+        assert result["period"] == "weekly"
+        assert result["num_articles"] == 2
+
+    def test_generate_digest_monthly(self):
+        """Lines 192-270: generate_digest with monthly period."""
+        from unittest.mock import MagicMock
+
+        agent = self._make_agent()
+        agent.llm_client.generate.return_value = "# Digest Mensuel\n\nContenu."
+
+        articles = [
+            {"title": "Article 1", "summary": "S1", "link": "https://example.com/1", "date": None, "source": "Source1"},
+        ]
+        trends = {"top_keywords": [], "num_articles": 1, "sources_count": 1}
+
+        result = agent.generate_digest(articles, trends, period="monthly")
+
+        assert result["period"] == "monthly"
+        assert "mensuel" in agent.llm_client.generate.call_args[1].get("prompt", "") or \
+               "mensuel" in str(agent.llm_client.generate.call_args)
+
+    def test_collect_articles_updated_parsed_fallback(self):
+        """Line 102: updated_parsed fallback when published_parsed is None."""
+        import time
+        from unittest.mock import MagicMock, patch
+        from datetime import datetime, timedelta
+
+        agent = self._make_agent()
+
+        recent = datetime.now() - timedelta(days=1)
+        time_tuple = recent.timetuple()[:6] + (0, 0, 0)
+
+        mock_entry = MagicMock()
+        mock_entry.published_parsed = None
+        mock_entry.updated_parsed = time_tuple
+        mock_entry.get.side_effect = lambda k, d="": {"title": "Updated Article", "summary": "Content", "link": "https://example.com/upd"}[k] if k in ("title","summary","link") else d
+
+        mock_feed = MagicMock()
+        mock_feed.entries = [mock_entry]
+        mock_feed.feed.get.return_value = "Updated Source"
+
+        with patch("agents.tech_monitor.feedparser.parse", return_value=mock_feed), \
+             patch("agents.tech_monitor.BeautifulSoup", return_value=MagicMock(get_text=lambda: "Content")):
+            articles = agent.collect_articles(sources=["https://test.com/feed"], days=7)
+
+        assert len(articles) >= 1
+        assert articles[0]["title"] == "Updated Article"
+
+    def test_collect_articles_uses_default_sources(self):
+        """Line 84: sources=None falls back to default_sources."""
+        agent = self._make_agent()
+        # default_sources is [] so no iteration occurs
+        articles = agent.collect_articles()  # sources=None
+        assert articles == []

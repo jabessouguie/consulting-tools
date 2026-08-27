@@ -137,7 +137,7 @@ class ProposalGeneratorAgent:
             "keywords": ["string"],
         }
 
-        prompt = """Analyse cet appel d'offre et extrais les informations clés de manière structurée:
+        prompt = f"""Analyse cet appel d'offre et extrais les informations clés de manière structurée:
 
 {tender_text}
 
@@ -194,7 +194,7 @@ Identifie particulièrement:
             proj_results = ', '.join(project.get('results', []))
             json_context += f"Résultats: {proj_results}\n"
 
-        prompt = """À partir de cet appel d'offre analysé:
+        prompt = f"""À partir de cet appel d'offre analysé:
 {json.dumps(tender_analysis, indent=2, ensure_ascii=False)}
 
 Et de ces références disponibles:
@@ -286,7 +286,7 @@ Pour chaque référence, explique pourquoi elle est pertinente."""
         for i, cv in enumerate(cvs):
             cvs_text += f"\n--- CV {i + 1} ---\n{cv['raw_text'][:2000]}\n"
 
-        prompt = """A partir de cet appel d'offre:
+        prompt = f"""A partir de cet appel d'offre:
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
 Objectifs: {json.dumps(tender_analysis.get('objectives', []), ensure_ascii=False)}
@@ -408,7 +408,7 @@ IMPORTANT:
         """
         print("Generation de la structure des slides...")
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             self.consultant_info['name']}, {
             self.consultant_info['title']} chez {
             self.consultant_info['company']}.
@@ -432,7 +432,7 @@ Exigences techniques: {', '.join(tender_analysis.get('requirements', {}).get('te
                 p_desc = p.get('description', '')[:100]
                 refs_summary += f"\n- {p_title}: {p_desc}"
 
-        prompt = """Genere une proposition commerciale VISUELLE et MODERNE en slides PowerPoint.
+        prompt = f"""Genere une proposition commerciale VISUELLE et MODERNE en slides PowerPoint.
 
 CONTEXTE:
 {context_summary}
@@ -467,7 +467,7 @@ REGLES DE DESIGN:
 Exemple de structure VISUELLE (pas de slides section, debut direct par diagramme):
 
 [
-  {{"type":"cover","client":f"{tender_analysis.get('client_name', '')}","project":f"{tender_analysis.get('project_title', '')}","date":f"{datetime.now().strftime('%d/%m/%Y')}","match_score":f"{tender_analysis.get('score', '')}"}},
+  {{"type":"cover","client":"{tender_analysis.get('client_name', '')}","project":"{tender_analysis.get('project_title', '')}","date":"{datetime.now().strftime('%d/%m/%Y')}","match_score":"{tender_analysis.get('score', '')}"}},
   {{"type":"diagram","title":"Contexte du projet","diagram_type":"pyramid","elements":["Vision strategique","Objectifs metier","Actions prioritaires"],"description":"Pyramide des enjeux"}},
   {{"type":"content","title":"Nos objectifs","bullets":["Objectif 1 (court)","Objectif 2 (court)","Objectif 3 (court)"]}},
   {{"type":"diagram","title":"Notre demarche","diagram_type":"flow","elements":["Cadrage","Conception","Pilote","Deploiement"],"description":"Methodologie en 4 phases"}},
@@ -823,7 +823,7 @@ IMPORTANT - STRUCTURE VISUELLE:
         """
         print("Génération de la proposition commerciale...")
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             self.consultant_info['name']}, {
             self.consultant_info['title']} chez {
             self.consultant_info['company']}.
@@ -837,7 +837,7 @@ Style Consulting Tools:
 - Démontrer l'expertise sans jargon excessif
 - Philosophie: Co-construction, Alignement, Pragmatisme"""
 
-        prompt = """Génère une proposition commerciale complète basée sur:
+        prompt = f"""Génère une proposition commerciale complète basée sur:
 
 APPEL D'OFFRE ANALYSÉ:
 {json.dumps(tender_analysis, indent=2, ensure_ascii=False)}
@@ -1072,22 +1072,22 @@ Retourne UNIQUEMENT en JSON:
             _fb = tender_analysis['feedback_instructions']
             feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
-        prompt = """Génère des slides de contexte VISUELLES et IMPACTANTES (style Veolia) pour cette mission:
+        prompt = f"""Génère des slides de contexte VISUELLES et IMPACTANTES (style Veolia) pour cette mission:
 
-Client: {
+Client: {{
             tender_analysis.get(
-                'client_name', 'N/A')}
-Projet: {
+                'client_name', 'N/A')}}
+Projet: {{
             tender_analysis.get(
-                'project_title', 'N/A')}
-Objectifs: {
+                'project_title', 'N/A')}}
+Objectifs: {{
                     json.dumps(
                         tender_analysis.get(
-                            'objectives', []), ensure_ascii=False)}
-Contraintes: {
+                            'objectives', []), ensure_ascii=False)}}
+Contraintes: {{
                                 json.dumps(
                                     tender_analysis.get(
-                                        'requirements', {}), ensure_ascii=False)} {feedback_instructions}
+                                        'requirements', {{}}), ensure_ascii=False)}} {feedback_instructions}
 APPROCHE VISUELLE MODERNE (style Veolia) - 3-4 slides :
 1. Slide STAT impactante (si chiffre clé disponible : budget, délai, ROI attendu)
    OU Quote/Key message si c'est une phrase forte du client
@@ -1104,27 +1104,27 @@ TYPES DE SLIDES DISPONIBLES:
 
 Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
 [
-  {
+  {{
                                             "type": "stat",
     "stat_value": "18 mois",
     "stat_label": "pour transformer la data",
     "context": "Durée cible de la mission",
     "subtitle": "Timeline du projet"
-  } ,
-  {
+  }} ,
+  {{
                                                 "type": "diagram",
     "title": "Enjeux stratégiques",
     "diagram_type": "pyramid",
     "elements": ["Vision stratégique", "Objectifs métier", "Quick wins", "Fondations"],
     "description": "Hiérarchie des priorités"
-  } ,
-  {
+  }} ,
+  {{
 
             "type": "highlight",
     "title": "Nos 3 objectifs clés",
     "key_points": ["Objectif 1 (15 mots max)", "Objectif 2", "Objectif 3"],
     "highlight_color": "corail"
-  }
+  }}
 ]"""
 
         response = self.llm_client.generate(prompt, temperature=0.6, max_tokens=1500)
@@ -1193,10 +1193,10 @@ Retourne UNIQUEMENT en JSON (3-4 slides, privilégie stat/quote/highlight):
             _fb = tender_analysis['feedback_instructions']
             feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
-        prompt = """Génère des slides VISUELLES et IMPACTANTES (style Veolia) pour notre vision et approche:
+        prompt = f"""Génère des slides VISUELLES et IMPACTANTES (style Veolia) pour notre vision et approche:
 
-Client: {tender_analysis.get('client_name', 'N/A')}
-Projet: {tender_analysis.get('project_title', 'N/A')}
+Client: {{tender_analysis.get('client_name', 'N/A')}}
+Projet: {{tender_analysis.get('project_title', 'N/A')}}
 Objectifs: {objectives}
 
 Références Consulting Tools: {refs_summary} {feedback_instructions}
@@ -1215,27 +1215,27 @@ TYPES DE SLIDES DISPONIBLES:
 
 Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
 [
-  {"type": "quote",
+  {{"type": "quote",
     "quote_text": "Transformer la data en valeur métier nécessite une approche pragmatique, itérative et centrée sur l'humain",
     "title": "Notre philosophie"
-  } ,
-  {"type": "highlight",
+  }} ,
+  {{"type": "highlight",
     "title": "Nos 3 piliers",
     "key_points": ["Pilier 1 (concis)", "Pilier 2", "Pilier 3"],
     "highlight_color": "terracotta"
-  } ,
-  {"type": "diagram",
+  }} ,
+  {{"type": "diagram",
     "title": "Notre démarche",
     "diagram_type": "flow",
     "elements": ["Cadrage", "Conception", "POC", "Pilote", "Déploiement"],
     "description": "Méthodologie itérative éprouvée"
-  } ,
-  {"type": "diagram",
+  }} ,
+  {{"type": "diagram",
     "title": "Facteurs clés de succès",
     "diagram_type": "cycle",
     "elements": ["Implication métier", "Itérations courtes", "Transfert compétences", "Quick wins"],
     "description": "Cercle vertueux de la réussite"
-  }
+  }}
 ]"""
 
         response = self.llm_client.generate(prompt, temperature=0.6, max_tokens=2000)
@@ -1302,7 +1302,7 @@ Retourne UNIQUEMENT en JSON (4-5 slides, privilégie quote/highlight/diagram):
             _fb = tender_analysis['feedback_instructions']
             feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT.\n"
 
-        prompt = """Génère un planning VISUEL pour cette mission:
+        prompt = f"""Génère un planning VISUEL pour cette mission:
 
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
@@ -1390,7 +1390,7 @@ OU si besoin d'un tableau détaillé en plus:
             _fb = tender_analysis['feedback_instructions']
             feedback_instructions = f"\n\nINSTRUCTIONS DE MODIFICATION:\n{_fb}\n\nAPPLIQUE CES MODIFICATIONS PRÉCISÉMENT (ex: augmenter budget 20% = multiplier par 1.2).\n"
 
-        prompt = """Génère un chiffrage SIMPLIFIÉ et VISUEL pour cette mission:
+        prompt = f"""Génère un chiffrage SIMPLIFIÉ et VISUEL pour cette mission:
 
 Client: {tender_analysis.get('client_name', 'N/A')}
 Projet: {tender_analysis.get('project_title', 'N/A')}
@@ -1560,5 +1560,5 @@ def main():
     agent.generate_proposal(tender_path=args.tender_file, output_path=args.output)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

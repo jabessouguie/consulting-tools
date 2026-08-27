@@ -9,7 +9,7 @@ from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from agents.dataset_analyzer import DatasetAnalyzerAgent
-from routers.shared import BASE_DIR, jobs, limiter, safe_error_message, templates, CONSULTANT_NAME
+from routers.shared import BASE_DIR, CONSULTANT_NAME, create_job, jobs, limiter, safe_error_message, templates
 from utils.validation import sanitize_filename, validate_file_upload
 
 router = APIRouter()
@@ -161,6 +161,7 @@ async def api_dataset_stream(job_id: str):
 
 
 @router.post("/api/dataset/regenerate")
+@limiter.limit("3/minute")
 async def api_dataset_regenerate(request: Request):
     """Regenere le rapport avec feedback"""
     body = await request.json()
@@ -171,14 +172,7 @@ async def api_dataset_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "dataset",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("dataset")
 
     thread = threading.Thread(
         target=_run_dataset_feedback,
@@ -204,7 +198,7 @@ def _run_dataset_feedback(job_id: str, previous_report: str, feedback: str, file
         job["steps"].append({"step": "stats", "status": "done", "progress": 70})
         job["steps"].append({"step": "report", "status": "active", "progress": 80})
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             agent.consultant_info['name']}, {
             agent.consultant_info['title']} chez {
             agent.consultant_info['company']}.
@@ -212,7 +206,7 @@ Tu corriges un rapport d'analyse de dataset selon le retour du consultant."""
 
         # Regenerer le rapport
         revised_report = agent.llm_client.generate(
-            prompt="""Voici un rapport d'analyse de dataset généré précédemment:
+            prompt=f"""Voici un rapport d'analyse de dataset généré précédemment:
 
 {previous_report}
 

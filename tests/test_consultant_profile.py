@@ -477,3 +477,40 @@ class TestExtractExcerpt:
         result = profile_in_tmp._extract_excerpt(content, max_chars=5000)
         assert "Premier" in result
         assert "Deuxieme" in result
+
+
+# ---------------------------------------------------------------------------
+# _load_linkedin_profile — lines 146, 184-186
+# ---------------------------------------------------------------------------
+
+
+class TestLoadLinkedinProfileEdgeCases:
+    def test_skips_non_file_entries_in_linkedin_dir(self, profile_in_tmp, tmp_path):
+        # line 146: continue when not file_path.is_file() (e.g. a subdirectory)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir(exist_ok=True)
+        linkedin_dir = data_dir / "linkedin_profile"
+        linkedin_dir.mkdir()
+        subdir = linkedin_dir / "subdir"
+        subdir.mkdir()
+        # Also add a real JSON file so the loop runs past the subdir
+        profile_json = linkedin_dir / "profile.json"
+        profile_json.write_text('{"name": "Test User"}', encoding="utf-8")
+
+        profile_in_tmp.data_dir = data_dir
+        result = profile_in_tmp.load_linkedin_profile()
+        assert isinstance(result, dict)
+
+    def test_exception_reading_file_is_swallowed(self, profile_in_tmp, tmp_path):
+        # lines 184-186: except Exception: continue
+        data_dir = tmp_path / "data"
+        data_dir.mkdir(exist_ok=True)
+        linkedin_dir = data_dir / "linkedin_profile"
+        linkedin_dir.mkdir()
+        bad_json = linkedin_dir / "bad.json"
+        bad_json.write_text("not valid json{{", encoding="utf-8")
+
+        profile_in_tmp.data_dir = data_dir
+        # Should not raise
+        result = profile_in_tmp.load_linkedin_profile()
+        assert isinstance(result, dict)

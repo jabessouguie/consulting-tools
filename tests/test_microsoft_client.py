@@ -479,3 +479,45 @@ class TestTestConnection:
         )
         with pytest.raises(MicrosoftAuthError, match="Invalid credentials"):
             client.test_connection()
+
+
+class TestGraphRequestBranches:
+    """Cover lines 148, 150: content_type and files branches in _graph_request."""
+
+    def _make_client(self):
+        client = MicrosoftClient(tenant_id="t", client_id="c", client_secret="s")
+        client.access_token = "fake-token"
+        return client
+
+    def _default_headers(self):
+        return {"Authorization": "Bearer fake-token", "Content-Type": "application/json"}
+
+    def test_content_type_override_applied(self):
+        # line 148: headers["Content-Type"] = content_type
+        client = self._make_client()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"ok": True}
+
+        import requests as req_mod
+        with patch.object(client, "_headers", return_value=self._default_headers()):
+            with patch.object(req_mod, "request", return_value=mock_resp) as mock_req:
+                client._graph_request("GET", "/me", content_type="application/octet-stream")
+
+        args, kwargs = mock_req.call_args
+        assert kwargs["headers"]["Content-Type"] == "application/octet-stream"
+
+    def test_files_removes_content_type(self):
+        # line 150: headers.pop("Content-Type", None) when files is not None
+        client = self._make_client()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"ok": True}
+
+        import requests as req_mod
+        with patch.object(client, "_headers", return_value=self._default_headers()):
+            with patch.object(req_mod, "request", return_value=mock_resp) as mock_req:
+                client._graph_request("PUT", "/me/drive/item", files=b"binary data")
+
+        args, kwargs = mock_req.call_args
+        assert "Content-Type" not in kwargs["headers"]

@@ -1,7 +1,6 @@
 import asyncio
 import re
 import threading
-import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -12,6 +11,7 @@ from routers.shared import (
     BASE_DIR,
     COMPANY_NAME,
     CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
     safe_error_message,
@@ -47,14 +47,7 @@ async def api_article_generator_generate(
             {"error": "L'idée est trop courte (minimum 20 caractères)."}, status_code=400
         )
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "article-generator",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("article-generator")
 
     thread = threading.Thread(
         target=_run_article_generator,
@@ -134,6 +127,7 @@ async def api_article_generator_stream(job_id: str):
 
 
 @router.post("/api/article-generator/regenerate")
+@limiter.limit("3/minute")
 async def api_article_generator_regenerate(request: Request):
     """Régénère l'article avec le feedback utilisateur"""
     body = await request.json()
@@ -144,14 +138,7 @@ async def api_article_generator_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "article-generator",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("article-generator")
 
     thread = threading.Thread(
         target=_run_article_generator_feedback,

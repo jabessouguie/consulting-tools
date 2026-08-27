@@ -42,3 +42,27 @@ def test_multiple_pii(anonymizer):
     assert "[NAME]" in masked
     assert "[EMAIL]" in masked
     assert "[ADDRESS]" in masked
+
+def test_mask_empty_string_returns_empty(anonymizer):
+    # line 29: return text when not text
+    assert anonymizer.mask("") == ""
+
+def test_mask_none_returns_none(anonymizer):
+    # line 29: return text when not text
+    assert anonymizer.mask(None) is None
+
+def test_custom_mask_applied():
+    # lines 35-36: custom mask substitution
+    anon = PIIAnonymizer(custom_masks=["Accenture", "McKinsey"])
+    text = "Je travaille chez Accenture et McKinsey est notre concurrent."
+    masked = anon.mask(text)
+    assert "[FILTERED_ENTITY]" in masked
+    assert "Accenture" not in masked
+    assert "McKinsey" not in masked
+
+def test_empty_string_in_custom_masks_skipped():
+    # line 35: if custom: skips empty strings
+    anon = PIIAnonymizer(custom_masks=["", "ValidName"])
+    text = "Rencontre avec ValidName aujourd'hui."
+    masked = anon.mask(text)
+    assert "[FILTERED_ENTITY]" in masked

@@ -2,7 +2,6 @@ import asyncio
 import json
 import re
 import threading
-import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
@@ -11,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from routers.shared import (
     BASE_DIR,
     CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
     safe_error_message,
@@ -102,14 +102,7 @@ async def api_training_slides_generate(
             {"error": "Le programme est trop court (minimum 50 caractères)."}, status_code=400
         )
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "training-slides",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("training-slides")
 
     thread = threading.Thread(
         target=_run_training_slides_generator,

@@ -123,7 +123,7 @@ class LinkedInCommenterAgent:
             "reaction": "Reagis au point principal avec ton analyse. Valide ou nuance avec tact.",
         }
 
-        system_prompt = """Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
 Base : Paris | Génération Z assumée
 {persona_style}
 
@@ -142,7 +142,7 @@ REGLES IMPERATIVES pour les commentaires :
 
 {style_instructions.get(style, style_instructions['insightful'])}"""
 
-        prompt = """Genere 3 variantes de commentaire pour ce post LinkedIn :
+        prompt = f"""Genere 3 variantes de commentaire pour ce post LinkedIn :
 
 CONTENU DU POST :
 {post_content['content']}
@@ -294,5 +294,5 @@ def main():
     print("\n📝 Long:\n" + result["long"])
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
-from routers.shared import templates
+from routers.shared import limiter, templates
 
 router = APIRouter()
 
@@ -27,6 +27,7 @@ async def get_api_settings():
 
 
 @router.post("/api/settings")
+@limiter.limit("10/minute")
 async def post_api_settings(request: Request):
     try:
         body = await request.json()
@@ -61,7 +62,8 @@ async def theme_css():
 
 
 @router.post("/api/settings/theme-import")
-async def import_theme(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def import_theme(request: Request, file: UploadFile = File(...)):
     from utils.theme_manager import ThemeManager
     filename = file.filename or ""
     ext = Path(filename).suffix.lower()

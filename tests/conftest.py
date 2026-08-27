@@ -4,6 +4,15 @@ Shared pytest fixtures for Consulting Tools test suite.
 import pytest
 from unittest.mock import patch
 
+from routers.shared import limiter
+
+# Le rate limiting est desactive pour toute la suite : sinon un test qui appelle
+# un endpoint limite plusieurs fois (ou plusieurs tests visant le meme endpoint)
+# recoit un 429 selon l'ordre d'execution, ce qui rend la suite non
+# deterministe. Le comportement de limitation se teste explicitement, pas
+# incidemment.
+limiter.enabled = False
+
 
 @pytest.fixture(autouse=True)
 def mock_auth_for_tests():

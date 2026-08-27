@@ -618,3 +618,34 @@ class TestGenerateModulePptx:
             result = agent.generate_module_pptx(slides, "Module 1 / Part A")
 
         assert " " not in result.split("/")[-1].split(".")[0]
+
+
+# ---------------------------------------------------------------------------
+# Extra coverage: plain ``` fence (lines 245, 414, 448)
+# ---------------------------------------------------------------------------
+
+class TestPlainCodeFenceCoverage:
+    """Covers lines 245, 414, 448: result[3:] when plain ``` (not ```json) fence."""
+
+    def test_generate_slides_strips_plain_backticks(self):
+        # line 245: in generate_slides_for_module
+        agent = _make_agent()
+        agent.llm.generate.return_value = "```\n" + SAMPLE_SLIDES_JSON + "\n```"
+        slides = agent.generate_slides_for_module(SAMPLE_PROGRAMME_DATA, 0)
+        assert len(slides) == 3
+
+    def test_get_slides_plan_strips_plain_backticks(self):
+        # line 414: in _get_slides_plan
+        agent = _make_agent()
+        plan_data = [{"title": "Intro", "type": "intro"}]
+        agent.llm.generate.return_value = "```\n" + json.dumps(plan_data) + "\n```"
+        plan = agent._get_slides_plan(SAMPLE_PROGRAMME_DATA)
+        assert plan[0]["title"] == "Intro"
+
+    def test_determine_slide_content_strips_plain_backticks(self):
+        # line 448: in _determine_slide_content
+        agent = _make_agent()
+        content = {"image_prompt": "plain fence test"}
+        agent.llm.generate.return_value = "```\n" + json.dumps(content) + "\n```"
+        result = agent._determine_slide_content({"title": "Test"}, "Formation")
+        assert result["image_prompt"] == "plain fence test"

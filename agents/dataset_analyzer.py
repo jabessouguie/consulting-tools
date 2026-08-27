@@ -213,7 +213,7 @@ class DatasetAnalyzerAgent:
         """
         print("✍️  Génération du rapport avec insights IA...")
 
-        system_prompt = """Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
 Tu analyses des datasets pour des clients et génères des rapports d'analyse exploratoire."""
 
         # Préparer le contexte
@@ -238,7 +238,7 @@ COLONNES CATÉGORIELLES:
 STATISTIQUES CLÉS (extrait):
 {str(stats)[:1500]}"""
 
-        prompt = """À partir de cette analyse de dataset, génère un rapport structuré en Markdown.
+        prompt = f"""À partir de cette analyse de dataset, génère un rapport structuré en Markdown.
 
 {context}
 
@@ -362,5 +362,5 @@ def main():
     print(result["report"][:1000] + "...")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

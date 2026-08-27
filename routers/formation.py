@@ -1,6 +1,5 @@
 import asyncio
 import threading
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Form, Request
@@ -9,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from routers.shared import (
     BASE_DIR,
     CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
     safe_error_message,
@@ -44,14 +44,7 @@ async def api_formation_generate(
             {"error": "Le besoin est trop court (minimum 20 caractères)."}, status_code=400
         )
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "formation",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("formation")
 
     thread = threading.Thread(
         target=_run_formation_generator,
@@ -141,6 +134,7 @@ async def api_formation_stream(job_id: str):
 
 
 @router.post("/api/formation/regenerate")
+@limiter.limit("3/minute")
 async def api_formation_regenerate(request: Request):
     """Régénère le programme avec feedback"""
     body = await request.json()
@@ -150,14 +144,7 @@ async def api_formation_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "formation",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("formation")
 
     thread = threading.Thread(
         target=_run_formation_regenerate,

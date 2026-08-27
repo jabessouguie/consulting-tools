@@ -1,14 +1,13 @@
 import asyncio
 import json
 import threading
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from agents.linkedin_commenter import LinkedInCommenterAgent
-from routers.shared import BASE_DIR, CONSULTANT_NAME, jobs, limiter, safe_error_message, templates
+from routers.shared import BASE_DIR, CONSULTANT_NAME, create_job, jobs, limiter, safe_error_message, templates
 
 router = APIRouter()
 
@@ -36,14 +35,7 @@ async def api_comment_generate(request: Request):
     if not post_input:
         return JSONResponse({"error": "Post LinkedIn manquant."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "comment",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("comment")
 
     thread = threading.Thread(
         target=_run_comment_generator, args=(job_id, post_input, style), daemon=True
@@ -135,6 +127,7 @@ async def api_comment_stream(job_id: str):
 
 
 @router.post("/api/comment/regenerate")
+@limiter.limit("3/minute")
 async def api_comment_regenerate(request: Request):
     """Regenere les commentaires avec feedback"""
     body = await request.json()
@@ -148,14 +141,7 @@ async def api_comment_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "comment",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("comment")
 
     thread = threading.Thread(
         target=_run_comment_feedback,
@@ -205,7 +191,7 @@ def _run_comment_feedback(
                     "\n\nSTYLE 'PARISIEN GENZ' A APPLIQUER:\n" + persona_content[start_idx:end_idx]
                 )
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             agent.consultant_info['name']}, {
             agent.consultant_info['title']} chez {
             agent.consultant_info['company']}.
@@ -216,7 +202,7 @@ Tu corriges des commentaires LinkedIn selon le feedback de l'utilisateur."""
 
         # Regenerer commentaire court
         revised_short = agent.llm_client.generate(
-            prompt="""Voici un commentaire court genere precedemment pour ce post:
+            prompt=f"""Voici un commentaire court genere precedemment pour ce post:
 
 POST ORIGINAL:
 {post_preview}
@@ -236,7 +222,7 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
 
         # Regenerer commentaire moyen
         revised_medium = agent.llm_client.generate(
-            prompt="""Voici un commentaire moyen genere precedemment pour ce post:
+            prompt=f"""Voici un commentaire moyen genere precedemment pour ce post:
 
 POST ORIGINAL:
 {post_preview}
@@ -256,7 +242,7 @@ Reste specifique au post. Apporte de la valeur. Ton Parisien GenZ.""",
 
         # Regenerer commentaire long
         revised_long = agent.llm_client.generate(
-            prompt="""Voici un commentaire long genere precedemment pour ce post:
+            prompt=f"""Voici un commentaire long genere precedemment pour ce post:
 
 POST ORIGINAL:
 {post_preview}

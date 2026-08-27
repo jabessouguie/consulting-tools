@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from routers.shared import CONSULTANT_NAME, templates
+from routers.shared import CONSULTANT_NAME, safe_error_message, templates
 from utils.observability import DB_PATH, obs_service
 
 router = APIRouter()
@@ -29,7 +29,7 @@ async def api_analytics_stats():
     try:
         return JSONResponse(obs_service.get_stats_summary())
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @router.get("/api/analytics/llm")
@@ -59,7 +59,7 @@ async def api_analytics_llm():
             ).fetchall()]
         return JSONResponse({"by_feature": by_feature, "by_model": by_model, "recent": recent})
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 @router.get("/api/analytics/requests")
@@ -83,4 +83,4 @@ async def api_analytics_requests():
             ).fetchall()]
         return JSONResponse({"top_endpoints": top_endpoints, "daily": daily})
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
