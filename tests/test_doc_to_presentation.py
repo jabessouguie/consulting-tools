@@ -399,3 +399,37 @@ class TestRunPipeline:
              patch.object(agent, "build_pptx", return_value=None):
             result = agent.run(docs, "Audience", "Goal")
         assert result["pptx_path"] is None
+
+
+class TestParseDocumentFromFilePath:
+    """Covers doc_to_presentation.py lines 52 (PDF from file) and 66 (DOCX from file)."""
+
+    def test_parse_pdf_from_file_path(self, agent, tmp_path):
+        # line 52: reader = PdfReader(file_path) when file_content is None/falsy
+        pdf_file = tmp_path / "test.pdf"
+        pdf_file.write_bytes(b"fake pdf content")
+
+        mock_page = MagicMock()
+        mock_page.extract_text.return_value = "PDF from file"
+        mock_reader = MagicMock()
+        mock_reader.pages = [mock_page]
+
+        with patch("PyPDF2.PdfReader", return_value=mock_reader):
+            result = agent.parse_document(str(pdf_file), filename="test.pdf")
+        assert "PDF from file" in result
+
+    def test_parse_docx_from_file_path(self, agent, tmp_path):
+        # line 66: doc = Document(file_path) when file_content is None/falsy
+        docx_file = tmp_path / "test.docx"
+        docx_file.write_bytes(b"fake docx content")
+
+        mock_para = MagicMock()
+        mock_para.text = "DOCX from file"
+        mock_doc = MagicMock()
+        mock_doc.paragraphs = [mock_para]
+        mock_docx_mod = MagicMock()
+        mock_docx_mod.Document.return_value = mock_doc
+
+        with patch.dict("sys.modules", {"docx": mock_docx_mod}):
+            result = agent.parse_document(str(docx_file), filename="test.docx")
+        assert "DOCX from file" in result

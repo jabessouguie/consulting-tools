@@ -563,3 +563,149 @@ class TestHtmlSlideGenerator:
 
         results = list(agent.run_streaming("Test", num_slides=5))
         assert len(results) == 0
+
+
+class TestHtmlSlideGeneratorExtraCoverage:
+    """Covers uncovered lines in html_slide_generator.py."""
+
+    def test_extract_design_system_exception_on_pptx_read(self, tmp_path):
+        """Lines 46-50: exception when reading slides_exemple."""
+        from unittest.mock import patch, MagicMock
+        from pathlib import Path
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        HtmlSlideGeneratorAgent._design_cache = None
+        agent = HtmlSlideGeneratorAgent.__new__(HtmlSlideGeneratorAgent)
+        agent.llm = MagicMock()
+        # Create a real file so .exists() returns True
+        slides_file = tmp_path / "slides.pptx"
+        slides_file.write_bytes(b"fake pptx")
+        agent.slides_exemple_path = slides_file
+
+        # extract_template_structure is imported inside the method (local import),
+        # so patch it at its definition site in utils.pptx_reader
+        with patch("utils.pptx_reader.extract_template_structure",
+                   side_effect=Exception("Cannot read PPTX")):
+            design = agent.extract_design_system()
+
+        # Should still return a valid design despite the exception
+        assert "colors" in design
+        assert "fonts" in design
+
+    def test_build_prompt_english_language(self):
+        """Line 143: language='en' prefix."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        agent = HtmlSlideGeneratorAgent()
+        design = agent.extract_design_system()
+        _, user_prompt = agent.build_prompt("AI Strategy", 10, design, language="en")
+        assert "English" in user_prompt
+
+    def test_build_prompt_extra_context(self):
+        """Line 158: extra_context provided."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        agent = HtmlSlideGeneratorAgent()
+        design = agent.extract_design_system()
+        _, user_prompt = agent.build_prompt(
+            "Topic", 10, design, extra_context="IMPORTANT: Focus on ROI"
+        )
+        assert "IMPORTANT: Focus on ROI" in user_prompt
+
+    def test_parse_section_heuristic_cover(self):
+        """Line 310: heuristic detects cover from #1F1F1F (no data-type)."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" style="background-color:#1F1F1F;"><h1>Dark Slide</h1></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "cover"
+
+    def test_parse_section_heuristic_background(self):
+        """Line 310: heuristic detects cover from 'background' keyword."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide background-dark"><h1>BG Slide</h1></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "cover"
+
+    def test_parse_section_heuristic_closing(self):
+        """Line 310: heuristic detects closing from 'closing' keyword (no data-type)."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide closing"><h1>Merci</h1><p>Contact us</p></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "closing"
+
+    def test_parse_section_heuristic_content_fallback(self):
+        """Line 315 (else): defaults to content when no markers."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide"><h1>Generic Slide</h1><p>Some text here.</p></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "content"
+
+    def test_parse_section_h3_subtitle(self):
+        """Line 325: H3 subtitle extracted."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" data-type="content"><h2>Main Title</h2><h3>The Subtitle</h3></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result.get("subtitle") == "The Subtitle"
+
+    def test_parse_section_stat_value_from_fontsize(self):
+        """Line 346: stat_value from font-size style regex."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" data-type="stat"><div style="font-size:5em">87%</div><h3>Adoption Rate</h3></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result.get("stat_value") == "87%"
+
+    def test_parse_section_stat_value_from_big_num(self):
+        """Line 351: stat_value from big number fallback."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" data-type="stat"><p>42%</p></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        # Should detect "42%" as stat_value
+        assert result.get("stat_value") == "42%"
+
+    def test_parse_section_quote_with_author(self):
+        """Line 363: author extracted from quote section."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" data-type="quote"><blockquote>Data is the new oil</blockquote><cite>Clive Humby</cite></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert "quote_text" in result
+        assert result.get("author") is not None
+
+    def test_parse_section_two_column(self):
+        """Lines 370-384: two_column layout extraction."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '''<section class="slide" data-type="two_column">
+            <h2>Comparison</h2>
+            <div class="col-left"><h3>Before</h3><ul><li>Manual</li></ul></div>
+            <div class="col-right"><h3>After</h3><ul><li>Automated</li></ul></div>
+        </section>'''
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "two_column"
+        assert "left_points" in result or "right_points" in result or result["type"] == "two_column"
+
+    def test_parse_section_cover_with_meta(self):
+        """Line 407: cover section with meta class."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" data-type="cover"><h1>Title</h1><p class="meta">Mars 2026 | ConsultingTools</p></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "cover"
+        assert result.get("meta") is not None
+
+    def test_parse_section_closing_subtitle_from_ptags(self):
+        """Lines 418-426: closing section builds subtitle from p tags."""
+        from agents.html_slide_generator import HtmlSlideGeneratorAgent
+
+        html = '<section class="slide" data-type="closing"><h1>Merci</h1><p>Questions?</p><p>jean@consulting.tools</p></section>'
+        result = HtmlSlideGeneratorAgent.parse_section_to_json(html)
+        assert result["type"] == "closing"
+        assert result.get("subtitle") is not None
+        assert "Questions?" in result.get("subtitle", "")

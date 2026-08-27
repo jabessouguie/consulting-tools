@@ -39,13 +39,13 @@ class RFPResponderAgent:
         """
         print("🔍 Analyse du RFP...")
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             self.consultant_info['name']}, {
             self.consultant_info['title']} chez {
             self.consultant_info['company']}.
 Tu analyses des appels d'offres pour préparer des réponses."""
 
-        prompt = """Analyse cet appel d'offres et extrais les éléments clés:
+        prompt = f"""Analyse cet appel d'offres et extrais les éléments clés:
 
 {rfp_text[:4000]}
 
@@ -99,13 +99,13 @@ Format JSON uniquement."""
         """
         print("✍️  Génération de la réponse...")
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             self.consultant_info['name']}, {
             self.consultant_info['title']} chez {
             self.consultant_info['company']}.
 Tu rédiges des réponses professionnelles à des appels d'offres."""
 
-        prompt = """Rédige une ébauche de réponse à cet appel d'offres.
+        prompt = f"""Rédige une ébauche de réponse à cet appel d'offres.
 
 ANALYSE DU RFP:
 Client: {analysis.get('client', 'N/A')}
@@ -287,5 +287,5 @@ def main():
     print(result["response"][:1000] + "...")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -548,3 +548,22 @@ class TestMainFunction:
                 from agents.dataset_analyzer import main
 
                 main()
+
+
+class TestLoadCsvUnicodeDecodeError:
+    """Covers lines 54-55: except UnicodeDecodeError on UTF-8 → fallback to latin1."""
+
+    def test_load_csv_utf8_fails_latin1_succeeds(self, tmp_path):
+        from agents.dataset_analyzer import DatasetAnalyzerAgent
+        from unittest.mock import MagicMock, patch
+
+        agent = DatasetAnalyzerAgent.__new__(DatasetAnalyzerAgent)
+        agent.llm = MagicMock()
+
+        # Bytes that are valid latin1 but NOT valid utf-8 (0xe9 = é in latin1)
+        csv_bytes = b"nom,valeur\nBob\xe9,100\nAlice,200\n"
+        csv_file = tmp_path / "data_latin1.csv"
+        csv_file.write_bytes(csv_bytes)
+
+        df = agent.load_dataset(str(csv_file))
+        assert len(df) == 2

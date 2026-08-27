@@ -2,13 +2,14 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from routers.shared import safe_error_message
+from routers.shared import limiter, safe_error_message
 
 router = APIRouter()
 
 
 @router.post("/api/microsoft/test-connection")
-async def microsoft_test_connection():
+@limiter.limit("10/minute")
+async def microsoft_test_connection(request: Request):
     try:
         from utils.microsoft_client import MicrosoftAuthError, MicrosoftAPIError, MicrosoftClient
         client = MicrosoftClient()
@@ -17,11 +18,14 @@ async def microsoft_test_connection():
     except Exception as e:
         from utils.microsoft_client import MicrosoftAuthError, MicrosoftAPIError
         if isinstance(e, (MicrosoftAuthError, MicrosoftAPIError)):
-            return JSONResponse({"ok": False, "error": str(e)}, status_code=422)
+            return JSONResponse(
+                {"ok": False, "error": safe_error_message(e)}, status_code=422
+            )
         return JSONResponse({"ok": False, "error": safe_error_message(e)}, status_code=500)
 
 
 @router.post("/api/teams/analyze-meeting")
+@limiter.limit("3/minute")
 async def teams_analyze_meeting(request: Request):
     try:
         body = await request.json()
@@ -39,5 +43,5 @@ async def teams_analyze_meeting(request: Request):
     except Exception as e:
         from utils.microsoft_client import MicrosoftAuthError, MicrosoftAPIError
         if isinstance(e, (MicrosoftAuthError, MicrosoftAPIError)):
-            return JSONResponse({"error": str(e)}, status_code=422)
+            return JSONResponse({"error": safe_error_message(e)}, status_code=422)
         return JSONResponse({"error": safe_error_message(e)}, status_code=500)

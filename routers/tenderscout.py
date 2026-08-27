@@ -2,7 +2,6 @@
 
 import asyncio
 import threading
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -23,12 +22,13 @@ from utils.auth import get_current_user
 
 from routers.shared import (
     BASE_DIR,
+    CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
-    templates,
-    CONSULTANT_NAME,
     safe_error_message,
     send_sse,
+    templates,
 )
 
 router = APIRouter()
@@ -95,14 +95,7 @@ async def api_tenderscout_scan(request: Request):
             status_code=400,
         )
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "tenderscout",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("tenderscout")
 
     thread = threading.Thread(
         target=_run_tender_scout,

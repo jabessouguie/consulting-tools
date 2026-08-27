@@ -1,13 +1,21 @@
 import asyncio
 import threading
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from agents.article_to_post import ArticleToPostAgent
-from routers.shared import BASE_DIR, CONSULTANT_NAME, jobs, safe_error_message, send_sse, templates
+from routers.shared import (
+    BASE_DIR,
+    CONSULTANT_NAME,
+    create_job,
+    jobs,
+    limiter,
+    safe_error_message,
+    send_sse,
+    templates,
+)
 
 router = APIRouter()
 
@@ -25,6 +33,7 @@ async def article_page(request: Request):
 
 
 @router.post("/api/article/generate")
+@limiter.limit("3/minute")
 async def api_article_generate(request: Request):
     """Lance la generation d'un post a partir d'un article"""
     body = await request.json()
@@ -34,14 +43,7 @@ async def api_article_generate(request: Request):
     if not url:
         return JSONResponse({"error": "URL manquante."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "article",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("article")
 
     thread = threading.Thread(target=_run_article_to_post, args=(job_id, url, tone), daemon=True)
     thread.start()
@@ -131,6 +133,7 @@ async def api_article_stream(job_id: str):
 
 
 @router.post("/api/article/regenerate")
+@limiter.limit("3/minute")
 async def api_article_regenerate(request: Request):
     """Regenere le post article avec feedback"""
     body = await request.json()
@@ -143,14 +146,7 @@ async def api_article_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "article",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("article")
 
     thread = threading.Thread(
         target=_run_article_feedback,
@@ -176,7 +172,7 @@ def _run_article_feedback(
 
         # Regenerer le post principal
         revised_main = agent.llm_client.generate(
-            prompt="""Voici un post LinkedIn genere precedemment pour partager un article:
+            prompt=f"""Voici un post LinkedIn genere precedemment pour partager un article:
 
 {previous_main}
 
@@ -186,7 +182,7 @@ FEEDBACK DE L'UTILISATEUR:
 Reecris ce post en integrant les corrections demandees.
 Conserve le format LinkedIn (hook, perspective, points cles, appel a l'action, hashtags).
 Ne modifie que ce qui est demande dans le feedback.""",
-            system_prompt="""Tu es {
+            system_prompt=f"""Tu es {
                 agent.consultant_info['name']}, {
                 agent.consultant_info['title']} chez {
                 agent.consultant_info['company']}.
@@ -204,14 +200,14 @@ REGLES IMPERATIVES:
 
         # Regenerer la version courte
         revised_short = agent.llm_client.generate(
-            prompt="""A partir de ce post LinkedIn revise, cree une version courte (400-600 caracteres max) qui va droit au point.
+            prompt=f"""A partir de ce post LinkedIn revise, cree une version courte (400-600 caracteres max) qui va droit au point.
 
 Post revise:
 {revised_main}
 
 Garde le hook et la question finale, compresse le milieu.
 NE PAS inventer d'anecdotes ou d'exemples.""",
-            system_prompt="""Tu es {
+            system_prompt=f"""Tu es {
                 agent.consultant_info['name']}, {
                 agent.consultant_info['title']} chez {
                 agent.consultant_info['company']}.""",

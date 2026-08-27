@@ -28,7 +28,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.0
 python-multipart==0.0.12
 starlette==0.38.2
-slowapi
+slowapi>=0.1.9
 starlette-csrf>=3.0.0
 
 # Authentication

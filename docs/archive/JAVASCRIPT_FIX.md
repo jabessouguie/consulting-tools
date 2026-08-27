@@ -114,7 +114,7 @@ L'erreur était **masquée** car :
 ### Validation Rapide
 ```bash
 # Test syntaxe JavaScript dans templates
-grep -n "doc.write\`" templates/slide-editor.html
+grep -n "doc.write`" templates/slide-editor.html
 # Vérifier que chaque ` a son ` de fermeture
 ```
 

@@ -1,7 +1,6 @@
 import asyncio
 import json
 import threading
-import uuid
 from datetime import datetime
 from typing import List
 
@@ -10,7 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.responses import RedirectResponse
 
 from agents.tech_monitor import TechMonitorAgent
-from routers.shared import BASE_DIR, jobs, limiter, safe_error_message
+from routers.shared import BASE_DIR, create_job, jobs, limiter, safe_error_message
 
 router = APIRouter()
 
@@ -31,14 +30,7 @@ async def api_techwatch_generate(request: Request):
     days = int(body.get("days", 7))
     period_type = body.get("period_type", "weekly")
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "techwatch",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("techwatch")
 
     thread = threading.Thread(
         target=_run_tech_monitor, args=(job_id, keywords, days, period_type), daemon=True
@@ -136,6 +128,7 @@ async def api_techwatch_stream(job_id: str):
 
 
 @router.post("/api/techwatch/regenerate")
+@limiter.limit("3/minute")
 async def api_techwatch_regenerate(request: Request):
     """Regenere le digest avec feedback"""
     body = await request.json()
@@ -147,14 +140,7 @@ async def api_techwatch_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "techwatch",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("techwatch")
 
     thread = threading.Thread(
         target=_run_techwatch_feedback,
@@ -179,7 +165,7 @@ def _run_techwatch_feedback(
         job["steps"].append({"step": "analyze", "status": "done", "progress": 40})
         job["steps"].append({"step": "generate", "status": "active", "progress": 50})
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             agent.consultant_info['name']}, {
             agent.consultant_info['title']} chez {
             agent.consultant_info['company']}.
@@ -187,7 +173,7 @@ Tu corriges un digest de veille technologique selon le retour du consultant."""
 
         # Regenerer le digest
         revised_digest = agent.llm_client.generate(
-            prompt="""Voici un digest de veille technologique généré précédemment:
+            prompt=f"""Voici un digest de veille technologique généré précédemment:
 
 {previous_digest}
 

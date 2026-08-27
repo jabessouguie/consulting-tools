@@ -80,7 +80,7 @@ class DocToPresentationAgent:
         """Analyse les documents et genere la structure des slides en JSON"""
         print("  [2/4] Analyse et structuration des slides...")
 
-        system_prompt = """Tu es un expert en creation de presentations professionnelles pour {self.consultant_info['company']}.
+        system_prompt = f"""Tu es un expert en creation de presentations professionnelles pour {self.consultant_info['company']}.
 Tu crees des presentations claires, visuelles et percutantes adaptees au public cible.
 
 REGLES :
@@ -91,7 +91,7 @@ REGLES :
 - Adapter le ton et le vocabulaire au public cible
 - Structurer logiquement : intro, developpement par themes, conclusion"""
 
-        prompt = """A partir des documents suivants, genere une presentation structuree.
+        prompt = f"""A partir des documents suivants, genere une presentation structuree.
 
 PUBLIC CIBLE : {target_audience}
 OBJECTIF : {objective}

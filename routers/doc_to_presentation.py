@@ -1,7 +1,6 @@
 """Router: Doc to Presentation — GET /doc-to-presentation, POST /api/doc-to-presentation/generate"""
 import asyncio
 import threading
-import uuid
 from pathlib import Path
 from typing import List
 
@@ -11,6 +10,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Streamin
 from routers.shared import (
     BASE_DIR,
     CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
     safe_error_message,
@@ -62,14 +62,7 @@ async def api_doc_to_presentation_generate(
             return JSONResponse({"error": f"Fichier vide : {upload.filename}"}, status_code=400)
         documents.append({"filename": upload.filename, "content": content})
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "doc-to-presentation",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("doc-to-presentation")
 
     threading.Thread(
         target=_run_doc_to_presentation,

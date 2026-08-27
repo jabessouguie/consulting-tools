@@ -64,9 +64,10 @@ class TestLinkedInClient:
             "LINKEDIN_CLIENT_SECRET": "test_secret",
             "LINKEDIN_REDIRECT_URI": "http://localhost/callback",
         },
+        clear=True,
     )
     def test_is_not_configured(self):
-        """Test vérification configuration incomplète"""
+        """OAuth configuré mais sans access token → is_configured() est False"""
         client = LinkedInClient()
         assert client.is_configured() is False
 
@@ -141,6 +142,7 @@ class TestLinkedInClient:
             "LINKEDIN_CLIENT_SECRET": "secret",
             "LINKEDIN_REDIRECT_URI": "http://localhost/callback",
         },
+        clear=True,
     )
     def test_get_person_id_no_token(self):
         """Test get_person_id sans token"""
@@ -188,6 +190,7 @@ class TestLinkedInClient:
             "LINKEDIN_CLIENT_SECRET": "secret",
             "LINKEDIN_REDIRECT_URI": "http://localhost/callback",
         },
+        clear=True,
     )
     def test_publish_post_no_token(self):
         """Test publish sans token"""
@@ -239,6 +242,32 @@ class TestLinkedInClient:
     def test_has_access_token_false(self):
         """Test helper has_access_token sans token"""
         assert has_linkedin_access_token() is False
+
+
+class TestLinkedInClientNoToken:
+    """Cover lines 103, 132: ValueError when no access_token."""
+
+    ENV = {
+        "LINKEDIN_CLIENT_ID": "id",
+        "LINKEDIN_CLIENT_SECRET": "secret",
+        "LINKEDIN_REDIRECT_URI": "http://localhost/cb",
+    }
+
+    @patch.dict(os.environ, ENV)
+    def test_get_person_id_no_access_token_raises(self):
+        # line 103
+        client = LinkedInClient()
+        client.access_token = None
+        with pytest.raises(ValueError, match="No access token"):
+            client.get_person_id()
+
+    @patch.dict(os.environ, ENV)
+    def test_publish_post_no_access_token_raises(self):
+        # line 132
+        client = LinkedInClient()
+        client.access_token = None
+        with pytest.raises(ValueError, match="No access token"):
+            client.publish_post("Hello LinkedIn")
 
 
 if __name__ == "__main__":

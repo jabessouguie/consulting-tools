@@ -12,5 +12,6 @@ paths:
   - ✅ `patch("routers.linkedin.LinkedInClient", ...)`
   - ❌ `patch("app.LinkedInClient", ...)`
 - Patch target = where the name is **imported**, not where it is **defined**
-- 66 pre-existing failures are expected — do not try to fix them (test_settings 404s, test_microsoft_api 404s, openpyxl)
+- The suite is green: 1777+ passing, 0 failures (measured 27/08/2026). A failure is a regression — fix it, do not normalise it
+- Rate limiting is disabled suite-wide in `conftest.py` (`limiter.enabled = False`); test it explicitly if you need it
 - New tests: mirror existing test file structure, use `AsyncClient` from `httpx` for API tests

@@ -1,6 +1,6 @@
 # 🚀 Guide de Contribution & Roadmap de Production
 
-Bienvenue dans le projet **Consulting Tools Consulting Tools**. Ce document définit les standards de qualité, le flux de travail et la roadmap critique avant le passage en production.
+Bienvenue dans le projet **Consulting Tools**. Ce document définit les standards de qualité, le flux de travail et la roadmap critique avant le passage en production.
 
 ## 🛠 Phase 1 : Corrections et Évolutions Prioritaires
 
@@ -45,8 +45,33 @@ Avant tout déploiement en production, les critères suivants doivent être vali
 - **Audit UI/UX** : Réaliser une revue ergonomique complète et appliquer les corrections pour une expérience utilisateur premium.
 
 ### 🧪 Tests et Couverture
-- **Objectif 100%** : Une couverture de tests de **100%** est exigée.
-- **Green Build** : 100% des tests doivent passer. Aucun commit ne sera accepté s'il dégrade la couverture ou échoue un test.
+
+**Cible de production** (non encore atteinte) : couverture 100 % sur l'ensemble
+du code applicatif, et build vert.
+
+**État mesuré au 27/08/2026** — c'est la référence à ne pas dégrader :
+
+| Indicateur | Valeur | Écart à la cible |
+|---|---|---|
+| Tests qui passent | 1777 | — |
+| Tests en échec | 7 | 7 à traiter (voir ci-dessous) |
+| Couverture `agents/` + `utils/` | 87 % | 13 pts |
+| Couverture `routers/` + `app.py` | **non mesurée** | ~9 500 lignes hors instrumentation |
+| Seuil bloquant en CI (`--cov-fail-under`) | 15 % | à relever progressivement |
+
+Les 7 échecs connus, à résorber et non à normaliser :
+- `test_tender_scout` ×2 — dépendance `openpyxl` absente de l'environnement.
+- `test_linkedin_client` ×3 et `test_config_consultant` ×1 — les tests lisent le
+  `.env` réel au lieu d'un environnement isolé ; l'un d'eux effectue un appel
+  réseau sortant vers l'API LinkedIn.
+- `test_veille_tech` ×1 — collecte d'articles.
+
+**Règle de contribution** : aucune PR ne doit augmenter le nombre d'échecs ni
+faire baisser la couverture. Une PR qui résorbe un des 7 échecs ci-dessus met à
+jour ce tableau.
+
+> ⚠️ Un test qui n'assère rien ne compte pas comme un test. 163 des tests
+> actuels n'ont aucune assertion utile — ne pas en ajouter de nouveaux.
 
 ---
 

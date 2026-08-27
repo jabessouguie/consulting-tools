@@ -1,13 +1,12 @@
 import asyncio
 import threading
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from agents.linkedin_monitor import LinkedInMonitorAgent
-from routers.shared import BASE_DIR, jobs, limiter, safe_error_message, send_sse
+from routers.shared import BASE_DIR, create_job, jobs, limiter, safe_error_message, send_sse
 
 router = APIRouter()
 
@@ -20,14 +19,7 @@ async def api_linkedin_generate(request: Request):
     post_type = body.get("post_type", "insight")
     num_posts = min(body.get("num_posts", 3), 5)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "linkedin",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("linkedin")
 
     thread = threading.Thread(
         target=_run_linkedin, args=(job_id, post_type, num_posts), daemon=True
@@ -138,6 +130,7 @@ async def api_linkedin_stream(job_id: str):
 
 
 @router.post("/api/linkedin/regenerate")
+@limiter.limit("3/minute")
 async def api_linkedin_regenerate(request: Request):
     """Regenere les posts LinkedIn avec feedback"""
     body = await request.json()
@@ -147,14 +140,7 @@ async def api_linkedin_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "linkedin",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("linkedin")
 
     thread = threading.Thread(
         target=_run_linkedin_feedback,
@@ -181,7 +167,7 @@ def _run_linkedin_feedback(job_id: str, previous_posts: list, feedback: str):
         revised_posts = []
         for i, post in enumerate(previous_posts):
             revised = agent.llm_client.generate(
-                prompt="""Voici un post LinkedIn genere precedemment:
+                prompt=f"""Voici un post LinkedIn genere precedemment:
 
 {
                     post.get(
@@ -194,7 +180,7 @@ FEEDBACK DE L'UTILISATEUR:
 Reecris ce post en integrant les corrections demandees.
 Conserve le format LinkedIn (hook, contenu, question d'engagement, hashtags).
 Ne modifie que ce qui est demande dans le feedback.""",
-                system_prompt="""Tu es {
+                system_prompt=f"""Tu es {
                     agent.consultant_info['name']}, {
                     agent.consultant_info['title']} chez {
                         agent.consultant_info['company']}.
@@ -253,7 +239,7 @@ async def api_linkedin_publish(request: Request):
     try:
         text = sanitize_text_input(text, max_length=3000, field_name="post")
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=400)
 
     if visibility not in ["PUBLIC", "CONNECTIONS"]:
         visibility = "PUBLIC"

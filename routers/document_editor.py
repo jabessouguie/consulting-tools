@@ -464,6 +464,7 @@ async def api_document_editor_stream(job_id: str):
 
 
 @router.post("/api/document-editor/export-gdocs")
+@limiter.limit("5/minute")
 async def api_document_editor_export_gdocs(request: Request):
     """Exporte le markdown vers Google Docs"""
     try:
@@ -527,6 +528,7 @@ async def api_veille_stats():
 
 
 @router.post("/api/veille/generate-digest")
+@limiter.limit("3/minute")
 async def api_veille_generate_digest(request: Request):
     """Genere un nouveau digest de veille"""
     try:
@@ -574,7 +576,8 @@ async def api_veille_get_digests(period: str = "daily"):
 
 
 @router.post("/api/veille/articles/{article_id}/mark-read")
-async def api_veille_mark_read(article_id: int):
+@limiter.limit("30/minute")
+async def api_veille_mark_read(request: Request, article_id: int):
     """Marque un article comme lu"""
     try:
         from utils.article_db import ArticleDatabase
@@ -588,7 +591,8 @@ async def api_veille_mark_read(article_id: int):
 
 
 @router.post("/api/veille/articles/{article_id}/toggle-favorite")
-async def api_veille_toggle_favorite(article_id: int):
+@limiter.limit("30/minute")
+async def api_veille_toggle_favorite(request: Request, article_id: int):
     """Toggle favori sur un article"""
     try:
         from utils.article_db import ArticleDatabase
@@ -605,6 +609,7 @@ async def api_veille_toggle_favorite(article_id: int):
 
 
 @router.post("/api/bug-report")
+@limiter.limit("10/minute")
 async def api_bug_report(request: Request):
     """Enregistre un signalement de bug"""
     try:

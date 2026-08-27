@@ -146,3 +146,15 @@ class TestExtractMetadata:
         md = "Some content without headings\n- bullet"
         metadata = agent._extract_metadata(md)
         assert "title" not in metadata
+
+
+class TestRegenerateStripsPlainFence:
+    """Covers formation_generator.py line 131: result[3:] strip."""
+
+    def test_strips_plain_code_fence_in_regenerate(self, agent):
+        # "```\n# Content\n```" → first if (startswith "```markdown") is False,
+        # second if (startswith "```") is True → line 131 executes
+        agent.llm.generate.return_value = "```\n# Updated content\n```"
+        result = agent.regenerate_with_feedback("Previous", "Feedback")
+        assert not result["markdown"].startswith("```")
+        assert "Updated content" in result["markdown"]

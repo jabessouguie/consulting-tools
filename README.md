@@ -1,10 +1,10 @@
-# 🎨 Consulting Tools Consulting Tools
+# 🎨 Consulting Tools
 
 Suite d'outils IA pour consultants : génération de contenus, automatisation, et intégrations cloud.
 
 ![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)
-![Tests](https://img.shields.io/badge/tests-25%2F25%20passing-success.svg)
+![Tests](https://img.shields.io/badge/tests-1777%20passing-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ---
@@ -45,7 +45,7 @@ Suite d'outils IA pour consultants : génération de contenus, automatisation, e
 
 ### Installation
 
-\`\`\`bash
+```bash
 # 1. Cloner
 git clone https://github.com/your-org/consulting-tools.git
 cd consulting-tools
@@ -66,10 +66,11 @@ cp .env.example .env
 # Éditer .env avec vos credentials
 
 # 6. Démarrer
-python3 app.py
-\`\`\`
+.venv/bin/python3 -m uvicorn app:app --reload
+```
 
-Application accessible : **http://localhost:8443**
+Application accessible : **http://localhost:8000**
+(ou **https://localhost:8443** si les certificats SSL sont présents dans `ssl/`)
 
 ---
 
@@ -77,16 +78,16 @@ Application accessible : **http://localhost:8443**
 
 ### Variables d'Environnement (.env)
 
-\`\`\`bash
+```bash
 CONSULTANT_NAME="Votre Nom"
 COMPANY_NAME="Votre Entreprise"
 ANTHROPIC_API_KEY=votre_cle_claude
 GOOGLE_APPLICATION_CREDENTIALS=config/google_credentials.json
 LINKEDIN_CLIENT_ID=votre_id
 LINKEDIN_CLIENT_SECRET=votre_secret
-\`\`\`
+```
 
-Voir [VALIDATION_COMPLETE.md](VALIDATION_COMPLETE.md) pour configuration complète.
+Voir [INSTALL_GUIDE.md](INSTALL_GUIDE.md) pour la configuration complète.
 
 ---
 
@@ -132,33 +133,50 @@ Antigravity est votre assistant de développement intégré. Vous pouvez l'utili
 
 | Document | Description |
 |----------|-------------|
-| [URGENT_FIXES.md](URGENT_FIXES.md) | Solutions problèmes critiques |
-| [VALIDATION_COMPLETE.md](VALIDATION_COMPLETE.md) | Checklist validation |
-| [PYTHON_314_LXML_FIX.md](PYTHON_314_LXML_FIX.md) | Fix Python 3.14 |
+| [CLAUDE.md](CLAUDE.md) | Règles d'architecture, commandes, conventions |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Comment contribuer, exigences de tests |
+| [INSTALL_GUIDE.md](INSTALL_GUIDE.md) | Installation détaillée pas à pas |
+| [GUIDE_UTILISATEUR.md](GUIDE_UTILISATEUR.md) | Prise en main sans compétence technique |
+| [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) | Architecture interne et extension |
 | [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) | Guide CI/CD |
-| [PDF_COLOR_FIX.md](PDF_COLOR_FIX.md) | Couleurs PDF |
+| [SECURITY_REVIEW.md](SECURITY_REVIEW.md) | Audit de sécurité et mesures en place |
+| [docs/](docs/) | Guides thématiques (images, SSL, mail, Imagen) |
+
+Les journaux de chantier historiques (correctifs datés, récapitulatifs de
+livraison) sont conservés dans [docs/archive/](docs/archive/) — ils décrivent
+des états passés du projet et ne doivent pas servir de référence.
 
 ### Scripts
 
-\`\`\`bash
+```bash
 ./validate.sh    # Validation complète
 ./start.sh       # Démarrage avec fix lxml
-pytest tests/ -v # Tests unitaires
-\`\`\`
+.venv/bin/python3 -m pytest tests/ -q   # Tests unitaires
+```
 
 ---
 
 ## 🧪 Tests
 
-\`\`\`bash
-# Tests unitaires (25 tests)
-pytest tests/test_gmail_client.py tests/test_linkedin_client.py -v
+```bash
+# Suite complète
+.venv/bin/python3 -m pytest tests/ -q --tb=short
 
-# Avec couverture
-pytest tests/ --cov=utils --cov-report=html
-\`\`\`
+# Un module ciblé
+.venv/bin/python3 -m pytest tests/test_llm_client.py -v
 
-**Résultats** : ✅ 25/25 tests passing (100% coverage)
+# Avec rapport de couverture HTML
+.venv/bin/python3 -m pytest tests/ --cov=agents --cov=utils --cov-report=html
+```
+
+**Résultats au 27/08/2026** : 1777 tests passent, 7 échouent.
+
+> ⚠️ La couverture affichée (87 %) ne porte que sur `agents/` et `utils/`.
+> La couche HTTP (`routers/`, `app.py` — ~9 500 lignes) n'est pas encore
+> instrumentée : voir `pytest.ini`. Le chiffre global réel est donc plus bas.
+
+Les 7 échecs connus : dépendance `openpyxl` absente (2), tests lisant le `.env`
+réel au lieu d'un environnement isolé (4), collecte veille (1).
 
 ---
 
@@ -169,13 +187,13 @@ pytest tests/ --cov=utils --cov-report=html
 **Cause** : Python 3.14 + lxml incompatibilité
 
 **Solution** :
-\`\`\`bash
+```bash
 brew install python@3.13
 mv .venv .venv_backup
 python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-\`\`\`
+```
 
 ### Google API non configurée
 
@@ -186,10 +204,10 @@ pip install -r requirements.txt
 
 ### LinkedIn pas connecté
 
-\`\`\`bash
+```bash
 open http://localhost:8000/auth/linkedin
 # Copier token dans .env
-\`\`\`
+```
 
 ---
 
@@ -198,31 +216,39 @@ open http://localhost:8000/auth/linkedin
 **Stack** : FastAPI + Jinja2 + Tailwind CSS + Claude AI + Gemini
 
 **Structure** :
-\`\`\`
+```
 consulting-tools/
-├── app.py                 # FastAPI app (5000+ lignes)
-├── agents/                # Agents IA
-├── utils/                 # Clients (Gmail, LinkedIn, Google)
-├── templates/             # Jinja2 templates
+├── app.py                 # Assemblage FastAPI + middlewares (216 lignes)
+├── routers/               # Toutes les routes, par domaine (26 modules)
+│   └── shared.py          # jobs, limiter, templates, helpers communs
+├── agents/                # Agents IA (23 modules)
+├── utils/                 # Clients et outils (Gmail, LinkedIn, Google, LLM, DB)
+├── config/                # Configuration consultant
+├── templates/             # 29 templates Jinja2
 ├── static/                # CSS/JS
-├── tests/                 # 25 tests unitaires
-├── .github/workflows/     # CI/CD
-└── docs/                  # Documentation
-\`\`\`
+├── tests/                 # 53 fichiers de tests
+├── .github/workflows/     # CI/CD (2 workflows)
+└── docs/                  # Documentation thématique
+```
+
+> Toute nouvelle route va dans `routers/<domaine>.py`, jamais dans `app.py`.
+> Voir [CLAUDE.md](CLAUDE.md) pour les règles d'architecture.
 
 ---
 
 ## 📊 Statistiques
 
-\`\`\`
-📁 Fichiers : 50+
-📝 Code : ~8000 lignes
-🧪 Tests : 25/25 (100%)
-📚 Docs : 8 guides
+```
+📁 Fichiers suivis : 283
+📝 Code applicatif : ~29 700 lignes (agents, utils, routers, app)
+🧪 Tests : 1777 passent / 7 échouent — 53 fichiers, ~23 400 lignes
+🎨 Templates : 29 écrans Jinja2
+📚 Docs : 6 guides thématiques dans docs/
 ⚙️ GitHub Actions : 2 workflows
-🎨 UI Components : 6
-🔗 APIs : 4 (Gmail, LinkedIn, Docs, Slides)
-\`\`\`
+🔗 APIs : Gmail, LinkedIn, Google Docs/Slides, Microsoft Graph
+```
+
+*Chiffres mesurés le 27/08/2026.*
 
 ---
 
@@ -239,6 +265,4 @@ MIT License
 
 ---
 
-**🚀 Prêt pour production !**
-
-Développé avec ❤️ pour **Consulting Tools Consulting**
+Développé avec ❤️ pour **Consulting Tools**

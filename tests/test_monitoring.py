@@ -600,3 +600,92 @@ class TestExtractKeyInsights:
         ]
         insights = extract_key_insights(articles)
         assert len(insights) == 5
+
+
+# ---------------------------------------------------------------------------
+# Extra coverage: web_search download_content + tag.decompose
+# ---------------------------------------------------------------------------
+
+class TestWebSearchDownloadContent:
+    def test_web_search_with_download_content_true(self):
+        # lines 129-132: download_content path in web_search
+        tool = _make_tool(keywords="python")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"<html></html>"
+
+        with patch("utils.monitoring.requests.get", return_value=mock_response):
+            with patch("utils.monitoring.BeautifulSoup") as mock_bs:
+                soup = MagicMock()
+                result_div = MagicMock()
+                title_a = MagicMock()
+                title_a.get_text.return_value = "Python News"
+                title_a.get.return_value = "https://python.org"
+                snippet_a = MagicMock()
+                snippet_a.get_text.return_value = "Python latest"
+                result_div.find.side_effect = lambda tag, class_=None: (
+                    title_a if class_ == "result__a" else snippet_a
+                )
+                soup.find_all.return_value = [result_div]
+                mock_bs.return_value = soup
+
+                with patch.object(tool, "download_article_content", return_value="full content") as dl:
+                    results = tool.web_search(["python"], download_content=True)
+
+        # dl.call_count >= 1 if a result with a link was built
+        assert dl.call_count >= 1
+
+    def test_download_content_empty_does_not_add_full_content(self):
+        # lines 131-132: if full_content: guard
+        tool = _make_tool(keywords="python")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"<html></html>"
+
+        with patch("utils.monitoring.requests.get", return_value=mock_response):
+            with patch("utils.monitoring.BeautifulSoup") as mock_bs:
+                soup = MagicMock()
+                result_div = MagicMock()
+                title_a = MagicMock()
+                title_a.get_text.return_value = "Article"
+                title_a.get.return_value = "https://example.com"
+                result_div.find.side_effect = lambda tag, class_=None: (
+                    title_a if class_ == "result__a" else None
+                )
+                soup.find_all.return_value = [result_div]
+                mock_bs.return_value = soup
+
+                with patch.object(tool, "download_article_content", return_value="") as dl:
+                    results = tool.web_search(["python"], download_content=True)
+
+        for art in results:
+            assert "full_content" not in art
+
+
+class TestDownloadArticleContentDecompose:
+    def test_tag_decompose_called_on_found_body(self):
+        # line 187: tag.decompose() in download_article_content
+        tool = _make_tool()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"<html><body><script>bad</script><p>Good</p></body></html>"
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("utils.monitoring.requests.get", return_value=mock_response):
+            with patch("utils.monitoring.BeautifulSoup") as mock_bs:
+                soup = MagicMock()
+                article_body = MagicMock()
+                script_tag = MagicMock()
+                article_body.find_all.return_value = [script_tag]
+                soup.select_one.return_value = article_body
+                mock_bs.return_value = soup
+
+                with patch("utils.monitoring.html2text.HTML2Text") as mock_h2t:
+                    converter = MagicMock()
+                    converter.handle.return_value = "Good text"
+                    mock_h2t.return_value = converter
+
+                    result = tool.download_article_content("https://example.com")
+
+        script_tag.decompose.assert_called_once()
+        assert result == "Good text"

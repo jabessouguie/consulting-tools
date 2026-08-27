@@ -28,7 +28,7 @@ class FormationGeneratorAgent:
         """Charge le template Programme Formation"""
         template_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "[Template Programme Formation].md",
+            "template_programme_formation.md",
         )
         try:
             with open(template_path, "r", encoding="utf-8") as f:
@@ -163,7 +163,7 @@ Modifie le programme en tenant compte du feedback. Retourne UNIQUEMENT le docume
         return metadata
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     agent = FormationGeneratorAgent()
     result = agent.generate_programme(
         "Formation de 3 jours sur l'IA Générative pour des managers non-techniques. "

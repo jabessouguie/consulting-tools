@@ -1,14 +1,13 @@
 import asyncio
 import json
 import threading
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from agents.workshop_planner import WorkshopPlannerAgent
-from routers.shared import BASE_DIR, CONSULTANT_NAME, jobs, limiter, safe_error_message, templates
+from routers.shared import BASE_DIR, CONSULTANT_NAME, create_job, jobs, limiter, safe_error_message, templates
 
 router = APIRouter()
 
@@ -38,14 +37,7 @@ async def api_workshop_generate(request: Request):
     if not topic:
         return JSONResponse({"error": "Le sujet est obligatoire."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "workshop",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("workshop")
 
     thread = threading.Thread(
         target=_run_workshop_planner,
@@ -121,6 +113,7 @@ async def api_workshop_stream(job_id: str):
 
 
 @router.post("/api/workshop/regenerate")
+@limiter.limit("3/minute")
 async def api_workshop_regenerate(request: Request):
     """Regenere avec feedback"""
     body = await request.json()
@@ -131,14 +124,7 @@ async def api_workshop_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "workshop",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("workshop")
 
     thread = threading.Thread(
         target=_run_workshop_feedback,
@@ -159,14 +145,14 @@ def _run_workshop_feedback(job_id: str, previous_plan: str, feedback: str, topic
 
         job["steps"].append({"step": "plan", "status": "active", "progress": 50})
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             agent.consultant_info['name']}, {
             agent.consultant_info['title']} chez {
             agent.consultant_info['company']}.
 Tu corriges un plan de formation selon le retour du consultant."""
 
         revised_plan = agent.llm_client.generate(
-            prompt="""Voici un plan de workshop généré précédemment:
+            prompt=f"""Voici un plan de workshop généré précédemment:
 
 {previous_plan}
 

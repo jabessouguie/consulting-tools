@@ -578,7 +578,7 @@ Genere le HTML complet maintenant."""
         }
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     agent = HtmlSlideGeneratorAgent()
     result = agent.run(
         topic="Introduction a l'IA Generative pour les entreprises",

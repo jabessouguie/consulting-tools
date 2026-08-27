@@ -579,7 +579,7 @@ Retourne un JSON avec:
         return str(output_path.relative_to(self.base_dir))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     agent = TrainingSlidesGeneratorAgent()
     test_programme = """# **Introduction à l'IA Générative**
 ## WV-AI-100

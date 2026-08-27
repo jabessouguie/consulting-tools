@@ -6,7 +6,7 @@
 
 ## 📋 Prérequis
 
-- **Python 3.10+** installé ([télécharger ici](https://www.python.org/downloads/))
+- **Python 3.13** installé ([télécharger ici](https://www.python.org/downloads/)) — ni 3.12, ni 3.14 : le projet est fixé sur 3.13 (incompatibilité lxml au-delà)
 - **Git** installé (optionnel, pour cloner le repo)
 - Compte **Anthropic** (Claude API) OU **Google** (Gemini API)
 
@@ -674,7 +674,7 @@ python --version
 # Ou
 python3 --version
 ```
-➡️ Doit afficher Python 3.10 ou supérieur
+➡️ Doit afficher Python 3.13.x
 
 **Si Python n'est pas installé** :
 - Téléchargez sur https://www.python.org/downloads/

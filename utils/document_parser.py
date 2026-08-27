@@ -172,7 +172,7 @@ class DocumentParser:
                         status[fmt] = True
                     elif fmt == "docx":
                         status[fmt] = True
-                except ImportError:
+                except ImportError:  # pragma: no cover
                     status[fmt] = False
 
         return status

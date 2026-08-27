@@ -145,7 +145,7 @@ def _run_meeting_capture(job_id: str):
                 "message": "Traitement de la vidéo par Gemini…",
             }
         )
-        processed_file = agent.wait_for_processing(uploaded_file)
+        processed_file = agent.wait_for_processing(uploaded_file, timeout=600)
         job["steps"].append(
             {"step": "processing", "status": "done", "progress": 55, "message": "Vidéo traitée"}
         )
@@ -253,6 +253,7 @@ async def api_meeting_capture_gmail_draft(request: Request):
 
 
 @router.post("/api/meeting-capture/export-word")
+@limiter.limit("5/minute")
 async def export_meeting_word(request: Request):
     try:
         body = await request.json()

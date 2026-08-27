@@ -799,3 +799,159 @@ class TestTranslate:
         call_kwargs = mock_gen.call_args[1]
         assert "fr" in call_kwargs.get("prompt", "")
         assert call_kwargs.get("temperature") == 0.3
+
+
+# ---------------------------------------------------------------------------
+# Privacy mode / anonymize — lines 137-140, 213-216
+# ---------------------------------------------------------------------------
+
+
+class TestPrivacyMode:
+    def _make_client(self, provider="claude"):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            from utils.llm_client import LLMClient
+            return LLMClient(provider=provider)
+
+    def test_generate_anonymizes_prompt_when_flag_set(self):
+        # lines 137-140: should_anonymize=True masks prompt
+        client = self._make_client()
+        with patch.object(client, "_generate_claude", return_value="ok") as mock_gen:
+            with patch("utils.llm_client.anonymizer") as mock_anon:
+                mock_anon.mask.side_effect = lambda x: x + "_masked"
+                result = client.generate("secret prompt", anonymize=True)
+        mock_anon.mask.assert_called()
+
+    def test_generate_anonymizes_system_prompt_too(self):
+        # lines 139-140: system_prompt also masked
+        client = self._make_client()
+        with patch.object(client, "_generate_claude", return_value="ok"):
+            with patch("utils.llm_client.anonymizer") as mock_anon:
+                mock_anon.mask.side_effect = lambda x: x
+                client.generate("prompt", system_prompt="sys secret", anonymize=True)
+        # mask called at least twice (prompt + system_prompt)
+        assert mock_anon.mask.call_count >= 2
+
+    def test_generate_stream_anonymizes_prompt(self):
+        # lines 213-216: generate_stream with anonymize
+        client = self._make_client()
+        with patch.object(client, "_stream_claude", return_value=iter(["chunk"])):
+            with patch("utils.llm_client.anonymizer") as mock_anon:
+                mock_anon.mask.side_effect = lambda x: x
+                list(client.generate_stream("secret", anonymize=True))
+        mock_anon.mask.assert_called()
+
+    def test_generate_stream_anonymizes_system_prompt(self):
+        # lines 215-216: system_prompt masked in stream
+        client = self._make_client()
+        with patch.object(client, "_stream_claude", return_value=iter(["x"])):
+            with patch("utils.llm_client.anonymizer") as mock_anon:
+                mock_anon.mask.side_effect = lambda x: x
+                list(client.generate_stream("p", system_prompt="sys", anonymize=True))
+        assert mock_anon.mask.call_count >= 2
+
+
+# ---------------------------------------------------------------------------
+# _stream_claude with system_prompt — line 235
+# _stream_openai with system_prompt — line 245
+# _stream_gemini with system_prompt — line 263
+# ---------------------------------------------------------------------------
+
+
+class TestStreamWithSystemPrompt:
+    def test_stream_claude_includes_system_param(self):
+        # line 235: params["system"] = system_prompt
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            from utils.llm_client import LLMClient
+            client = LLMClient(provider="claude")
+
+        mock_stream = MagicMock()
+        mock_stream.__enter__ = MagicMock(return_value=mock_stream)
+        mock_stream.__exit__ = MagicMock(return_value=False)
+        mock_stream.text_stream = iter(["hello", " world"])
+
+        with patch.object(client.client.messages, "stream", return_value=mock_stream) as mock_s:
+            result = list(client._stream_claude("prompt", system_prompt="You are helpful."))
+
+        call_kwargs = mock_s.call_args[1]
+        assert "system" in call_kwargs
+        assert call_kwargs["system"] == "You are helpful."
+
+    def test_stream_openai_includes_system_message(self):
+        # line 245: messages.append({"role": "system", ...}) in _stream_openai
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            from utils.llm_client import LLMClient
+            client = LLMClient(provider="openai")
+
+        chunk1 = MagicMock()
+        chunk1.choices = [MagicMock()]
+        chunk1.choices[0].delta.content = "response"
+        chunk2 = MagicMock()
+        chunk2.choices = [MagicMock()]
+        chunk2.choices[0].delta.content = None
+
+        with patch.object(client.client.chat.completions, "create", return_value=iter([chunk1, chunk2])) as mock_c:
+            result = list(client._stream_openai("prompt", system_prompt="Be concise."))
+
+        call_kwargs = mock_c.call_args[1]
+        messages = call_kwargs["messages"]
+        assert messages[0]["role"] == "system"
+        assert messages[0]["content"] == "Be concise."
+
+    def test_stream_gemini_prepends_system_prompt(self):
+        # line 263: full_prompt = f"{system_prompt}\n\n{prompt}"
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+            from utils.llm_client import LLMClient
+            client = LLMClient(provider="gemini", model="gemini-1.5-flash")
+
+        mock_model = MagicMock()
+        mock_response = MagicMock()
+        chunk = MagicMock()
+        chunk.text = "output"
+        mock_response.__iter__ = MagicMock(return_value=iter([chunk]))
+        mock_model.generate_content.return_value = mock_response
+
+        with patch("utils.llm_client.genai.GenerativeModel", return_value=mock_model):
+            result = list(client._stream_gemini("my prompt", system_prompt="System instruction."))
+
+        call_args = mock_model.generate_content.call_args
+        full_prompt = call_args[0][0]
+        assert "System instruction." in full_prompt
+        assert "my prompt" in full_prompt
+
+
+# ---------------------------------------------------------------------------
+# stream_with_context — lines 357-358
+# ---------------------------------------------------------------------------
+
+
+class TestStreamWithContext:
+    def test_gemini_builds_chat_history(self):
+        # lines 357-358: chat_history built from messages[:-1]
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+            from utils.llm_client import LLMClient
+            client = LLMClient(provider="gemini", model="gemini-1.5-flash")
+
+        messages = [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there"},
+            {"role": "user", "content": "Final question"},
+        ]
+
+        mock_model = MagicMock()
+        mock_chat = MagicMock()
+        mock_response = MagicMock()
+        chunk = MagicMock()
+        chunk.text = "answer"
+        mock_response.__iter__ = MagicMock(return_value=iter([chunk]))
+        mock_chat.send_message.return_value = mock_response
+        mock_model.start_chat.return_value = mock_chat
+
+        with patch("utils.llm_client.genai.GenerativeModel", return_value=mock_model):
+            result = list(client.stream_with_context(messages))
+
+        # start_chat called with history from first 2 messages
+        call_kwargs = mock_model.start_chat.call_args[1]
+        history = call_kwargs["history"]
+        assert len(history) == 2
+        assert history[0]["role"] == "user"
+        assert history[1]["role"] == "model"  # assistant → model

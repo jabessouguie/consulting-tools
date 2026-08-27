@@ -18,9 +18,14 @@
 
 ## Baseline tests
 
-**1587 passing, 57 pre-existing failures** — ne pas régresser.
+**1777 passing, 7 failures** (mesuré le 27/08/2026) — ne pas régresser.
 
-Les 57 failures sont des problèmes connus (routes 404 dans test_settings + test_microsoft_api, openpyxl manquant dans test_tender_scout, route /api/skills-market/search absente du router).
+Les 7 failures sont des problèmes connus, à résorber et non à normaliser :
+- `test_tender_scout` ×2 — `openpyxl` absent de l'environnement
+- `test_linkedin_client` ×3 + `test_config_consultant` ×1 — les tests lisent le `.env` réel au lieu d'un environnement isolé (l'un sort sur le réseau vers l'API LinkedIn)
+- `test_veille_tech` ×1 — collecte d'articles
+
+Couverture : 87 % sur `agents/` + `utils/` uniquement. `routers/` et `app.py` (~9 500 lignes) ne sont **pas** instrumentés — cf. `--cov` dans `pytest.ini`. Le seuil bloquant est à 15 %.
 
 ## Architecture — règles impératives
 

@@ -43,6 +43,7 @@ async def elearning_page(request: Request):
 
 
 @router.post("/api/elearning/session/init")
+@limiter.limit("3/minute")
 async def api_elearning_session_init(request: Request):
     """Initialise ou recupere une session etudiant"""
     body = await request.json()
@@ -351,7 +352,8 @@ async def api_elearning_get_course(course_id: int):
 
 
 @router.delete("/api/elearning/course/{course_id}")
-async def api_elearning_delete_course(course_id: int):
+@limiter.limit("10/minute")
+async def api_elearning_delete_course(request: Request, course_id: int):
     """Supprime un cours"""
     deleted = elearning_db.delete_course(course_id)
     if not deleted:
@@ -396,7 +398,7 @@ async def api_elearning_lesson_solutions(request: Request, lesson_id: int):
             elearning_db.update_lesson_exercises(lesson_id, updated_exercises)
         return {"exercises": updated_exercises}
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": safe_error_message(e)}, status_code=500)
 
 
 # --- Quiz: Generation ---
@@ -539,6 +541,7 @@ async def api_elearning_quiz_stream(job_id: str):
 
 
 @router.post("/api/elearning/quiz/start")
+@limiter.limit("30/minute")
 async def api_elearning_quiz_start(
     request: Request,
     quiz_id: int = Form(...),
@@ -575,6 +578,7 @@ async def api_elearning_quiz_start(
 
 
 @router.post("/api/elearning/quiz/answer")
+@limiter.limit("30/minute")
 async def api_elearning_quiz_answer(
     request: Request,
     attempt_id: int = Form(...),
@@ -800,6 +804,7 @@ async def api_elearning_get_learning_path(session_identifier: str, course_id: in
 
 
 @router.post("/api/elearning/learning-path/update-progress")
+@limiter.limit("30/minute")
 async def api_elearning_update_progress(
     request: Request,
     learning_path_id: int = Form(...),
@@ -882,7 +887,9 @@ async def api_elearning_interview_chat(request: Request):
             interview_type=interview_type,
         )
     except Exception as e:
-        return JSONResponse({"error": f"Erreur entretien : {str(e)}"}, status_code=500)
+        return JSONResponse(
+            {"error": safe_error_message(e, "Erreur entretien")}, status_code=500
+        )
 
     return {"reply": reply}
 
@@ -929,7 +936,9 @@ async def api_elearning_interview_analyze(request: Request):
             interview_type=interview_type,
         )
     except Exception as e:
-        return JSONResponse({"error": f"Erreur analyse : {str(e)}"}, status_code=500)
+        return JSONResponse(
+            {"error": safe_error_message(e, "Erreur analyse")}, status_code=500
+        )
 
     return {"analysis": analysis}
 
@@ -969,7 +978,7 @@ async def api_elearning_premium_resources(
         resources = agent.generate_premium_resources(course, resource_types)
     except Exception as e:
         return JSONResponse(
-            {"error": f"Erreur génération ressources premium : {str(e)}"},
+            {"error": safe_error_message(e, "Erreur génération ressources premium")},
             status_code=500,
         )
 

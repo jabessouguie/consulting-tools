@@ -68,10 +68,10 @@ class PresentationScriptGenerator:
         Returns:
             Script markdown pour cette slide
         """
-        self.consultant_info["name"]
-        self.consultant_info["company"]
+        consultant_name = self.consultant_info["name"]
+        company = self.consultant_info["company"]
 
-        system_prompt = """Tu es {consultant_name}, consultant chez {company}.
+        system_prompt = f"""Tu es {consultant_name}, consultant chez {company}.
 
 TON ROLE : Generer un script de presentation oral pour une slide PowerPoint.
 
@@ -143,7 +143,7 @@ IMPORTANT :
 {context if context else "(contexte general)"}
 """
 
-        prompt = """{slide_content}
+        prompt = f"""{slide_content}
 
 Genere le script de presentation pour cette slide.
 
@@ -294,5 +294,5 @@ def main():
     print(f"\n📄 Script sauvegarde : {output_path}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

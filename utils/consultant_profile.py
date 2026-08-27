@@ -444,7 +444,7 @@ class ConsultantProfile:
         return excerpt[:max_chars]
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     # Test
     profile = ConsultantProfile()
     context = profile.build_context()

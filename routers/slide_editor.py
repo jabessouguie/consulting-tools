@@ -4,7 +4,6 @@ import asyncio
 import json
 import os
 import threading
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -15,14 +14,15 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from utils.validation import sanitize_text_input, sanitize_filename, validate_file_upload
 from routers.shared import (
     BASE_DIR,
+    COMPANY_NAME,
+    CONSULTANT_NAME,
+    create_job,
     jobs,
     limiter,
-    templates,
-    CONSULTANT_NAME,
-    COMPANY_NAME,
     safe_error_message,
     safe_traceback,
     send_sse,
+    templates,
 )
 
 router = APIRouter()
@@ -46,6 +46,7 @@ async def doc_to_presentation_page(request: Request):
 
 
 @router.post("/api/doc-to-presentation/generate")
+@limiter.limit("3/minute")
 async def api_doc_to_presentation_generate(
     request: Request,
     target_audience: str = Form(...),
@@ -62,14 +63,7 @@ async def api_doc_to_presentation_generate(
         content = await f.read()
         documents.append({"filename": f.filename, "content": content})
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "doc-to-presentation",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("doc-to-presentation")
 
     thread = threading.Thread(
         target=_run_doc_to_presentation,
@@ -162,14 +156,7 @@ async def api_html_slides_generate(
             {"error": "Le sujet est trop court (minimum 5 caracteres)."}, status_code=400
         )
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "html-slides",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("html-slides")
 
     thread = threading.Thread(
         target=_run_html_slides_generator,
@@ -426,7 +413,7 @@ def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
             "rex": "experience feedback presentation",
             "presentation": "business presentation",
         }
-        context_map.get(gen_type, "business presentation")
+        context = context_map.get(gen_type, "business presentation")
 
         for idx, slide in enumerate(slides):
             slide_type = slide.get("type", "")
@@ -440,14 +427,14 @@ def _generate_slide_illustrations(slides, job, topic, gen_type="presentation"):
                 continue
 
             # Generate prompt for the slide (Nano Banana format)
-            slide.get("title", "")
-            slide.get("content", "")
-            slide.get("bullets", [])
-            slide.get("key_points", [])
+            title = slide.get("title", "")
+            content = slide.get("content", "")
+            bullets = slide.get("bullets", [])
+            key_points = slide.get("key_points", [])
 
             # Prompt adapte au type
             if gen_type == "formation":
-                prompt = """Create a premium, professional illustration for a training presentation slide.
+                prompt = f"""Create a premium, professional illustration for a training presentation slide.
 
 Topic: {topic}
 Slide Title: {title}
@@ -459,7 +446,7 @@ Colors: Cool blues, warm amber/gold accents, approachable palette.
 Mood: Pedagogical, inspiring, professional learning environment.
 Format: Wide 16:9, 1792x1024px."""
             elif gen_type == "proposal":
-                prompt = """Create a premium, professional illustration for a business proposal slide.
+                prompt = f"""Create a premium, professional illustration for a business proposal slide.
 
 Topic: {topic}
 Slide Title: {title}
@@ -471,7 +458,7 @@ Colors: Premium blues, gold/amber accents, executive palette.
 Mood: Professional, trustworthy, results-oriented, winning proposal aesthetic.
 Format: Wide 16:9, 1792x1024px."""
             else:
-                prompt = """Create a premium, professional illustration for a {context} slide.
+                prompt = f"""Create a premium, professional illustration for a {context} slide.
 
 Topic: {topic}
 Slide Title: {title}

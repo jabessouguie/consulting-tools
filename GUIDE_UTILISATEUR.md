@@ -17,9 +17,12 @@ Bienvenue ! Ce guide vous explique comment utiliser les agents IA de Consulting 
    ```
 3. **Lancez l'application** :
    ```bash
-   python3.12 app.py
+   .venv/bin/python3 -m uvicorn app:app
    ```
-4. **Ouvrez votre navigateur** et allez sur : `http://localhost:5678`
+   > ⚠️ Utilisez bien le Python du dossier `.venv/` (3.13). Le Python du système
+   > peut être dans une autre version et empêcher certains boutons de fonctionner.
+4. **Ouvrez votre navigateur** et allez sur : `http://localhost:8000`
+   (ou `https://localhost:8443` si les certificats SSL sont configurés)
 
 🎉 **C'est tout !** L'interface web est maintenant accessible.
 

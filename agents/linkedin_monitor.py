@@ -113,7 +113,7 @@ class LinkedInMonitorAgent:
 
         context = "\n\n".join(articles_summary)
 
-        prompt = """Analyse ces articles récents du domaine IA/Data et identifie les tendances clés:
+        prompt = f"""Analyse ces articles récents du domaine IA/Data et identifie les tendances clés:
 
 {context}
 
@@ -191,7 +191,7 @@ Format ta réponse de manière structurée."""
                     ]
                 )
 
-        system_prompt = """Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
+        system_prompt = f"""Tu es {self.consultant_info['name']}, {self.consultant_info['title']} chez {self.consultant_info['company']}.
 Base : Paris | Génération Z assumée
 
 Ton expertise: {', '.join(self.consultant_info['expertise'])}
@@ -219,7 +219,7 @@ REGLES IMPERATIVES:
             "opinion": "Partage ton point de vue sur un sujet d'actualité",
         }
 
-        prompt = """Crée un post LinkedIn de type '{post_type}' basé sur cette veille:
+        prompt = f"""Crée un post LinkedIn de type '{post_type}' basé sur cette veille:
 
 ANALYSE DES TENDANCES:
 {trends_analysis.get('analysis')}
@@ -255,7 +255,7 @@ Important:
         # Générer aussi des variantes
         print("   Génération de variantes...")
 
-        variation_prompt = """Génère 2 variantes courtes (500-800 caractères) du post suivant, avec des angles différents:
+        variation_prompt = f"""Génère 2 variantes courtes (500-800 caractères) du post suivant, avec des angles différents:
 
 {post_content}
 
@@ -421,5 +421,5 @@ def main():
         agent.run_monitoring_cycle(generate_posts=not args.no_posts, num_posts=args.num_posts)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

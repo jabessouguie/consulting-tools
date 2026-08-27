@@ -2,7 +2,6 @@ import asyncio
 import io
 import json
 import threading
-import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -11,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from PyPDF2 import PdfReader
 
 from agents.rfp_responder import RFPResponderAgent
-from routers.shared import BASE_DIR, CONSULTANT_NAME, jobs, limiter, safe_error_message, templates
+from routers.shared import BASE_DIR, CONSULTANT_NAME, create_job, jobs, limiter, safe_error_message, templates
 
 router = APIRouter()
 
@@ -54,14 +53,7 @@ async def api_rfp_generate(
     if len(text.strip()) < 100:
         return JSONResponse({"error": "Le RFP semble trop court."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "rfp",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("rfp")
 
     thread = threading.Thread(target=_run_rfp_responder, args=(job_id, text), daemon=True)
     thread.start()
@@ -137,6 +129,7 @@ async def api_rfp_stream(job_id: str):
 
 
 @router.post("/api/rfp/regenerate")
+@limiter.limit("3/minute")
 async def api_rfp_regenerate(request: Request):
     """Regenere avec feedback"""
     body = await request.json()
@@ -146,14 +139,7 @@ async def api_rfp_regenerate(request: Request):
     if not feedback:
         return JSONResponse({"error": "Aucun feedback fourni."}, status_code=400)
 
-    job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {
-        "type": "rfp",
-        "status": "running",
-        "steps": [],
-        "result": None,
-        "error": None,
-    }
+    job_id = create_job("rfp")
 
     thread = threading.Thread(
         target=_run_rfp_feedback,
@@ -175,14 +161,14 @@ def _run_rfp_feedback(job_id: str, previous_response: str, feedback: str):
         job["steps"].append({"step": "analyze", "status": "done", "progress": 30})
         job["steps"].append({"step": "response", "status": "active", "progress": 50})
 
-        system_prompt = """Tu es {
+        system_prompt = f"""Tu es {
             agent.consultant_info['name']}, {
             agent.consultant_info['title']} chez {
             agent.consultant_info['company']}.
 Tu corriges une réponse à un appel d'offres selon le retour du consultant."""
 
         revised_response = agent.llm_client.generate(
-            prompt="""Voici une réponse à un RFP générée précédemment:
+            prompt=f"""Voici une réponse à un RFP générée précédemment:
 
 {previous_response}
 

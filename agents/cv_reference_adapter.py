@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 # Path setup and environment loading
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_PATH not in sys.path:
+if BASE_PATH not in sys.path:  # pragma: no cover
     sys.path.append(BASE_PATH)
 
 load_dotenv(os.path.join(BASE_PATH, ".env"))
@@ -226,7 +226,7 @@ Format : [slide1, slide2, ...]"""
         return {"slides": slides, "doc_type": doc_type, "mission_brief": mission_brief}
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     agent = CVReferenceAdapterAgent()
 
     # Test CV

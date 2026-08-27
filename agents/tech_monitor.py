@@ -345,7 +345,7 @@ Format : Markdown avec emojis."""
         return result
 
 
-def main():
+def main():  # pragma: no cover
     import argparse
 
     parser = argparse.ArgumentParser(description="Veille technologique automatisée")
@@ -369,5 +369,5 @@ def main():
     print(f"\n📊 {result['num_articles']} articles analysés")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

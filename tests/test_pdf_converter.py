@@ -475,3 +475,51 @@ class TestModuleLevelInstance:
         """L'instance globale a un attribut libreoffice_path."""
         from utils.pdf_converter import pdf_converter
         assert hasattr(pdf_converter, "libreoffice_path")
+
+
+class TestHtmlToPdf:
+    """Covers lines 419-431: html_to_pdf method (weasyprint success, ImportError, Exception)."""
+
+    def test_html_to_pdf_success(self, tmp_path):
+        from utils.pdf_converter import PDFConverter
+        from unittest.mock import MagicMock, patch
+
+        converter = PDFConverter()
+        output_path = tmp_path / "output.pdf"
+
+        mock_html_cls = MagicMock()
+        mock_html_inst = MagicMock()
+        mock_html_cls.return_value = mock_html_inst
+
+        with patch.dict("sys.modules", {"weasyprint": MagicMock(HTML=mock_html_cls)}):
+            result = converter.html_to_pdf("<html></html>", str(output_path))
+
+        assert result == str(output_path)
+        mock_html_inst.write_pdf.assert_called_once_with(str(output_path))
+
+    def test_html_to_pdf_import_error(self, tmp_path):
+        from utils.pdf_converter import PDFConverter
+        from unittest.mock import patch
+
+        converter = PDFConverter()
+        output_path = tmp_path / "output.pdf"
+
+        with patch.dict("sys.modules", {"weasyprint": None}):
+            result = converter.html_to_pdf("<html></html>", str(output_path))
+
+        assert result is None
+
+    def test_html_to_pdf_generic_exception(self, tmp_path):
+        from utils.pdf_converter import PDFConverter
+        from unittest.mock import MagicMock, patch
+
+        converter = PDFConverter()
+        output_path = tmp_path / "output.pdf"
+
+        mock_html_cls = MagicMock()
+        mock_html_cls.return_value.write_pdf.side_effect = RuntimeError("write failed")
+
+        with patch.dict("sys.modules", {"weasyprint": MagicMock(HTML=mock_html_cls)}):
+            result = converter.html_to_pdf("<html></html>", str(output_path))
+
+        assert result is None
