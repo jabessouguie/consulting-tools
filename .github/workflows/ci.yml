@@ -2,9 +2,9 @@ name: CI/CD - Consulting Tools Consulting Tools
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   workflow_dispatch:  # Manual trigger
 
 jobs:
